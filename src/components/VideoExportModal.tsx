@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Download, Check, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Film, Download, Check, RefreshCw, AlertCircle } from 'lucide-react';
 import { renderAnimationToVideo, VideoExportResult } from '../utils/videoExporter';
 import { getMotionIcon } from '../utils/presetIcons';
 
@@ -50,8 +50,9 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   layerVisibility,
   seekFrame
 }) => {
-  const [resolution, setResolution] = useState<'1080p' | 'square' | '4k' | '720p'>('1080p');
+  const [resolution, setResolution] = useState<'1080p' | 'square' | 'vertical' | '720p' | '4k'>('1080p');
   const [fps, setFps] = useState<number>(60);
+  const [markScale, setMarkScale] = useState<number>(0.88);
   const [bgChoice, setBgChoice] = useState<'theme' | 'black'>('theme');
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -66,6 +67,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   const resolutionMap = {
     '1080p': { label: '1080p Full HD (1920 × 1080)', width: 1920, height: 1080, ratio: '16:9' },
     'square': { label: '1:1 Square Lockup (1080 × 1080)', width: 1080, height: 1080, ratio: '1:1' },
+    'vertical': { label: '9:16 Vertical Reel (1080 × 1920)', width: 1080, height: 1920, ratio: '9:16' },
     '720p': { label: '720p Web Ready (1280 × 720)', width: 1280, height: 720, ratio: '16:9' },
     '4k': { label: '4K Ultra Cinema (3840 × 2160)', width: 3840, height: 2160, ratio: '16:9' }
   };
@@ -84,6 +86,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         fps,
         width: targetRes.width,
         height: targetRes.height,
+        markScale,
         presetName: motionName,
         colors,
         glowRadius,
@@ -129,7 +132,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
-      <div className="w-[620px] max-w-full bg-[#0d1017] border border-[#232736] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-[640px] max-w-full bg-[#0d1017] border border-[#232736] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Modal Header */}
         <div className="h-12 px-4 border-b border-[#1f2430] flex items-center justify-between bg-[#090b10]">
@@ -190,28 +193,28 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                 <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
                   Resolution & Aspect Ratio
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['1080p', 'square', '720p', '4k'] as const).map(resKey => {
+                <div className="grid grid-cols-3 gap-2">
+                  {(['1080p', 'square', 'vertical', '720p', '4k'] as const).map(resKey => {
                     const r = resolutionMap[resKey];
                     const isSel = resolution === resKey;
                     return (
                       <button
                         key={resKey}
                         onClick={() => setResolution(resKey)}
-                        className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                        className={`flex flex-col items-start p-2 rounded-lg border text-left transition-all ${
                           isSel
                             ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
                             : 'bg-[#141722] border-[#222736] hover:border-slate-500'
                         }`}
                       >
                         <div className="flex items-center justify-between w-full">
-                          <span className={`text-xs font-semibold ${isSel ? 'text-white' : 'text-slate-200'}`}>
+                          <span className={`text-[11px] font-semibold truncate ${isSel ? 'text-white' : 'text-slate-200'}`}>
                             {r.label.split(' ')[0]}
                           </span>
                           <span className="text-[9px] font-mono text-[#ff4e2e]">{r.ratio}</span>
                         </div>
-                        <span className="text-[9.5px] font-mono text-slate-400 mt-0.5">
-                          {r.width} × {r.height} px
+                        <span className="text-[8.5px] font-mono text-slate-400 mt-0.5">
+                          {r.width} × {r.height}
                         </span>
                       </button>
                     );
@@ -219,19 +222,45 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                 </div>
               </div>
 
-              {/* Framerate & Background */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Framing, Framerate & Background Grid */}
+              <div className="grid grid-cols-3 gap-2.5">
+                {/* Logo Framing / Scale */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
+                    Logo Size / Scale
+                  </label>
+                  <div className="flex bg-[#141722] border border-[#222736] rounded-md p-1 gap-1">
+                    {[
+                      { scale: 0.78, label: 'Fit' },
+                      { scale: 0.88, label: 'Cinema' },
+                      { scale: 0.96, label: 'Hero' }
+                    ].map(opt => (
+                      <button
+                        key={opt.scale}
+                        type="button"
+                        onClick={() => setMarkScale(opt.scale)}
+                        className={`flex-1 py-1 rounded text-[9.5px] font-mono font-medium transition-colors ${
+                          markScale === opt.scale ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* FPS Selection */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
+                  <label className="text-[10px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
                     Frame Rate
                   </label>
                   <div className="flex bg-[#141722] border border-[#222736] rounded-md p-1 gap-1">
                     {[30, 60].map(rate => (
                       <button
                         key={rate}
+                        type="button"
                         onClick={() => setFps(rate)}
-                        className={`flex-1 py-1 rounded text-xs font-mono font-medium transition-colors ${
+                        className={`flex-1 py-1 rounded text-[10px] font-mono font-medium transition-colors ${
                           fps === rate ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                         }`}
                       >
@@ -243,16 +272,17 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
 
                 {/* Canvas Background */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
-                    Background Mode
+                  <label className="text-[10px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
+                    Background
                   </label>
                   <div className="flex bg-[#141722] border border-[#222736] rounded-md p-1 gap-1">
                     {[
-                      { key: 'theme' as const, label: 'Theme Ambient' },
-                      { key: 'black' as const, label: 'Solid Dark' }
+                      { key: 'theme' as const, label: 'Ambient' },
+                      { key: 'black' as const, label: 'Dark' }
                     ].map(bg => (
                       <button
                         key={bg.key}
+                        type="button"
                         onClick={() => setBgChoice(bg.key)}
                         className={`flex-1 py-1 rounded text-[10px] font-mono font-medium transition-colors truncate ${
                           bgChoice === bg.key ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-slate-200'

@@ -5,6 +5,7 @@ export interface VideoExportOptions {
   fps?: number;
   width?: number;
   height?: number;
+  markScale?: number; // Scaling ratio of logo inside canvas (0.7 to 0.98)
   presetName?: string;
   colors: {
     word: string;
@@ -39,9 +40,7 @@ export interface VideoExportResult {
   filename: string;
 }
 
-/**
- * Pre-compiled Path2D instances for 100% reliable hardware fallback
- */
+// Pre-compiled Path2D instances for fail-safe hardware fallback
 const PATH_2D_CACHE = {
   wordW: new Path2D(GLYPH_PATHS.wordW),
   wordO: new Path2D(GLYPH_PATHS.wordO),
@@ -63,6 +62,7 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     fps = 60,
     width = 1920,
     height = 1080,
+    markScale = 0.88, // Default 88% screen occupancy for bold, cinematic presence
     presetName = 'motion',
     colors,
     glowRadius = 20,
@@ -93,7 +93,7 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
   const svgEl = document.getElementById('main-stage-svg') as SVGElement | null;
   if (!stage || !svgEl) throw new Error('Stage SVG element not found in DOM.');
 
-  // Detect optimal browser supported mime-type
+  // Detect optimal browser supported mime-type (prefer MP4 H.264)
   let mimeType = 'video/webm';
   let extension: 'mp4' | 'webm' = 'webm';
 
@@ -116,11 +116,11 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     }
   }
 
-  // Set up MediaRecorder Stream
+  // Set up MediaRecorder Stream with high bitrate (28 Mbps)
   const stream = canvas.captureStream(fps);
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: 20000000 // 20 Mbps master quality
+    videoBitsPerSecond: 28000000 // 28 Mbps cinema master quality
   });
 
   const chunks: Blob[] = [];
@@ -136,15 +136,15 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
 
   recorder.start();
 
-  // Draw background according to user config
+  // Draw background according to user selection
   const drawBackground = () => {
     if (bgChoice === 'theme') {
       const grad = ctx.createRadialGradient(
         width / 2, height / 2, 20,
         width / 2, height / 2, Math.max(width, height) * 0.65
       );
-      grad.addColorStop(0, '#181d2a');
-      grad.addColorStop(0.5, '#0a0d14');
+      grad.addColorStop(0, '#1c2232');
+      grad.addColorStop(0.45, '#0b0e16');
       grad.addColorStop(1, '#050608');
       ctx.fillStyle = grad;
     } else {
@@ -153,36 +153,49 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     ctx.fillRect(0, 0, width, height);
   };
 
-  // Dimensions & Coordinates
+  // Dimensions & Coordinates calculation with user-selected markScale (88% default)
   const markAspect = 25 / 26;
-  let targetHeight = height * 0.72;
+  let targetHeight = height * markScale;
   let targetWidth = targetHeight * markAspect;
 
-  if (targetWidth > width * 0.8) {
-    targetWidth = width * 0.8;
+  if (targetWidth > width * markScale) {
+    targetWidth = width * markScale;
     targetHeight = targetWidth / markAspect;
   }
 
   const dx = (width - targetWidth) / 2;
   const dy = (height - targetHeight) / 2;
 
-  // Render Each Frame
-  for (let f = 0; f < totalFrames; f++) {
-    const frameStartTime = performance.now();
-    const p = f / totalFrames;
+  // The 12 Vector Glyphs & 4 Group Container IDs
+  const animatedGlyphIds = [
+    'glyph-word-w', 'glyph-word-o', 'glyph-word-r',
+    'glyph-lord-l', 'glyph-lord-o', 'glyph-lord-r',
+    'glyph-ligature-d',
+    'glyph-media-m', 'glyph-media-e', 'glyph-media-d', 'glyph-media-i', 'glyph-media-a'
+  ];
 
-    // 1. Seek animation engine to exact frame time
+  const animatedGroupIds = [
+    'group-word', 'group-lord', 'group-ligature', 'group-media'
+  ];
+
+  const startTime = performance.now();
+
+  // Render Each Frame at 60 FPS
+  for (let f = 0; f < totalFrames; f++) {
+    const p = totalFrames > 1 ? f / (totalFrames - 1) : 1;
+
+    // 1. Seek live DOM animation engine to exact frame progress
     await seekFrame(p);
-    // Allow paint pipeline to flush
+    // Allow browser rendering engine to evaluate CSS animation keyframes
     await new Promise(r => requestAnimationFrame(r));
 
     // 2. Clear canvas and draw background
     drawBackground();
 
-    // 3. Serialize live SVG DOM with inlined computed styles
+    // 3. Clone SVG and strip problematic elements
     const svgClone = svgEl.cloneNode(true) as SVGElement;
     
-    // Strip complex multiline filter that can break standalone XML parsers
+    // Crucial: remove complex multiline filter from defs that triggers XML parser errors
     const defs = svgClone.querySelector('defs');
     if (defs) {
       const glowFilter = defs.querySelector('#unclipped-media-glow');
@@ -193,28 +206,52 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
       mediaGroup.removeAttribute('filter');
     }
 
-    // Bake computed styles from the live DOM elements onto the cloned nodes
-    const origElements = Array.from(svgEl.querySelectorAll('*')) as (HTMLElement | SVGElement)[];
-    const cloneElements = Array.from(svgClone.querySelectorAll('*')) as (HTMLElement | SVGElement)[];
+    // Crucial: Fix the white square bug! Remove #laser-sweep-rect unless this is the laser preset
+    const isLaserPreset = presetName.toLowerCase().includes('laser');
+    const laserRect = svgClone.querySelector('#laser-sweep-rect') as SVGElement | null;
+    if (laserRect) {
+      if (!isLaserPreset) {
+        laserRect.remove();
+      } else {
+        laserRect.removeAttribute('class');
+        laserRect.style.display = 'block';
+      }
+    }
 
-    for (let i = 0; i < origElements.length; i++) {
-      const orig = origElements[i];
-      const cln = cloneElements[i];
-      if (!orig || !cln || cln.nodeName === 'defs' || cln.nodeName === 'filter') continue;
+    // 4. Bake live computed styles directly onto cloned nodes by EXACT ID (no index shift!)
+    for (const gid of animatedGroupIds) {
+      const origG = svgEl.querySelector(`#${gid}`) as HTMLElement | SVGElement | null;
+      const clnG = svgClone.querySelector(`#${gid}`) as HTMLElement | SVGElement | null;
+      if (!origG || !clnG) continue;
 
-      const cs = window.getComputedStyle(orig);
-      if (cs.transform && cs.transform !== 'none') cln.style.transform = cs.transform;
-      if (cs.transformOrigin) cln.style.transformOrigin = cs.transformOrigin;
-      if (cs.opacity) cln.style.opacity = cs.opacity;
-      if (cs.fill && cs.fill !== 'none') cln.style.fill = cs.fill;
-      if (cs.fillOpacity) cln.style.fillOpacity = cs.fillOpacity;
-      if (cs.stroke && cs.stroke !== 'none') cln.style.stroke = cs.stroke;
-      if (cs.strokeWidth) cln.style.strokeWidth = cs.strokeWidth;
-      if (cs.strokeDasharray && cs.strokeDasharray !== 'none') cln.style.strokeDasharray = cs.strokeDasharray;
-      if (cs.strokeDashoffset) cln.style.strokeDashoffset = cs.strokeDashoffset;
-      if (cs.visibility) cln.style.visibility = cs.visibility;
-      if (cs.display) cln.style.display = cs.display;
-      if (cs.clipPath && cs.clipPath !== 'none') cln.style.clipPath = cs.clipPath;
+      const cs = window.getComputedStyle(origG);
+      if (cs.transform && cs.transform !== 'none') {
+        clnG.style.transform = cs.transform;
+        clnG.style.transformOrigin = cs.transformOrigin || 'center';
+      }
+      if (cs.opacity) clnG.style.opacity = cs.opacity;
+      if (cs.visibility) clnG.style.visibility = cs.visibility;
+    }
+
+    for (const pid of animatedGlyphIds) {
+      const origP = svgEl.querySelector(`#${pid}`) as HTMLElement | SVGElement | null;
+      const clnP = svgClone.querySelector(`#${pid}`) as HTMLElement | SVGElement | null;
+      if (!origP || !clnP) continue;
+
+      const cs = window.getComputedStyle(origP);
+      if (cs.transform && cs.transform !== 'none') {
+        clnP.style.transform = cs.transform;
+        clnP.style.transformOrigin = cs.transformOrigin || 'center';
+      }
+      if (cs.opacity) clnP.style.opacity = cs.opacity;
+      if (cs.fill && cs.fill !== 'none') clnP.style.fill = cs.fill;
+      if (cs.fillOpacity) clnP.style.fillOpacity = cs.fillOpacity;
+      if (cs.stroke && cs.stroke !== 'none') clnP.style.stroke = cs.stroke;
+      if (cs.strokeWidth) clnP.style.strokeWidth = cs.strokeWidth;
+      if (cs.strokeDasharray && cs.strokeDasharray !== 'none') clnP.style.strokeDasharray = cs.strokeDasharray;
+      if (cs.strokeDashoffset) clnP.style.strokeDashoffset = cs.strokeDashoffset;
+      if (cs.visibility) clnP.style.visibility = cs.visibility;
+      if (cs.clipPath && cs.clipPath !== 'none') clnP.style.clipPath = cs.clipPath;
     }
 
     svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -234,27 +271,26 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     const blobUrl = URL.createObjectURL(svgBlob);
 
     const img = new Image();
-    let imageLoaded = false;
 
     try {
       await new Promise<void>((resolve, reject) => {
-        img.onload = () => { imageLoaded = true; resolve(); };
+        img.onload = () => resolve();
         img.onerror = (err) => reject(err);
         img.src = blobUrl;
       });
 
-      // 4. Render volumetric glow layer with Canvas 2D
+      // 5. Render volumetric glow layer with Canvas 2D
       if (layerVisibility.glow && glowIntensity > 0 && glowRadius > 0) {
         ctx.save();
         ctx.shadowColor = colors.media;
-        ctx.shadowBlur = Math.min(80, (glowRadius * (width / 1920) * (glowIntensity / 100)) * 1.8);
+        ctx.shadowBlur = Math.min(100, (glowRadius * (width / 1920) * (glowIntensity / 100)) * 2.2);
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
         ctx.drawImage(img, dx, dy, targetWidth, targetHeight);
         ctx.restore();
       }
 
-      // 5. Draw crisp vector mark foreground
+      // 6. Draw crisp vector mark foreground
       ctx.drawImage(img, dx, dy, targetWidth, targetHeight);
     } catch {
       // Hardware Fallback: Direct Canvas 2D Path rendering
@@ -264,7 +300,7 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
 
       if (layerVisibility.glow && glowRadius > 0) {
         ctx.shadowColor = colors.media;
-        ctx.shadowBlur = glowRadius * 0.8;
+        ctx.shadowBlur = glowRadius * (targetWidth / 25) * 0.05;
       }
 
       // Line 1: WORD
@@ -304,11 +340,12 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
       URL.revokeObjectURL(blobUrl);
     }
 
-    // 6. Maintain precise 60 FPS real-time cadence for MediaRecorder
-    const elapsed = performance.now() - frameStartTime;
-    const remainingWait = Math.max(0, frameIntervalMs - elapsed);
-    if (remainingWait > 0) {
-      await new Promise(r => setTimeout(r, remainingWait));
+    // 7. Enforce cumulative real-time clock synchronization for MediaRecorder
+    const expectedElapsedMs = (f + 1) * frameIntervalMs;
+    const actualElapsedMs = performance.now() - startTime;
+    const remainingWaitMs = Math.max(0, expectedElapsedMs - actualElapsedMs);
+    if (remainingWaitMs > 0) {
+      await new Promise(r => setTimeout(r, remainingWaitMs));
     }
 
     if (onProgress) {
@@ -317,7 +354,7 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
   }
 
   // Hold final frame slightly for clean playback ending
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 180));
 
   recorder.stop();
   const videoBlob = await recordPromise;
