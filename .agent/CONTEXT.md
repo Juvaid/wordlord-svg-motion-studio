@@ -2,14 +2,23 @@
 
 ## Current Status (v5.0)
 - **Active Branch**: `main`
-- **Latest Major Features**:
-  - Full project audit completed (`project-audit.md` in conversation artifacts).
+- **Latest Completed Milestones**:
+  - Full project audit completed ([`project-audit.md`](file:///Users/wordlord/.gemini/antigravity/brain/1c5285d8-5f0b-48cd-a1ac-d2111b43fb0d/project-audit.md)).
+  - Viewport navigation stabilization: Figma/Blender-style `V` (Select) and `H` (Hand) modes, pointer capture, and 1-click Reset (`Cmd+0`).
+  - Gyro cursor tracking disabled by default in 3D studio, eliminating accidental cursor follow.
   - 6 Standalone HTML prototypes preserved under `prototypes/`.
-  - Non-destructive history engine (undo/redo up to 40 steps, Cmd+Z / Cmd+Shift+Z).
-  - Project JSON import/export and debounced auto-save to localStorage.
-  - Collective Asset Grouping with lock/visibility toggles, editable group name, Blender N-panel transforms (Pos, Rot, Scale, Uniform Scale).
-  - Shortcuts cheat-sheet modal (`?`).
-  - Prototypes gap analysis completed: raycast selection, social framing masks, deterministic video rendering, procedural textures, polar lighting.
+  - Non-destructive history engine (undo/redo up to 40 steps, `Cmd+Z` / `Cmd+Shift+Z`).
+  - Project JSON import/export and debounced auto-save to `localStorage`.
+  - Collective Asset Grouping with lock/visibility toggles, editable group name, Blender N-panel transforms (`Pos`, `Rot`, `Scale`, `Uniform Scale`).
+  - Raycast 3D part selection with white flash feedback.
+  - Social framing masks (16:9, 9:16, 1:1, 21:9).
+  - Procedural surface textures (`fluted`, `brushed`, `carbon`, `knurl`, `noise`).
+
+## Core Agent Documentation
+- [`.agent/FEATURES.md`](FEATURES.md): Comprehensive feature inventory (2D motions, 3D PBR materials, lighting, export pipelines).
+- [`.agent/ARCHITECTURE.md`](ARCHITECTURE.md): Technical deep-dive on SVG decomposition, Three.js extrusion, canvas exporters, state flow.
+- [`.agent/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md): Strict visual tokens, Obsidian palette, zero-emoji policy, and inspector primitives.
+- [`.agent/USER_EXPERIENCE_MEASURES.md`](USER_EXPERIENCE_MEASURES.md): UX ergonomics roadmap, shortcuts matrix, and interaction design.
 
 ## Directory Structure
 - `src/App.tsx`: Main application shell, state management, workspace router (2D vs 3D).

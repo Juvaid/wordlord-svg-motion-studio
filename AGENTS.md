@@ -20,3 +20,9 @@
 2. **No Nested Cards**: Panels use clean horizontal dividers (`border-b border-[#1f2430]`), subtle background contrast, and full-width content blocks instead of floating boxes with competing borders.
 3. **Non-Destructive State**: All destructive actions (preset changes, resets, imports) push snapshots to `undoStackRef`. Keyboard shortcuts `Cmd+Z`, `Cmd+Shift+Z`, `Cmd+S`, `Tab` are supported.
 4. **Clean Builds**: `npx tsc --noEmit` must pass with 0 errors before finishing.
+
+## Context Pointers (Progressive Disclosure)
+- Read [`.agent/FEATURES.md`](.agent/FEATURES.md) when looking up motion presets, shaders, PBR properties, camera modes, or export capabilities.
+- Read [`.agent/ARCHITECTURE.md`](.agent/ARCHITECTURE.md) when modifying state flow, Three.js extrusion, canvas exporters, or procedural textures.
+- Read [`.agent/DESIGN_SYSTEM.md`](.agent/DESIGN_SYSTEM.md) when building new UI panels, inspector components, color swatches, or modal dialogs.
+- Read [`.agent/USER_EXPERIENCE_MEASURES.md`](.agent/USER_EXPERIENCE_MEASURES.md) when refining viewport ergonomics, shortcuts, scrub controls, or accessibility.
