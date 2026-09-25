@@ -174,28 +174,28 @@ export const StageViewport: React.FC<StageViewportProps> = ({
           }}
         >
           <defs>
-            {/* Safe 600% Unclipped Filter Region */}
+            {/* Safe 600% Unclipped Volumetric Glow Filter */}
             <filter id="unclipped-media-glow" x="-250%" y="-250%" width="600%" height="600%">
               <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.045} result="blur1" />
               <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.1} result="blur2" />
               <feColorMatrix
                 in="blur1"
                 type="matrix"
-                values="
+                values={`
                   1 0 0 0 1
                   0 0.31 0 0 0.31
                   0 0 0.18 0 0.18
-                  0 0 0 1.6 0"
+                  0 0 0 ${((glowIntensity / 100) * 1.6).toFixed(2)} 0`}
                 result="col1"
               />
               <feColorMatrix
                 in="blur2"
                 type="matrix"
-                values="
+                values={`
                   1 0 0 0 1
                   0 0.31 0 0 0.31
                   0 0 0.18 0 0.18
-                  0 0 0 0.9 0"
+                  0 0 0 ${((glowIntensity / 100) * 0.9).toFixed(2)} 0`}
                 result="col2"
               />
               <feMerge>
@@ -290,25 +290,12 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             />
           </g>
 
-          {/* Group: MEDIA Sub-brand with Synchronized Glow Layer */}
-          <g id="group-media" style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}>
-            {/* Volumetric Glow Backing inside MEDIA group so transforms and visibility stay 100% in sync */}
-            <g
-              id="media-glow-layer"
-              filter="url(#unclipped-media-glow)"
-              style={{
-                opacity: (glowIntensity / 100) * (layerVisibility.glow ? 1 : 0),
-                overflow: 'visible'
-              }}
-            >
-              <path d={GLYPH_PATHS.mediaM} fill={colors.media} />
-              <path d={GLYPH_PATHS.mediaE} fill={colors.media} />
-              <path d={GLYPH_PATHS.mediaD} fill={colors.media} />
-              <path d={GLYPH_PATHS.mediaI} fill={colors.media} />
-              <path d={GLYPH_PATHS.mediaA} fill={colors.media} />
-            </g>
-
-            {/* Sharp Foreground Glyph Paths */}
+          {/* Group: MEDIA Sub-brand with Direct Integrated Volumetric Optical Glow */}
+          <g
+            id="group-media"
+            filter={layerVisibility.glow && glowIntensity > 0 ? "url(#unclipped-media-glow)" : undefined}
+            style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}
+          >
             <path
               id="glyph-media-m"
               data-glyph="M"
