@@ -3,26 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WordLord Media // SVG Motion Architecture Studio & Animation Library</title>
+  <title>WordLord Media // SVG Motion Architecture Studio & Kinetic Animation Deck</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <style>
     /* ==========================================================================
-       DESIGN SYSTEM & CSS CUSTOM PROPERTIES (CAPCUT / AFTER EFFECTS INSPIRED)
+       DESIGN SYSTEM & CSS CUSTOM PROPERTIES
        ========================================================================== */
     :root {
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
 
-      /* Dark slate studio theme */
+      /* Dark luxury obsidian theme */
       --bg-app: #08090b;
-      --bg-panel: #0d0f13;
-      --bg-panel-elevated: #13161c;
-      --bg-card: #151820;
-      --bg-card-hover: #1c202a;
-      --bg-input: #101217;
+      --bg-panel: #0d0f14;
+      --bg-panel-elevated: #13161d;
+      --bg-card: #151821;
+      --bg-card-hover: #1c202b;
+      --bg-input: #101218;
       
       --border-subtle: rgba(255, 255, 255, 0.07);
       --border-medium: rgba(255, 255, 255, 0.14);
@@ -35,10 +35,10 @@
       /* WordLord Media brand tokens */
       --wlm-red: #ff4e2e;
       --wlm-red-bright: #ff6447;
-      --wlm-red-glow: rgba(255, 78, 46, 0.4);
+      --wlm-red-glow: rgba(255, 78, 46, 0.45);
       --wlm-red-subtle: rgba(255, 78, 46, 0.12);
 
-      /* Dynamic SVG styling */
+      /* Dynamic SVG theme variables */
       --svg-word-color: #ffffff;
       --svg-lord-color: #ffffff;
       --svg-ligature-color: #ffffff;
@@ -49,16 +49,14 @@
       --svg-filter: none;
       --svg-drop-shadow: none;
 
-      /* Canvas defaults */
+      /* Canvas & panel sizing */
       --canvas-bg: #090a0d;
       --canvas-grid-color: rgba(255, 255, 255, 0.05);
-
-      /* Fluid panel dimensions (overwritten by JS drag handles) */
-      --sidebar-left-width: 310px;
+      --sidebar-left-width: 300px;
       --sidebar-right-width: 340px;
-      --timeline-height: 110px;
-      --header-height: 52px;
-      --splitter-width: 4px;
+      --timeline-height: 105px;
+      --header-height: 50px;
+      --splitter-size: 4px;
     }
 
     *, *::before, *::after {
@@ -81,17 +79,9 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Resizing active class to prevent iframe / selection issues */
-    body.is-resizing {
-      cursor: col-resize !important;
-      user-select: none !important;
-    }
-    body.is-resizing-v {
-      cursor: row-resize !important;
-      user-select: none !important;
-    }
+    body.is-resizing { cursor: col-resize !important; }
+    body.is-resizing-v { cursor: row-resize !important; }
 
-    /* Main Container */
     .app-root {
       display: flex;
       flex-direction: column;
@@ -122,8 +112,8 @@
     }
 
     .brand-icon-wrap {
-      width: 26px;
-      height: 27px;
+      width: 25px;
+      height: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -145,9 +135,7 @@
       gap: 6px;
     }
 
-    .brand-title-row span.red {
-      color: var(--wlm-red);
-    }
+    .brand-title-row span.red { color: var(--wlm-red); }
 
     .brand-caption {
       font-family: var(--font-mono);
@@ -157,7 +145,6 @@
       text-transform: uppercase;
     }
 
-    /* Center view layout toggles */
     .center-panel-toggles {
       display: flex;
       align-items: center;
@@ -173,7 +160,7 @@
       border: none;
       color: var(--text-secondary);
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 10px;
       padding: 5px 9px;
       border-radius: 6px;
       cursor: pointer;
@@ -194,7 +181,6 @@
       font-weight: 600;
     }
 
-    /* Right actions */
     .header-actions-group {
       display: flex;
       align-items: center;
@@ -266,7 +252,6 @@
       position: relative;
     }
 
-    /* Left Sidebar: Styles & Themes */
     .sidebar-pane-left {
       width: var(--sidebar-left-width);
       min-width: 220px;
@@ -278,15 +263,12 @@
       flex-shrink: 0;
     }
 
-    .sidebar-pane-left.collapsed {
-      display: none !important;
-    }
+    .sidebar-pane-left.collapsed { display: none !important; }
 
-    /* Right Sidebar: Animation & Effects Deck */
     .sidebar-pane-right {
       width: var(--sidebar-right-width);
       min-width: 240px;
-      max-width: 520px;
+      max-width: 540px;
       background: var(--bg-panel);
       display: flex;
       flex-direction: column;
@@ -294,11 +276,8 @@
       flex-shrink: 0;
     }
 
-    .sidebar-pane-right.collapsed {
-      display: none !important;
-    }
+    .sidebar-pane-right.collapsed { display: none !important; }
 
-    /* Center Stage Viewport */
     .center-stage {
       flex: 1;
       background: var(--canvas-bg);
@@ -313,7 +292,7 @@
        SPLITTERS (DRAGGABLE RESIZE HANDLES)
        ========================================================================== */
     .splitter-vertical {
-      width: var(--splitter-width);
+      width: var(--splitter-size);
       background: var(--border-subtle);
       cursor: col-resize;
       position: relative;
@@ -329,7 +308,7 @@
     }
 
     .splitter-horizontal {
-      height: var(--splitter-width);
+      height: var(--splitter-size);
       background: var(--border-subtle);
       cursor: row-resize;
       position: relative;
@@ -387,7 +366,6 @@
       background: rgba(255, 255, 255, 0.08);
     }
 
-    /* Sleek Search Input Bar */
     .pane-search-bar {
       padding: 8px 14px;
       border-bottom: 1px solid var(--border-subtle);
@@ -407,11 +385,8 @@
       outline: none;
     }
 
-    .pane-search-input::placeholder {
-      color: var(--text-muted);
-    }
+    .pane-search-input::placeholder { color: var(--text-muted); }
 
-    /* Sub-tabs */
     .pane-tabs-row {
       display: flex;
       padding: 6px 12px;
@@ -421,9 +396,7 @@
       overflow-x: auto;
     }
 
-    .pane-tabs-row::-webkit-scrollbar {
-      display: none;
-    }
+    .pane-tabs-row::-webkit-scrollbar { display: none; }
 
     .tab-pill {
       background: rgba(255, 255, 255, 0.04);
@@ -431,7 +404,7 @@
       color: var(--text-secondary);
       font-family: var(--font-mono);
       font-size: 10px;
-      padding: 4px 9px;
+      padding: 3px 8px;
       border-radius: 12px;
       cursor: pointer;
       white-space: nowrap;
@@ -456,17 +429,14 @@
       padding: 12px;
     }
 
-    .pane-scrollable-body::-webkit-scrollbar {
-      width: 5px;
-    }
-
+    .pane-scrollable-body::-webkit-scrollbar { width: 5px; }
     .pane-scrollable-body::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.12);
       border-radius: 4px;
     }
 
     /* ==========================================================================
-       CAPCUT-STYLE SLEEK TILES (GRID OF INTERACTIVE CARDS)
+       CAPCUT-STYLE SLEEK TILES
        ========================================================================== */
     .sleek-card-grid {
       display: grid;
@@ -510,16 +480,16 @@
     }
 
     .card-thumb-wrap svg {
-      width: 38px;
-      height: 40px;
+      width: 36px;
+      height: 37px;
       transition: transform 0.2s ease;
+      overflow: visible !important;
     }
 
     .sleek-card:hover .card-thumb-wrap svg {
-      transform: scale(1.08);
+      transform: scale(1.06);
     }
 
-    /* CapCut Play Hover Overlay */
     .thumb-play-overlay {
       position: absolute;
       inset: 0;
@@ -532,9 +502,7 @@
       transition: opacity 0.15s ease;
     }
 
-    .sleek-card:hover .thumb-play-overlay {
-      opacity: 1;
-    }
+    .sleek-card:hover .thumb-play-overlay { opacity: 1; }
 
     .play-circle-icon {
       width: 28px;
@@ -548,7 +516,6 @@
       box-shadow: 0 0 10px var(--wlm-red-glow);
     }
 
-    /* Info Tooltip Icon (Subtle (i) button) */
     .card-info-trigger {
       position: absolute;
       top: 6px;
@@ -556,9 +523,9 @@
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.65);
       color: var(--text-muted);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -575,7 +542,6 @@
       border-color: var(--wlm-red);
     }
 
-    /* Card bottom metadata label */
     .card-meta-bottom {
       padding: 8px 10px;
       display: flex;
@@ -608,7 +574,6 @@
       text-transform: uppercase;
     }
 
-    /* Active Indicator Dot */
     .card-active-indicator {
       width: 6px;
       height: 6px;
@@ -618,9 +583,7 @@
       display: none;
     }
 
-    .sleek-card.active .card-active-indicator {
-      display: block;
-    }
+    .sleek-card.active .card-active-indicator { display: block; }
 
     /* ==========================================================================
        FLOATING (i) INFO POPOVER
@@ -632,7 +595,7 @@
       border: 1px solid var(--border-medium);
       border-radius: 8px;
       padding: 12px 14px;
-      width: 240px;
+      width: 250px;
       font-family: var(--font-mono);
       font-size: 10px;
       color: #d1d5db;
@@ -660,17 +623,11 @@
       align-items: center;
     }
 
-    .info-key {
-      color: var(--text-muted);
-    }
-
-    .info-val {
-      color: var(--wlm-red);
-      font-weight: 600;
-    }
+    .info-key { color: var(--text-muted); }
+    .info-val { color: var(--wlm-red); font-weight: 600; }
 
     /* ==========================================================================
-       CENTER VIEWPORT & CONTROLS
+       CENTER VIEWPORT & CANVASES
        ========================================================================== */
     .stage-top-bar {
       position: absolute;
@@ -731,7 +688,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      overflow: hidden;
+      overflow: visible !important;
       background-image: 
         linear-gradient(to right, var(--canvas-grid-color) 1px, transparent 1px),
         linear-gradient(to bottom, var(--canvas-grid-color) 1px, transparent 1px);
@@ -740,9 +697,7 @@
       cursor: grab;
     }
 
-    .canvas-container.dragging {
-      cursor: grabbing;
-    }
+    .canvas-container.dragging { cursor: grabbing; }
 
     .stage-wrapper {
       position: relative;
@@ -751,9 +706,9 @@
       justify-content: center;
       transform-origin: center center;
       transition: transform 0.08s ease-out;
+      overflow: visible !important;
     }
 
-    /* Spec Bounding Box */
     .stage-spec-box {
       position: absolute;
       top: -20px;
@@ -766,9 +721,7 @@
       display: none;
     }
 
-    .stage-spec-box.active {
-      display: block;
-    }
+    .stage-spec-box.active { display: block; }
 
     .spec-badge-label {
       position: absolute;
@@ -780,7 +733,13 @@
       letter-spacing: 0.06em;
     }
 
-    /* The Main Stage SVG */
+    /* THE MAIN SVG: OVERFLOW VISIBLE ON ROOT AND ALL CHILDREN TO PREVENT GLOW CLIPPING */
+    #main-stage-svg,
+    #main-stage-svg g,
+    #main-stage-svg path {
+      overflow: visible !important;
+    }
+
     #main-stage-svg {
       width: 320px;
       height: 332px;
@@ -791,7 +750,6 @@
       will-change: transform, opacity, filter;
     }
 
-    /* Inspector hover crosshairs */
     .inspector-active path {
       cursor: crosshair;
       transition: stroke 0.15s ease, opacity 0.15s ease;
@@ -804,7 +762,6 @@
       filter: drop-shadow(0 0 2px #00ffff);
     }
 
-    /* Floating Inspector Tooltip */
     .glyph-hover-tooltip {
       position: absolute;
       background: rgba(14, 16, 22, 0.94);
@@ -828,7 +785,6 @@
       margin-bottom: 2px;
     }
 
-    /* Bottom Info Bar Overlay */
     .stage-bottom-info {
       position: absolute;
       bottom: 12px;
@@ -847,11 +803,8 @@
       pointer-events: none;
     }
 
-    .stage-bottom-info strong {
-      color: var(--text-primary);
-    }
+    .stage-bottom-info strong { color: var(--text-primary); }
 
-    /* Zoom pill */
     .stage-zoom-controls {
       position: absolute;
       bottom: 12px;
@@ -894,7 +847,7 @@
     }
 
     /* ==========================================================================
-       BOTTOM TIMELINE & SCRUBBER (RESIZABLE)
+       BOTTOM TIMELINE & SCRUBBER
        ========================================================================== */
     .timeline-footer {
       height: var(--timeline-height);
@@ -908,9 +861,7 @@
       position: relative;
     }
 
-    .timeline-footer.collapsed {
-      display: none !important;
-    }
+    .timeline-footer.collapsed { display: none !important; }
 
     .timeline-playback-bar {
       border-right: 1px solid var(--border-subtle);
@@ -991,7 +942,6 @@
       font-weight: 600;
     }
 
-    /* Tracks & Scrubber ruler */
     .timeline-tracks-area {
       display: flex;
       flex-direction: column;
@@ -1101,9 +1051,7 @@
     .lb-ligature { left: 24%; width: 54%; background: rgba(255, 255, 255, 0.35); border-color: rgba(255, 255, 255, 0.5); }
     .lb-media { left: 30%; width: 58%; background: rgba(255, 78, 46, 0.4); border-color: var(--wlm-red); }
 
-    /* ==========================================================================
-       MODAL & EXPORT DRAWER
-       ========================================================================== */
+    /* Modal */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -1115,9 +1063,7 @@
       z-index: 300;
     }
 
-    .modal-overlay.open {
-      display: flex;
-    }
+    .modal-overlay.open { display: flex; }
 
     .modal-box {
       background: var(--bg-panel);
@@ -1184,10 +1130,9 @@
       background: var(--bg-panel-elevated);
     }
 
-    /* Toast notification */
     .app-toast {
       position: fixed;
-      bottom: 130px;
+      bottom: 125px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
       background: #12151d;
@@ -1214,30 +1159,33 @@
     }
 
     /* ==========================================================================
-       KEYFRAME ANIMATION PREVIEWS & MOTIONS
+       KEYFRAME ANIMATIONS ENGINE (EXPANDED TO 12 PRECISE PRESETS & REFINED GLOW)
        ========================================================================== */
+
+    /* 1. TYPEWRITER CASCADE */
     .anim-typewriter [data-glyph] {
       opacity: 0;
       animation: glyphFadeIn 0.35s forwards cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .anim-typewriter #glyph-word-w { animation-delay: 0.05s; }
-    .anim-typewriter #glyph-word-o { animation-delay: 0.12s; }
-    .anim-typewriter #glyph-word-r { animation-delay: 0.19s; }
-    .anim-typewriter #glyph-lord-l { animation-delay: 0.26s; }
-    .anim-typewriter #glyph-lord-o { animation-delay: 0.33s; }
-    .anim-typewriter #glyph-lord-r { animation-delay: 0.40s; }
-    .anim-typewriter #glyph-ligature-d { animation-delay: 0.48s; transform-origin: top center; }
-    .anim-typewriter #glyph-media-m { animation-delay: 0.56s; }
-    .anim-typewriter #glyph-media-e { animation-delay: 0.62s; }
-    .anim-typewriter #glyph-media-d { animation-delay: 0.68s; }
-    .anim-typewriter #glyph-media-i { animation-delay: 0.74s; }
-    .anim-typewriter #glyph-media-a { animation-delay: 0.80s; }
+    .anim-typewriter #glyph-word-w { animation-delay: 0.04s; }
+    .anim-typewriter #glyph-word-o { animation-delay: 0.10s; }
+    .anim-typewriter #glyph-word-r { animation-delay: 0.16s; }
+    .anim-typewriter #glyph-lord-l { animation-delay: 0.22s; }
+    .anim-typewriter #glyph-lord-o { animation-delay: 0.28s; }
+    .anim-typewriter #glyph-lord-r { animation-delay: 0.34s; }
+    .anim-typewriter #glyph-ligature-d { animation-delay: 0.42s; transform-origin: top center; }
+    .anim-typewriter #glyph-media-m { animation-delay: 0.50s; }
+    .anim-typewriter #glyph-media-e { animation-delay: 0.56s; }
+    .anim-typewriter #glyph-media-d { animation-delay: 0.62s; }
+    .anim-typewriter #glyph-media-i { animation-delay: 0.68s; }
+    .anim-typewriter #glyph-media-a { animation-delay: 0.74s; }
 
     @keyframes glyphFadeIn {
-      from { opacity: 0; transform: translateY(2px) scale(0.92); }
+      from { opacity: 0; transform: translateY(3px) scale(0.92); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    /* 2. NEON WIREFRAME DRAW */
     .anim-wiredraw path {
       stroke-dasharray: 60;
       stroke-dashoffset: 60;
@@ -1249,17 +1197,18 @@
       100% { stroke-dashoffset: 0; fill-opacity: 1; }
     }
 
+    /* 3. KINETIC LIGATURE CLAMP */
     .anim-ligature-clamp #group-word { animation: slideInWord 0.7s forwards cubic-bezier(0.16, 1, 0.3, 1); }
     .anim-ligature-clamp #group-lord { animation: slideInLord 0.7s forwards cubic-bezier(0.16, 1, 0.3, 1); }
     .anim-ligature-clamp #glyph-ligature-d { animation: dropLigature 0.8s 0.25s forwards cubic-bezier(0.16, 1, 0.3, 1); }
     .anim-ligature-clamp #group-media { animation: popMedia 0.5s 0.45s forwards cubic-bezier(0.16, 1, 0.3, 1); }
 
     @keyframes slideInWord {
-      from { transform: translateX(-6px); opacity: 0; }
+      from { transform: translateX(-8px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
     @keyframes slideInLord {
-      from { transform: translateX(6px); opacity: 0; }
+      from { transform: translateX(8px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
     @keyframes dropLigature {
@@ -1271,34 +1220,130 @@
       to { transform: translateY(0); opacity: 1; }
     }
 
-    .anim-breath-pulse #group-media {
-      animation: pulseMediaGlow 2.2s infinite ease-in-out alternate;
-      transform-origin: center;
+    /* 4. LIQUID WAVE MASK WIPE (NEW) */
+    .anim-liquid-wipe #main-stage-svg {
+      clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+      animation: liquidWipeDown 1.1s forwards cubic-bezier(0.25, 1, 0.5, 1);
     }
-    @keyframes pulseMediaGlow {
-      0% { filter: drop-shadow(0 0 0px var(--wlm-red)); transform: scale(1); }
-      100% { filter: drop-shadow(0 0 1.5px var(--wlm-red-bright)); transform: scale(1.02); }
+    @keyframes liquidWipeDown {
+      0% { clip-path: polygon(0 0, 100% 0, 100% 0, 0 0); }
+      50% { clip-path: polygon(0 0, 100% 0, 100% 65%, 0 55%); }
+      100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
     }
 
+    /* 5. 3D Z-DEPTH SLAM (NEW) */
+    .anim-depth-slam #main-stage-svg {
+      animation: slamFromDepth 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      transform-origin: center center;
+    }
+    @keyframes slamFromDepth {
+      0% { transform: scale(2.4); opacity: 0; filter: blur(6px); }
+      70% { transform: scale(0.97); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1); opacity: 1; filter: none; }
+    }
+
+    /* 6. ORIGAMI 3D PERSPECTIVE UNFOLD (NEW) */
+    .anim-origami #group-word {
+      animation: foldWord 0.8s forwards cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: bottom center;
+    }
+    .anim-origami #group-lord {
+      animation: foldLord 0.8s 0.15s forwards cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: top center;
+    }
+    .anim-origami #group-media {
+      animation: foldMedia 0.7s 0.3s forwards cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: top center;
+    }
+    @keyframes foldWord {
+      0% { transform: perspective(400px) rotateX(-90deg); opacity: 0; }
+      100% { transform: perspective(400px) rotateX(0deg); opacity: 1; }
+    }
+    @keyframes foldLord {
+      0% { transform: perspective(400px) rotateX(90deg); opacity: 0; }
+      100% { transform: perspective(400px) rotateX(0deg); opacity: 1; }
+    }
+    @keyframes foldMedia {
+      0% { transform: perspective(400px) rotateX(90deg) scale(0.9); opacity: 0; }
+      100% { transform: perspective(400px) rotateX(0deg) scale(1); opacity: 1; }
+    }
+
+    /* 7. VOLUMETRIC LUMINESCENCE BREATH (100% UNCLIPPED & REFINED) */
+    .anim-breath-pulse #media-glow-layer {
+      opacity: 0;
+      animation: pulseVolumetricAura 2.4s infinite ease-in-out alternate;
+    }
+    .anim-breath-pulse #group-media {
+      animation: pulseMediaScale 2.4s infinite ease-in-out alternate;
+      transform-origin: 12.5px 21px;
+    }
+    @keyframes pulseVolumetricAura {
+      0% { opacity: 0.15; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1.02); }
+    }
+    @keyframes pulseMediaScale {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.015); }
+    }
+
+    /* 8. ZERO-G WEIGHTLESS DRIFT */
     .anim-zerog-float #main-stage-svg {
-      animation: zeroGFloat 4s infinite ease-in-out alternate;
+      animation: zeroGFloat 4.2s infinite ease-in-out alternate;
     }
     @keyframes zeroGFloat {
       0% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-6px) rotate(0.4deg); }
-      100% { transform: translateY(3px) rotate(-0.3deg); }
+      50% { transform: translateY(-7px) rotate(0.4deg); }
+      100% { transform: translateY(4px) rotate(-0.35deg); }
     }
 
-    .anim-glitch {
-      animation: cyberGlitch 0.6s forwards;
+    /* 9. SPECULAR LASER SWEEP (NEW) */
+    .anim-laser-sweep #laser-sweep-rect {
+      display: block;
+      animation: sweepGleam 2.8s infinite ease-in-out;
     }
-    @keyframes cyberGlitch {
+    @keyframes sweepGleam {
+      0% { transform: translate(-35px, -35px); }
+      50% { transform: translate(35px, 35px); }
+      100% { transform: translate(35px, 35px); }
+    }
+
+    /* 10. HEARTBEAT PULSE (NEW) */
+    .anim-heartbeat #main-stage-svg {
+      animation: heartPulse 1.8s infinite ease-out;
+      transform-origin: center center;
+    }
+    @keyframes heartPulse {
+      0% { transform: scale(1); }
+      14% { transform: scale(1.06); filter: drop-shadow(0 0 1px var(--wlm-red-glow)); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.08); filter: drop-shadow(0 0 2px var(--wlm-red)); }
+      70% { transform: scale(1); filter: none; }
+      100% { transform: scale(1); }
+    }
+
+    /* 11. CYBERPUNK GLITCH BURST (REFINED) */
+    .anim-glitch {
+      animation: cyberGlitchBurst 0.65s forwards;
+    }
+    @keyframes cyberGlitchBurst {
       0% { transform: translate(0); }
-      20% { transform: translate(-2px, 2px); filter: drop-shadow(2px 0 red) drop-shadow(-2px 0 cyan); }
-      40% { transform: translate(2px, -1px); filter: drop-shadow(-2px 0 lime) drop-shadow(1px 1px magenta); }
-      60% { transform: translate(-1px, 1px); }
-      80% { transform: translate(1px, -2px); }
+      15% { transform: translate(-3px, 2px); filter: drop-shadow(3px 0 red) drop-shadow(-3px 0 cyan); }
+      30% { transform: translate(3px, -2px); filter: drop-shadow(-3px 0 lime) drop-shadow(2px 2px magenta); }
+      45% { transform: translate(-2px, -1px); filter: drop-shadow(2px 0 red) drop-shadow(-2px 0 cyan); }
+      65% { transform: translate(2px, 1px); filter: none; }
+      85% { transform: translate(-1px, 1px); }
       100% { transform: translate(0); filter: none; }
+    }
+
+    /* 12. MATRIX DIGITAL DISPERSE (NEW) */
+    .anim-matrix-disperse [data-glyph] {
+      animation: matrixDisperse 1.2s forwards;
+    }
+    @keyframes matrixDisperse {
+      0% { transform: translateY(0); opacity: 1; filter: none; }
+      30% { transform: translateY(2px) scaleX(1.1); filter: drop-shadow(0 0 1px #10b981); }
+      60% { transform: translateY(-4px) scaleY(0.7); opacity: 0.3; filter: drop-shadow(0 0 3px #10b981); }
+      100% { transform: translateY(0) scale(1); opacity: 1; filter: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1318,7 +1363,7 @@
     <header class="top-navbar">
       <div class="brand-group">
         <div class="brand-icon-wrap">
-          <svg width="22" height="23" viewBox="0 0 25 26" fill="none">
+          <svg width="22" height="23" viewBox="0 0 25 26" fill="none" style="overflow:visible;">
             <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
             <path d="M12.4606 6.9504C12.047 7.26664 11.4507 7.42476 10.6715 7.42476C9.89243 7.42476 9.29607 7.26664 8.88247 6.9504C8.46887 6.63416 8.26206 6.1873 8.26206 5.60982V1.81494C8.26206 1.23746 8.46887 0.790599 8.88247 0.474359C9.29607 0.15812 9.89243 0 10.6715 0C11.4507 0 12.047 0.15812 12.4606 0.474359C12.8742 0.790599 13.081 1.23746 13.081 1.81494V5.60982C13.081 6.1873 12.8742 6.63416 12.4606 6.9504ZM9.84914 5.682C9.84914 6.15636 10.1233 6.39354 10.6715 6.39354C11.2198 6.39354 11.4939 6.15636 11.4939 5.682V1.74276C11.4939 1.2684 11.2198 1.03122 10.6715 1.03122C10.1233 1.03122 9.84914 1.2684 9.84914 1.74276V5.682Z" fill="#ffffff"/>
             <path d="M14.6593 7.32164C14.3227 7.32164 14.1543 7.20133 14.1543 6.96071V0.464048C14.1543 0.22343 14.3227 0.103122 14.6593 0.103122H16.5061C17.3237 0.103122 17.92 0.240617 18.2952 0.515608C18.6703 0.783724 18.8579 1.19965 18.8579 1.76338V2.2068C18.8579 2.95615 18.5116 3.43051 17.819 3.62988V3.65051C18.5212 3.80863 18.8723 4.31736 18.8723 5.17671V6.4451C18.8723 6.67197 18.8867 6.83353 18.9156 6.92977C18.9348 6.99852 18.9444 7.04321 18.9444 7.06383C18.9444 7.2357 18.8001 7.32164 18.5116 7.32164H17.8768C17.5401 7.32164 17.3573 7.21851 17.3285 7.01227C17.2996 6.88852 17.2852 6.69603 17.2852 6.43479V5.11483C17.2852 4.78484 17.2083 4.55454 17.0544 4.42392C16.9101 4.2933 16.6552 4.22799 16.2897 4.22799H15.7414V6.96071C15.7414 7.20133 15.5731 7.32164 15.2364 7.32164H14.6593ZM15.7414 3.19677H16.3185C16.6359 3.19677 16.8716 3.13833 17.0255 3.02146C17.189 2.90459 17.2708 2.70866 17.2708 2.43367V1.87681C17.2708 1.38183 17.0015 1.13434 16.4628 1.13434H15.7414V3.19677Z" fill="#ffffff"/>
@@ -1339,25 +1384,25 @@
         </div>
       </div>
 
-      <!-- Center Panel Viewport Toggles -->
+      <!-- Panel toggles -->
       <div class="center-panel-toggles">
-        <button class="panel-toggle-btn active" id="btn-toggle-left-pane" title="Toggle Styles Sidebar">
+        <button class="panel-toggle-btn active" id="btn-toggle-left-pane">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
           Styles
         </button>
-        <button class="panel-toggle-btn active" id="btn-toggle-timeline-pane" title="Toggle Bottom Timeline">
+        <button class="panel-toggle-btn active" id="btn-toggle-timeline-pane">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/></svg>
           Timeline
         </button>
-        <button class="panel-toggle-btn active" id="btn-toggle-right-pane" title="Toggle Animations Deck">
+        <button class="panel-toggle-btn active" id="btn-toggle-right-pane">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
-          Effects
+          Effects (12)
         </button>
       </div>
 
-      <!-- Right Header Actions -->
+      <!-- Right actions -->
       <div class="header-actions-group">
-        <span class="status-tag">Ready</span>
+        <span class="status-tag">Unclipped Glow</span>
         <button class="btn-header" id="btn-open-code-modal">Export</button>
         <button class="btn-header btn-header-primary" id="btn-quick-play">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -1381,17 +1426,14 @@
           </button>
         </div>
 
-        <!-- Search Bar -->
         <div class="pane-search-bar">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input type="text" class="pane-search-input" id="search-themes" placeholder="Search styles...">
         </div>
 
-        <!-- Sleek Theme Grid -->
         <div class="pane-scrollable-body">
           <div class="sleek-card-grid" id="themes-grid">
 
-            <!-- Card 1: Signature Core -->
             <div class="sleek-card active" data-theme="signature" data-name="Signature Core">
               <div class="card-thumb-wrap" style="background:#090a0d;">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1422,7 +1464,6 @@
               </div>
             </div>
 
-            <!-- Card 2: Swiss Wireframe -->
             <div class="sleek-card" data-theme="swiss" data-name="Swiss Wireframe">
               <div class="card-thumb-wrap" style="background:#111216; border:1px solid rgba(255,255,255,0.15);">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1453,7 +1494,6 @@
               </div>
             </div>
 
-            <!-- Card 3: Cyberpunk Neon -->
             <div class="sleek-card" data-theme="cyberpunk" data-name="Cyberpunk Neon">
               <div class="card-thumb-wrap" style="background:#06050b; border:1px solid #ff4e2e;">
                 <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 0 2px #ff4e2e);">
@@ -1484,7 +1524,6 @@
               </div>
             </div>
 
-            <!-- Card 4: Obsidian & Silver -->
             <div class="sleek-card" data-theme="luxury" data-name="Obsidian Luxury">
               <div class="card-thumb-wrap" style="background:#050608;">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1515,7 +1554,6 @@
               </div>
             </div>
 
-            <!-- Card 5: Studio Warm Light -->
             <div class="sleek-card" data-theme="light" data-name="Studio Paper">
               <div class="card-thumb-wrap" style="background:#f4f4f6;">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1546,7 +1584,6 @@
               </div>
             </div>
 
-            <!-- Card 6: Frosted Glass -->
             <div class="sleek-card" data-theme="glass" data-name="Frosted Glass">
               <div class="card-thumb-wrap" style="background:#12141a;">
                 <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">
@@ -1577,7 +1614,6 @@
               </div>
             </div>
 
-            <!-- Card 7: Phosphor CRT -->
             <div class="sleek-card" data-theme="phosphor" data-name="Phosphor CRT">
               <div class="card-thumb-wrap" style="background:#04120f; border:1px solid #10b981;">
                 <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 0 2px #10b981);">
@@ -1608,7 +1644,6 @@
               </div>
             </div>
 
-            <!-- Card 8: CAD Blueprint -->
             <div class="sleek-card" data-theme="blueprint" data-name="CAD Blueprint">
               <div class="card-thumb-wrap" style="background:#091b33; border:1px solid #38bdf8;">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1643,10 +1678,10 @@
         </div>
       </aside>
 
-      <!-- LEFT SPLITTER (RESIZE HANDLE) -->
-      <div class="splitter-vertical" id="resizer-left" title="Drag to resize styles panel"></div>
+      <!-- LEFT SPLITTER -->
+      <div class="splitter-vertical" id="resizer-left" title="Drag to resize styles"></div>
 
-      <!-- CENTER STAGE (THE CANVAS VIEWPORT) -->
+      <!-- CENTER STAGE VIEWPORT -->
       <section class="center-stage" id="stage-viewport">
         <!-- Floating Canvas Overlay Tools -->
         <div class="stage-top-bar">
@@ -1659,10 +1694,10 @@
           </div>
 
           <div class="stage-pill-box">
-            <button class="pill-btn active" id="btn-grid-toggle" title="Toggle Grid Overlay">Grid</button>
-            <button class="pill-btn" id="btn-spec-toggle" title="Toggle Spec Box">Specs</button>
-            <button class="pill-btn" id="btn-inspector-toggle" title="Toggle Hover Glyph Inspector">Inspect</button>
-            <button class="pill-btn" id="btn-stage-reset" title="Reset 100% Zoom">Reset</button>
+            <button class="pill-btn active" id="btn-grid-toggle">Grid</button>
+            <button class="pill-btn" id="btn-spec-toggle">Specs</button>
+            <button class="pill-btn" id="btn-inspector-toggle">Inspect</button>
+            <button class="pill-btn" id="btn-stage-reset">Reset</button>
           </div>
         </div>
 
@@ -1670,13 +1705,55 @@
         <div class="canvas-container" id="canvas-container">
           <div class="stage-wrapper" id="stage-wrapper">
             
-            <!-- Dimension & Spec Bounding Box Overlay -->
             <div class="stage-spec-box" id="stage-spec-box">
               <span class="spec-badge-label">25 × 26 px // SUB-PIXEL VECTOR</span>
             </div>
 
-            <!-- CORE WORDLORD SVG -->
-            <svg id="main-stage-svg" width="25" height="26" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- CORE WORDLORD SVG (WITH DEDICATED EXTENDED BOUNDS DEFS & OVERFLOW VISIBLE) -->
+            <svg id="main-stage-svg" width="25" height="26" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow: visible !important;">
+              <defs>
+                <!-- Unclipped volumetric glow filter with 500% boundary region -->
+                <filter id="unclipped-media-glow" x="-250%" y="-250%" width="600%" height="600%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blur1"/>
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2.0" result="blur2"/>
+                  <feColorMatrix in="blur1" type="matrix" values="
+                    1 0 0 0 1
+                    0 0.31 0 0 0.31
+                    0 0 0.18 0 0.18
+                    0 0 0 1.6 0" result="col1"/>
+                  <feColorMatrix in="blur2" type="matrix" values="
+                    1 0 0 0 1
+                    0 0.31 0 0 0.31
+                    0 0 0.18 0 0.18
+                    0 0 0 0.9 0" result="col2"/>
+                  <feMerge>
+                    <feMergeNode in="col2"/>
+                    <feMergeNode in="col1"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+
+                <!-- Specular beam gradient -->
+                <linearGradient id="laser-gleam-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+                  <stop offset="40%" stop-color="#ffffff" stop-opacity="0"/>
+                  <stop offset="50%" stop-color="#ffffff" stop-opacity="0.95"/>
+                  <stop offset="55%" stop-color="#ff4e2e" stop-opacity="0.9"/>
+                  <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
+                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- Dedicated unclipped volumetric aura layer -->
+              <g id="media-glow-layer" opacity="0" filter="url(#unclipped-media-glow)" style="overflow:visible;">
+                <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                <path d="M8.12662 25.2608C7.82715 25.2608 7.67741 25.1281 7.67741 24.8626V17.6951C7.67741 17.4296 7.82715 17.2969 8.12662 17.2969H11.0786C11.3781 17.2969 11.5278 17.4296 11.5278 17.6951V18.0364C11.5278 18.3018 11.3781 18.4346 11.0786 18.4346H9.08923V20.5393H10.5781C10.8775 20.5393 11.0273 20.6721 11.0273 20.9375V21.2788C11.0273 21.5443 10.8775 21.677 10.5781 21.677H9.08923V24.1231H11.0786C11.3781 24.1231 11.5278 24.2558 11.5278 24.5213V24.8626C11.5278 25.1281 11.3781 25.2608 11.0786 25.2608H8.12662Z" fill="#ff4e2e"/>
+                <path d="M12.9433 25.2608C12.6438 25.2608 12.4941 25.1281 12.4941 24.8626V17.6951C12.4941 17.4296 12.6438 17.2969 12.9433 17.2969H14.6503C16.0536 17.2969 16.7552 17.9529 16.7552 19.2651V23.2926C16.7552 24.6047 16.0536 25.2608 14.6503 25.2608H12.9433ZM13.9059 24.1231H14.6246C15.1038 24.1231 15.3434 23.8652 15.3434 23.3495V19.2082C15.3434 18.6925 15.1038 18.4346 14.6246 18.4346H13.9059V24.1231Z" fill="#ff4e2e"/>
+                <path d="M18.3114 25.2608C18.0119 25.2608 17.8622 25.1281 17.8622 24.8626V17.6951C17.8622 17.4296 18.0119 17.2969 18.3114 17.2969H18.8248C19.1243 17.2969 19.274 17.4296 19.274 17.6951V24.8626C19.274 25.1281 19.1243 25.2608 18.8248 25.2608H18.3114Z" fill="#ff4e2e"/>
+                <path d="M20.5752 25.2608C20.2929 25.2608 20.1517 25.147 20.1517 24.9195C20.1517 24.8967 20.156 24.8626 20.1645 24.8171L21.5122 17.6609C21.555 17.4182 21.7133 17.2969 21.9871 17.2969H23.078C23.3518 17.2969 23.5101 17.4182 23.5529 17.6609L24.9005 24.8171C24.9091 24.8626 24.9134 24.8967 24.9134 24.9195C24.9134 25.147 24.7722 25.2608 24.4898 25.2608H23.9893C23.6984 25.2608 23.5358 25.1394 23.5016 24.8967L23.309 23.6794V23.7021H21.6534L21.4608 24.8967C21.4266 25.1394 21.264 25.2608 20.9731 25.2608H20.5752ZM21.8202 22.6213H23.1422L22.4876 18.6849H22.4619L21.8202 22.6213Z" fill="#ff4e2e"/>
+              </g>
+
+              <!-- Layer 1: Shadow Base -->
               <g id="group-media-shadow">
                 <path id="glyph-media-m-dark" data-glyph="M-shadow" d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="var(--svg-media-shadow-color)"/>
                 <path id="glyph-media-e-dark" data-glyph="E-shadow" d="M8.12662 25.2608C7.82715 25.2608 7.67741 25.1281 7.67741 24.8626V17.6951C7.67741 17.4296 7.82715 17.2969 8.12662 17.2969H11.0786C11.3781 17.2969 11.5278 17.4296 11.5278 17.6951V18.0364C11.5278 18.3018 11.3781 18.4346 11.0786 18.4346H9.08923V20.5393H10.5781C10.8775 20.5393 11.0273 20.6721 11.0273 20.9375V21.2788C11.0273 21.5443 10.8775 21.677 10.5781 21.677H9.08923V24.1231H11.0786C11.3781 24.1231 11.5278 24.2558 11.5278 24.5213V24.8626C11.5278 25.1281 11.3781 25.2608 11.0786 25.2608H8.12662Z" fill="var(--svg-media-shadow-color)"/>
@@ -1685,22 +1762,26 @@
                 <path id="glyph-media-a-dark" data-glyph="A-shadow" d="M20.5752 25.2608C20.2929 25.2608 20.1517 25.147 20.1517 24.9195C20.1517 24.8967 20.156 24.8626 20.1645 24.8171L21.5122 17.6609C21.555 17.4182 21.7133 17.2969 21.9871 17.2969H23.078C23.3518 17.2969 23.5101 17.4182 23.5529 17.6609L24.9005 24.8171C24.9091 24.8626 24.9134 24.8967 24.9134 24.9195C24.9134 25.147 24.7722 25.2608 24.4898 25.2608H23.9893C23.6984 25.2608 23.5358 25.1394 23.5016 24.8967L23.309 23.6794V23.7021H21.6534L21.4608 24.8967C21.4266 25.1394 21.264 25.2608 20.9731 25.2608H20.5752ZM21.8202 22.6213H23.1422L22.4876 18.6849H22.4619L21.8202 22.6213Z" fill="var(--svg-media-shadow-color)"/>
               </g>
 
+              <!-- Layer 2: WORD -->
               <g id="group-word">
                 <path id="glyph-word-w" data-glyph="W" data-word="WORD" d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="var(--svg-word-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-word-o" data-glyph="O" data-word="WORD" d="M12.4606 6.9504C12.047 7.26664 11.4507 7.42476 10.6715 7.42476C9.89243 7.42476 9.29607 7.26664 8.88247 6.9504C8.46887 6.63416 8.26206 6.1873 8.26206 5.60982V1.81494C8.26206 1.23746 8.46887 0.790599 8.88247 0.474359C9.29607 0.15812 9.89243 0 10.6715 0C11.4507 0 12.047 0.15812 12.4606 0.474359C12.8742 0.790599 13.081 1.23746 13.081 1.81494V5.60982C13.081 6.1873 12.8742 6.63416 12.4606 6.9504ZM9.84914 5.682C9.84914 6.15636 10.1233 6.39354 10.6715 6.39354C11.2198 6.39354 11.4939 6.15636 11.4939 5.682V1.74276C11.4939 1.2684 11.2198 1.03122 10.6715 1.03122C10.1233 1.03122 9.84914 1.2684 9.84914 1.74276V5.682Z" fill="var(--svg-word-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-word-r" data-glyph="R" data-word="WORD" d="M14.6593 7.32164C14.3227 7.32164 14.1543 7.20133 14.1543 6.96071V0.464048C14.1543 0.22343 14.3227 0.103122 14.6593 0.103122H16.5061C17.3237 0.103122 17.92 0.240617 18.2952 0.515608C18.6703 0.783724 18.8579 1.19965 18.8579 1.76338V2.2068C18.8579 2.95615 18.5116 3.43051 17.819 3.62988V3.65051C18.5212 3.80863 18.8723 4.31736 18.8723 5.17671V6.4451C18.8723 6.67197 18.8867 6.83353 18.9156 6.92977C18.9348 6.99852 18.9444 7.04321 18.9444 7.06383C18.9444 7.2357 18.8001 7.32164 18.5116 7.32164H17.8768C17.5401 7.32164 17.3573 7.21851 17.3285 7.01227C17.2996 6.88852 17.2852 6.69603 17.2852 6.43479V5.11483C17.2852 4.78484 17.2083 4.55454 17.0544 4.42392C16.9101 4.2933 16.6552 4.22799 16.2897 4.22799H15.7414V6.96071C15.7414 7.20133 15.5731 7.32164 15.2364 7.32164H14.6593ZM15.7414 3.19677H16.3185C16.6359 3.19677 16.8716 3.13833 17.0255 3.02146C17.189 2.90459 17.2708 2.70866 17.2708 2.43367V1.87681C17.2708 1.38183 17.0015 1.13434 16.4628 1.13434H15.7414V3.19677Z" fill="var(--svg-word-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
               </g>
 
+              <!-- Layer 3: LORD -->
               <g id="group-lord">
                 <path id="glyph-lord-l" data-glyph="L" data-word="LORD" d="M1.21195 15.7003C0.875299 15.7003 0.706972 15.58 0.706972 15.3393V8.84268C0.706972 8.60206 0.875299 8.48175 1.21195 8.48175H1.78907C2.12573 8.48175 2.29405 8.60206 2.29405 8.84268V14.6691H4.40054C4.7372 14.6691 4.90552 14.7894 4.90552 15.03V15.3393C4.90552 15.58 4.7372 15.7003 4.40054 15.7003H1.21195Z" fill="var(--svg-lord-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-lord-o" data-glyph="O" data-word="LORD" d="M10.559 15.329C10.1454 15.6453 9.54909 15.8034 8.76997 15.8034C7.99086 15.8034 7.3945 15.6453 6.9809 15.329C6.5673 15.0128 6.3605 14.5659 6.3605 13.9884V10.1936C6.3605 9.61609 6.5673 9.16923 6.9809 8.85299C7.3945 8.53675 7.99086 8.37863 8.76997 8.37863C9.54909 8.37863 10.1454 8.53675 10.559 8.85299C10.9727 9.16923 11.1795 9.61609 11.1795 10.1936V13.9884C11.1795 14.5659 10.9727 15.0128 10.559 15.329ZM7.94758 14.0606C7.94758 14.535 8.22171 14.7722 8.76997 14.7722C9.31824 14.7722 9.59237 14.535 9.59237 14.0606V10.1214C9.59237 9.64703 9.31824 9.40985 8.76997 9.40985C8.22171 9.40985 7.94758 9.64703 7.94758 10.1214V14.0606Z" fill="var(--svg-lord-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-lord-r" data-glyph="R" data-word="LORD" d="M13.6234 15.7003C13.2868 15.7003 13.1184 15.58 13.1184 15.3393V8.84268C13.1184 8.60206 13.2868 8.48175 13.6234 8.48175H15.4702C16.2878 8.48175 16.8842 8.61925 17.2593 8.89424C17.6344 9.16236 17.822 9.57828 17.822 10.142V10.5854C17.822 11.3348 17.4757 11.8091 16.7832 12.0085V12.0291C17.4853 12.1873 17.8364 12.696 17.8364 13.5553V14.8237C17.8364 15.0506 17.8508 15.2122 17.8797 15.3084C17.8989 15.3772 17.9085 15.4218 17.9085 15.4425C17.9085 15.6143 17.7643 15.7003 17.4757 15.7003H16.8409C16.5042 15.7003 16.3215 15.5971 16.2926 15.3909C16.2637 15.2672 16.2493 15.0747 16.2493 14.8134V13.4935C16.2493 13.1635 16.1724 12.9332 16.0185 12.8025C15.8742 12.6719 15.6193 12.6066 15.2538 12.6066H14.7055V15.3393C14.7055 15.58 14.5372 15.7003 14.2005 15.7003H13.6234ZM14.7055 11.5754H15.2826C15.6001 11.5754 15.8357 11.517 15.9896 11.4001C16.1531 11.2832 16.2349 11.0873 16.2349 10.8123V10.2554C16.2349 9.76046 15.9656 9.51297 15.4269 9.51297H14.7055V11.5754Z" fill="var(--svg-lord-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
               </g>
 
+              <!-- Layer 4: TALL D LIGATURE -->
               <g id="group-ligature">
                 <path id="glyph-ligature-d" data-glyph="TALL-D" data-word="WORDLORD" d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="var(--svg-ligature-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
               </g>
 
+              <!-- Layer 5: MEDIA RED -->
               <g id="group-media">
                 <path id="glyph-media-m" data-glyph="M" data-word="MEDIA" d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="var(--svg-media-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-media-e" data-glyph="E" data-word="MEDIA" d="M8.12662 25.2608C7.82715 25.2608 7.67741 25.1281 7.67741 24.8626V17.6951C7.67741 17.4296 7.82715 17.2969 8.12662 17.2969H11.0786C11.3781 17.2969 11.5278 17.4296 11.5278 17.6951V18.0364C11.5278 18.3018 11.3781 18.4346 11.0786 18.4346H9.08923V20.5393H10.5781C10.8775 20.5393 11.0273 20.6721 11.0273 20.9375V21.2788C11.0273 21.5443 10.8775 21.677 10.5781 21.677H9.08923V24.1231H11.0786C11.3781 24.1231 11.5278 24.2558 11.5278 24.5213V24.8626C11.5278 25.1281 11.3781 25.2608 11.0786 25.2608H8.12662Z" fill="var(--svg-media-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
@@ -1708,6 +1789,9 @@
                 <path id="glyph-media-i" data-glyph="I" data-word="MEDIA" d="M18.3114 25.2608C18.0119 25.2608 17.8622 25.1281 17.8622 24.8626V17.6951C17.8622 17.4296 18.0119 17.2969 18.3114 17.2969H18.8248C19.1243 17.2969 19.274 17.4296 19.274 17.6951V24.8626C19.274 25.1281 19.1243 25.2608 18.8248 25.2608H18.3114Z" fill="var(--svg-media-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
                 <path id="glyph-media-a" data-glyph="A" data-word="MEDIA" d="M20.5752 25.2608C20.2929 25.2608 20.1517 25.147 20.1517 24.9195C20.1517 24.8967 20.156 24.8626 20.1645 24.8171L21.5122 17.6609C21.555 17.4182 21.7133 17.2969 21.9871 17.2969H23.078C23.3518 17.2969 23.5101 17.4182 23.5529 17.6609L24.9005 24.8171C24.9091 24.8626 24.9134 24.8967 24.9134 24.9195C24.9134 25.147 24.7722 25.2608 24.4898 25.2608H23.9893C23.6984 25.2608 23.5358 25.1394 23.5016 24.8967L23.309 23.6794V23.7021H21.6534L21.4608 24.8967C21.4266 25.1394 21.264 25.2608 20.9731 25.2608H20.5752ZM21.8202 22.6213H23.1422L22.4876 18.6849H22.4619L21.8202 22.6213Z" fill="var(--svg-media-color)" stroke="var(--svg-stroke-color)" stroke-width="var(--svg-stroke-width)"/>
               </g>
+
+              <!-- Laser specular gleam overlay (normally hidden, active during sweep) -->
+              <rect id="laser-sweep-rect" x="-20" y="-20" width="65" height="65" fill="url(#laser-gleam-grad)" pointer-events="none" style="display:none; mix-blend-mode: overlay;"/>
             </svg>
           </div>
         </div>
@@ -1719,14 +1803,12 @@
           <div id="tooltip-bounds">Box: 7.5 × 7.2 px</div>
         </div>
 
-        <!-- Stage Bottom Info Overlay -->
         <div class="stage-bottom-info">
           <span>Active: <strong id="lbl-style-name">Signature Core</strong></span>
           <span>•</span>
           <span>Motion: <strong id="lbl-motion-name">Idle</strong></span>
         </div>
 
-        <!-- Stage Zoom Controls -->
         <div class="stage-zoom-controls">
           <button class="zoom-btn" id="btn-zoom-out">-</button>
           <span class="zoom-label" id="lbl-zoom">100%</span>
@@ -1734,41 +1816,37 @@
         </div>
       </section>
 
-      <!-- RIGHT SPLITTER (RESIZE HANDLE) -->
-      <div class="splitter-vertical" id="resizer-right" title="Drag to resize effects panel"></div>
+      <!-- RIGHT SPLITTER -->
+      <div class="splitter-vertical" id="resizer-right" title="Drag to resize effects"></div>
 
-      <!-- RIGHT SIDEBAR: ANIMATION & EFFECTS DECK (CAPCUT STYLE) -->
+      <!-- RIGHT SIDEBAR: ANIMATION & EFFECTS DECK (12 PRESETS) -->
       <aside class="sidebar-pane-right" id="sidebar-right">
         <div class="pane-header">
           <h2 class="pane-title">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Animation Library
+            Effects & Motions (12)
           </h2>
           <button class="pane-action-icon" id="btn-collapse-right" title="Collapse Panel">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
 
-        <!-- Search Bar -->
         <div class="pane-search-bar">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input type="text" class="pane-search-input" id="search-effects" placeholder="Search effects...">
         </div>
 
-        <!-- Category Filter Pills -->
         <div class="pane-tabs-row" id="effects-filter-row">
-          <button class="tab-pill active" data-filter="all">All</button>
+          <button class="tab-pill active" data-filter="all">All (12)</button>
           <button class="tab-pill" data-filter="in">In / Reveals</button>
           <button class="tab-pill" data-filter="loop">Loops</button>
-          <button class="tab-pill" data-filter="hover">Interactive</button>
           <button class="tab-pill" data-filter="fx">Glitch / FX</button>
         </div>
 
-        <!-- Sleek Effects Grid -->
         <div class="pane-scrollable-body">
           <div class="sleek-card-grid" id="effects-grid">
 
-            <!-- Effect 1: Typewriter Stagger -->
+            <!-- 1. Typewriter Cascade -->
             <div class="sleek-card" data-category="in" data-anim="typewriter" data-name="Typewriter Cascade">
               <div class="card-thumb-wrap">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1779,7 +1857,7 @@
                 <div class="thumb-play-overlay">
                   <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
                 </div>
-                <div class="card-info-trigger" data-info="Typewriter Cascade|Category: IN // Reveal|Engine: CSS Keyframes Stagger|Easing: cubic-bezier(0.16, 1, 0.3, 1)|Duration: 0.95s (60ms stagger)">i</div>
+                <div class="card-info-trigger" data-info="Typewriter Cascade|Category: IN // Reveal|Engine: CSS Staggered Cascade|Easing: cubic-bezier(0.16, 1, 0.3, 1)|Duration: 0.95s (60ms step)">i</div>
               </div>
               <div class="card-meta-bottom">
                 <div class="card-name">Typewriter Cascade</div>
@@ -1790,7 +1868,7 @@
               </div>
             </div>
 
-            <!-- Effect 2: Wireframe Draw -->
+            <!-- 2. Wireframe Draw -->
             <div class="sleek-card" data-category="in" data-anim="wiredraw" data-name="Wireframe Draw">
               <div class="card-thumb-wrap">
                 <svg viewBox="0 0 25 26" fill="none">
@@ -1812,18 +1890,18 @@
               </div>
             </div>
 
-            <!-- Effect 3: Ligature Clamp -->
+            <!-- 3. Ligature Clamp -->
             <div class="sleek-card" data-category="in" data-anim="ligature-clamp" data-name="Ligature Clamp">
               <div class="card-thumb-wrap">
                 <svg viewBox="0 0 25 26" fill="none">
                   <path d="M14.6593 7.32164C14.3227 7.32164 14.1543 7.20133 14.1543 6.96071V0.464048C14.1543 0.22343 14.3227 0.103122 14.6593 0.103122H16.5061C17.3237 0.103122 17.92 0.240617 18.2952 0.515608C18.6703 0.783724 18.8579 1.19965 18.8579 1.76338V2.2068C18.8579 2.95615 18.5116 3.43051 17.819 3.62988V3.65051C18.5212 3.80863 18.8723 4.31736 18.8723 5.17671V6.4451C18.8723 6.67197 18.8867 6.83353 18.9156 6.92977C18.9348 6.99852 18.9444 7.04321 18.9444 7.06383C18.9444 7.2357 18.8001 7.32164 18.5116 7.32164H17.8768C17.5401 7.32164 17.3573 7.21851 17.3285 7.01227C17.2996 6.88852 17.2852 6.69603 17.2852 6.43479V5.11483C17.2852 4.78484 17.2083 4.55454 17.0544 4.42392C16.9101 4.2933 16.6552 4.22799 16.2897 4.22799H15.7414V6.96071C15.7414 7.20133 15.5731 7.32164 15.2364 7.32164H14.6593ZM15.7414 3.19677H16.3185C16.6359 3.19677 16.8716 3.13833 17.0255 3.02146C17.189 2.90459 17.2708 2.70866 17.2708 2.43367V1.87681C17.2708 1.38183 17.0015 1.13434 16.4628 1.13434H15.7414V3.19677Z" fill="#ffffff"/>
-                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff" style="filter: drop-shadow(0 0 2px #ff4e2e);"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff" style="filter: drop-shadow(0 0 1px #ff4e2e);"/>
                   <path d="M13.6234 15.7003C13.2868 15.7003 13.1184 15.58 13.1184 15.3393V8.84268C13.1184 8.60206 13.2868 8.48175 13.6234 8.48175H15.4702C16.2878 8.48175 16.8842 8.61925 17.2593 8.89424C17.6344 9.16236 17.822 9.57828 17.822 10.142V10.5854C17.822 11.3348 17.4757 11.8091 16.7832 12.0085V12.0291C17.4853 12.1873 17.8364 12.696 17.8364 13.5553V14.8237C17.8364 15.0506 17.8508 15.2122 17.8797 15.3084C17.8989 15.3772 17.9085 15.4218 17.9085 15.4425C17.9085 15.6143 17.7643 15.7003 17.4757 15.7003H16.8409C16.5042 15.7003 16.3215 15.5971 16.2926 15.3909C16.2637 15.2672 16.2493 15.0747 16.2493 14.8134V13.4935C16.2493 13.1635 16.1724 12.9332 16.0185 12.8025C15.8742 12.6719 15.6193 12.6066 15.2538 12.6066H14.7055V15.3393C14.7055 15.58 14.5372 15.7003 14.2005 15.7003H13.6234ZM14.7055 11.5754H15.2826C15.6001 11.5754 15.8357 11.517 15.9896 11.4001C16.1531 11.2832 16.2349 11.0873 16.2349 10.8123V10.2554C16.2349 9.76046 15.9656 9.51297 15.4269 9.51297H14.7055V11.5754Z" fill="#ffffff"/>
                 </svg>
                 <div class="thumb-play-overlay">
                   <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
                 </div>
-                <div class="card-info-trigger" data-info="Ligature Clamp|Category: IN // Reveal|Engine: Horizontal Matrix Slide + ScaleY|Easing: cubic-bezier(0.16, 1, 0.3, 1)|Duration: 1.10s">i</div>
+                <div class="card-info-trigger" data-info="Ligature Clamp|Category: IN // Reveal|Engine: Dual Lateral Slide + ScaleY|Easing: cubic-bezier(0.16, 1, 0.3, 1)|Duration: 1.10s">i</div>
               </div>
               <div class="card-meta-bottom">
                 <div class="card-name">Ligature Clamp</div>
@@ -1834,10 +1912,76 @@
               </div>
             </div>
 
-            <!-- Effect 4: Luminescence Breath -->
-            <div class="sleek-card" data-category="loop" data-anim="breath-pulse" data-name="Media Breath">
+            <!-- 4. Liquid Mask Wipe -->
+            <div class="sleek-card" data-category="in" data-anim="liquid-wipe" data-name="Liquid Wave Wipe">
               <div class="card-thumb-wrap">
-                <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 0 2px #ff4e2e);">
+                <svg viewBox="0 0 25 26" fill="none">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
+                  <path d="M1.21195 15.7003C0.875299 15.7003 0.706972 15.58 0.706972 15.3393V8.84268C0.706972 8.60206 0.875299 8.48175 1.21195 8.48175H1.78907C2.12573 8.48175 2.29405 8.60206 2.29405 8.84268V14.6691H4.40054C4.7372 14.6691 4.90552 14.7894 4.90552 15.03V15.3393C4.90552 15.58 4.7372 15.7003 4.40054 15.7003H1.21195Z" fill="#ffffff"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="Liquid Wave Wipe|Category: IN // Reveal|Engine: CSS Dynamic Polygon Clip-path|Easing: cubic-bezier(0.25, 1, 0.5, 1)|Duration: 1.10s">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">Liquid Wave Wipe</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">Fluid Mask</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. 3D Depth Slam -->
+            <div class="sleek-card" data-category="in" data-anim="depth-slam" data-name="3D Depth Slam">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none" style="transform: scale(1.15);">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="3D Depth Slam|Category: IN // Cinematic|Engine: Transform Z-scale with overshoot|Easing: cubic-bezier(0.175, 0.885, 0.32, 1.275)|Duration: 0.85s">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">3D Depth Slam</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">Impact</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Origami Perspective Unfold -->
+            <div class="sleek-card" data-category="in" data-anim="origami" data-name="Origami Unfold">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none" style="transform: perspective(200px) rotateX(25deg);">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="Origami Unfold|Category: IN // 3D Unfold|Engine: 3D Perspective Rotation RotateX|Easing: cubic-bezier(0.16, 1, 0.3, 1)|Duration: 0.95s">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">Origami Unfold</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">3D Flip</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7. Volumetric Breath Glow (FIXED & UNCLIPPED) -->
+            <div class="sleek-card" data-category="loop" data-anim="breath-pulse" data-name="Volumetric Aura">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none" style="overflow:visible; filter: drop-shadow(0 0 3px #ff4e2e);">
                   <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
                   <path d="M8.12662 25.2608C7.82715 25.2608 7.67741 25.1281 7.67741 24.8626V17.6951C7.67741 17.4296 7.82715 17.2969 8.12662 17.2969H11.0786C11.3781 17.2969 11.5278 17.4296 11.5278 17.6951V18.0364C11.5278 18.3018 11.3781 18.4346 11.0786 18.4346H9.08923V20.5393H10.5781C10.8775 20.5393 11.0273 20.6721 11.0273 20.9375V21.2788C11.0273 21.5443 10.8775 21.677 10.5781 21.677H9.08923V24.1231H11.0786C11.3781 24.1231 11.5278 24.2558 11.5278 24.5213V24.8626C11.5278 25.1281 11.3781 25.2608 11.0786 25.2608H8.12662Z" fill="#ff4e2e"/>
                   <path d="M12.9433 25.2608C12.6438 25.2608 12.4941 25.1281 12.4941 24.8626V17.6951C12.4941 17.4296 12.6438 17.2969 12.9433 17.2969H14.6503C16.0536 17.2969 16.7552 17.9529 16.7552 19.2651V23.2926C16.7552 24.6047 16.0536 25.2608 14.6503 25.2608H12.9433ZM13.9059 24.1231H14.6246C15.1038 24.1231 15.3434 23.8652 15.3434 23.3495V19.2082C15.3434 18.6925 15.1038 18.4346 14.6246 18.4346H13.9059V24.1231Z" fill="#ff4e2e"/>
@@ -1847,18 +1991,18 @@
                 <div class="thumb-play-overlay">
                   <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
                 </div>
-                <div class="card-info-trigger" data-info="Media Breath|Category: LOOP // Ambient|Engine: Filter Drop-Shadow + Scale|Easing: ease-in-out alternate|Cycle: 2.2s Infinite">i</div>
+                <div class="card-info-trigger" data-info="Volumetric Aura|Category: LOOP // Ambient|Engine: 500% Expanded SVG Filter Matrix (Unclipped)|Easing: ease-in-out alternate|Cycle: 2.4s Infinite">i</div>
               </div>
               <div class="card-meta-bottom">
-                <div class="card-name">Media Breath</div>
+                <div class="card-name">Volumetric Aura</div>
                 <div class="card-tag-row">
-                  <span class="badge-category">Ambient Loop</span>
+                  <span class="badge-category">Smooth Glow</span>
                   <div class="card-active-indicator"></div>
                 </div>
               </div>
             </div>
 
-            <!-- Effect 5: Zero-G Float -->
+            <!-- 8. Zero-G Weightless Drift -->
             <div class="sleek-card" data-category="loop" data-anim="zerog-float" data-name="Zero-G Drift">
               <div class="card-thumb-wrap">
                 <svg viewBox="0 0 25 26" fill="none" style="transform: rotate(4deg);">
@@ -1869,18 +2013,63 @@
                 <div class="thumb-play-overlay">
                   <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
                 </div>
-                <div class="card-info-trigger" data-info="Zero-G Drift|Category: LOOP // Ambient|Engine: Multi-axis 2D Translate + Rotation|Easing: sinusoidal alternate|Cycle: 4.0s Infinite">i</div>
+                <div class="card-info-trigger" data-info="Zero-G Drift|Category: LOOP // Ambient|Engine: Multi-axis Translate + Tilt|Easing: sinusoidal alternate|Cycle: 4.2s Infinite">i</div>
               </div>
               <div class="card-meta-bottom">
                 <div class="card-name">Zero-G Drift</div>
                 <div class="card-tag-row">
-                  <span class="badge-category">Float</span>
+                  <span class="badge-category">Weightless</span>
                   <div class="card-active-indicator"></div>
                 </div>
               </div>
             </div>
 
-            <!-- Effect 6: Cyber Glitch Burst -->
+            <!-- 9. Specular Laser Sweep -->
+            <div class="sleek-card" data-category="loop" data-anim="laser-sweep" data-name="Laser Specular">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                  <line x1="0" y1="0" x2="25" y2="25" stroke="#ffffff" stroke-width="0.8" opacity="0.7"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="Laser Specular|Category: LOOP // Gleam|Engine: LinearGradient 45-degree Specular Beam|Easing: ease-in-out|Cycle: 2.8s Infinite">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">Laser Specular</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">Gleam Beam</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10. Heartbeat Pulse -->
+            <div class="sleek-card" data-category="loop" data-anim="heartbeat" data-name="Heartbeat Pulse">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 0 2px #ff4e2e);">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#ffffff"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#ff4e2e"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="Heartbeat Pulse|Category: LOOP // Kinetic|Engine: Dual-thump Cardio Rhythmic Easing|Easing: custom heart-curve|Cycle: 1.8s Infinite">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">Heartbeat Pulse</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">Cardio</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 11. Cyber Glitch Burst -->
             <div class="sleek-card" data-category="fx" data-anim="glitch" data-name="Cyber Glitch">
               <div class="card-thumb-wrap">
                 <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(2px 0 red) drop-shadow(-2px 0 cyan);">
@@ -1891,12 +2080,34 @@
                 <div class="thumb-play-overlay">
                   <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
                 </div>
-                <div class="card-info-trigger" data-info="Cyber Glitch|Category: OUT // Glitch FX|Engine: Chromatic RGB Matrix Displacement|Easing: steps(5, end)|Duration: 0.60s Burst">i</div>
+                <div class="card-info-trigger" data-info="Cyber Glitch|Category: FX // Outro|Engine: Multi-channel Chromatic RGB Offset|Easing: steps(6, end)|Duration: 0.65s Burst">i</div>
               </div>
               <div class="card-meta-bottom">
                 <div class="card-name">Cyber Glitch</div>
                 <div class="card-tag-row">
                   <span class="badge-category">Glitch FX</span>
+                  <div class="card-active-indicator"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12. Matrix Digital Disperse -->
+            <div class="sleek-card" data-category="fx" data-anim="matrix-disperse" data-name="Matrix Disperse">
+              <div class="card-thumb-wrap">
+                <svg viewBox="0 0 25 26" fill="none" style="filter: drop-shadow(0 0 2px #10b981);">
+                  <path d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#6ee7b7"/>
+                  <path d="M20.5095 15.6995C20.1728 15.6995 20.0045 15.5792 20.0045 15.3386V0.463311C20.0045 0.222694 20.1728 0.102385 20.5095 0.102385H22.4284C24.0058 0.102385 24.7946 0.697053 24.7946 1.88639V13.9155C24.7946 15.1049 24.0058 15.6995 22.4284 15.6995H20.5095ZM21.5916 14.6683H22.3995C22.9382 14.6683 23.2075 14.4346 23.2075 13.9671V1.83483C23.2075 1.36734 22.9382 1.1336 22.3995 1.1336H21.5916V14.6683Z" fill="#6ee7b7"/>
+                  <path d="M1.0664 25.2608C0.766926 25.2608 0.617188 25.1281 0.617188 24.8626V17.6951C0.617188 17.4296 0.766926 17.2969 1.0664 17.2969H2.2087C2.49962 17.2969 2.66219 17.4182 2.69642 17.6609L3.53068 22.9968H3.55635L4.39061 17.6609C4.42483 17.4182 4.58741 17.2969 4.87833 17.2969H6.02062C6.3201 17.2969 6.46984 17.4296 6.46984 17.6951V24.8626C6.46984 25.1281 6.3201 25.2608 6.02062 25.2608H5.58424C5.28476 25.2608 5.13502 25.1281 5.13502 24.8626V19.231H5.10935L4.14675 24.8967C4.11252 25.1394 3.94995 25.2608 3.65903 25.2608H3.32532C3.0344 25.2608 2.87183 25.1394 2.8376 24.8967L1.87499 19.231H1.84932V24.8626C1.84932 25.1281 1.69959 25.2608 1.40011 25.2608H1.0664Z" fill="#10b981"/>
+                </svg>
+                <div class="thumb-play-overlay">
+                  <div class="play-circle-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+                </div>
+                <div class="card-info-trigger" data-info="Matrix Disperse|Category: FX // Bitstream|Engine: Vertical Sub-pixel Scanline Fragment|Easing: ease-in-out|Duration: 1.20s">i</div>
+              </div>
+              <div class="card-meta-bottom">
+                <div class="card-name">Matrix Disperse</div>
+                <div class="card-tag-row">
+                  <span class="badge-category">Bitstream</span>
                   <div class="card-active-indicator"></div>
                 </div>
               </div>
@@ -1908,10 +2119,10 @@
 
     </main>
 
-    <!-- HORIZONTAL SPLITTER (TIMELINE RESIZE HANDLE) -->
+    <!-- HORIZONTAL SPLITTER -->
     <div class="splitter-horizontal" id="resizer-timeline" title="Drag to resize timeline"></div>
 
-    <!-- BOTTOM TIMELINE & SCRUBBER -->
+    <!-- BOTTOM TIMELINE -->
     <footer class="timeline-footer" id="timeline-footer">
       <div class="timeline-playback-bar">
         <div class="playback-buttons">
@@ -1972,7 +2183,7 @@
 
   <!-- FLOATING (i) INFO POPOVER -->
   <div class="floating-info-popover" id="info-popover">
-    <div class="info-popover-title" id="popover-title">Effect Specification</div>
+    <div class="info-popover-title" id="popover-title">Specification</div>
     <div class="info-popover-content" id="popover-content"></div>
   </div>
 
@@ -2022,7 +2233,6 @@
         timelineCollapsed: false
       };
 
-      // Toast feedback
       const toast = document.getElementById('app-toast');
       const toastText = document.getElementById('toast-text');
       let toastTimer = null;
@@ -2030,11 +2240,11 @@
         toastText.textContent = msg;
         toast.classList.add('visible');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('visible'), 2200);
+        toastTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
       }
 
       // ======================================================================
-      // 1. FLUID RESIZABLE PANELS ENGINE (DRAG SPLITTERS)
+      // 1. FLUID RESIZABLE PANELS ENGINE
       // ======================================================================
       const resizerLeft = document.getElementById('resizer-left');
       const resizerRight = document.getElementById('resizer-right');
@@ -2044,7 +2254,7 @@
       const sidebarRight = document.getElementById('sidebar-right');
       const timelineFooter = document.getElementById('timeline-footer');
 
-      // Left Splitter Drag
+      // Left Splitter
       resizerLeft.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         resizerLeft.setPointerCapture(e.pointerId);
@@ -2068,7 +2278,7 @@
         window.addEventListener('pointerup', onPointerUp);
       });
 
-      // Right Splitter Drag
+      // Right Splitter
       resizerRight.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         resizerRight.setPointerCapture(e.pointerId);
@@ -2076,7 +2286,7 @@
         resizerRight.classList.add('dragging');
 
         function onPointerMove(ev) {
-          const newWidth = Math.min(Math.max(window.innerWidth - ev.clientX, 220), 550);
+          const newWidth = Math.min(Math.max(window.innerWidth - ev.clientX, 220), 560);
           document.documentElement.style.setProperty('--sidebar-right-width', `${newWidth}px`);
         }
 
@@ -2092,7 +2302,7 @@
         window.addEventListener('pointerup', onPointerUp);
       });
 
-      // Timeline Vertical Splitter Drag
+      // Timeline Splitter
       resizerTimeline.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         resizerTimeline.setPointerCapture(e.pointerId);
@@ -2146,10 +2356,8 @@
 
       btnToggleLeft.addEventListener('click', () => toggleLeft());
       btnCollapseLeft.addEventListener('click', () => toggleLeft(true));
-
       btnToggleRight.addEventListener('click', () => toggleRight());
       btnCollapseRight.addEventListener('click', () => toggleRight(true));
-
       btnToggleTimeline.addEventListener('click', () => toggleTimeline());
 
       // ======================================================================
@@ -2211,7 +2419,6 @@
         updateZoomTransform();
       }, { passive: false });
 
-      // Background switches
       document.querySelectorAll('.stage-top-bar [data-bg]').forEach(chip => {
         chip.addEventListener('click', () => {
           document.querySelectorAll('.stage-top-bar [data-bg]').forEach(c => c.classList.remove('active'));
@@ -2220,7 +2427,6 @@
         });
       });
 
-      // Grid toggle
       const btnGrid = document.getElementById('btn-grid-toggle');
       btnGrid.addEventListener('click', () => {
         state.gridActive = !state.gridActive;
@@ -2228,7 +2434,6 @@
         document.documentElement.style.setProperty('--canvas-grid-color', state.gridActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent');
       });
 
-      // Spec toggle
       const btnSpec = document.getElementById('btn-spec-toggle');
       const specBox = document.getElementById('stage-spec-box');
       btnSpec.addEventListener('click', () => {
@@ -2237,7 +2442,6 @@
         specBox.classList.toggle('active', state.specActive);
       });
 
-      // Glyph Inspector toggle
       const btnInspect = document.getElementById('btn-inspector-toggle');
       const mainSvg = document.getElementById('main-stage-svg');
       const glyphTooltip = document.getElementById('glyph-tooltip');
@@ -2278,7 +2482,7 @@
       });
 
       // ======================================================================
-      // 3. CAPCUT-STYLE FLOATING (i) INFO POPOVER
+      // 3. CAPCUT-STYLE FLOATING (i) POPOVER
       // ======================================================================
       const infoPopover = document.getElementById('info-popover');
       const popoverTitle = document.getElementById('popover-title');
@@ -2304,8 +2508,8 @@
 
           const rect = trigger.getBoundingClientRect();
           infoPopover.style.display = 'flex';
-          infoPopover.style.left = `${Math.min(rect.right + 10, window.innerWidth - 260)}px`;
-          infoPopover.style.top = `${Math.min(rect.top - 10, window.innerHeight - 150)}px`;
+          infoPopover.style.left = `${Math.min(rect.right + 10, window.innerWidth - 270)}px`;
+          infoPopover.style.top = `${Math.min(rect.top - 10, window.innerHeight - 170)}px`;
         });
 
         trigger.addEventListener('mouseleave', () => {
@@ -2350,7 +2554,7 @@
           mediaShadow: '#1a000d',
           strokeColor: 'transparent',
           strokeWidth: '0px',
-          filter: 'drop-shadow(0 0 4px #ff3366)',
+          filter: 'drop-shadow(0 0 3px #ff3366)',
           canvasBg: '#06050b'
         },
         luxury: {
@@ -2446,7 +2650,6 @@
         });
       });
 
-      // Search Themes
       document.getElementById('search-themes').addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#themes-grid .sleek-card').forEach(c => {
@@ -2456,15 +2659,21 @@
       });
 
       // ======================================================================
-      // 5. ANIMATIONS ENGINE (CAPCUT PLAY ON CLICK)
+      // 5. ANIMATIONS ENGINE (12 EXPANDED PRESETS)
       // ======================================================================
       const allAnims = [
         'anim-typewriter',
         'anim-wiredraw',
         'anim-ligature-clamp',
+        'anim-liquid-wipe',
+        'anim-depth-slam',
+        'anim-origami',
         'anim-breath-pulse',
         'anim-zerog-float',
-        'anim-glitch'
+        'anim-laser-sweep',
+        'anim-heartbeat',
+        'anim-glitch',
+        'anim-matrix-disperse'
       ];
 
       function clearAnimations() {
@@ -2482,7 +2691,7 @@
         void stageWrapper.offsetWidth;
 
         stageWrapper.classList.add(animClass);
-        if (animClass === 'anim-glitch' || animClass === 'anim-zerog-float') {
+        if (animClass === 'anim-glitch' || animClass === 'anim-zerog-float' || animClass === 'anim-depth-slam' || animClass === 'anim-heartbeat' || animClass === 'anim-liquid-wipe') {
           mainSvg.classList.add(animClass);
         }
 
@@ -2500,7 +2709,6 @@
         });
       });
 
-      // Filter effects pills
       document.querySelectorAll('#effects-filter-row .tab-pill').forEach(pill => {
         pill.addEventListener('click', () => {
           document.querySelectorAll('#effects-filter-row .tab-pill').forEach(p => p.classList.remove('active'));
@@ -2518,7 +2726,6 @@
         });
       });
 
-      // Search effects input
       document.getElementById('search-effects').addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase().trim();
         document.querySelectorAll('#effects-grid .sleek-card').forEach(card => {
@@ -2527,7 +2734,6 @@
         });
       });
 
-      // Top bar play intro button
       document.getElementById('btn-quick-play').addEventListener('click', () => {
         const card = document.querySelector('[data-anim="typewriter"]');
         runMotion('anim-typewriter', card);
@@ -2619,7 +2825,7 @@
       const codeOutput = document.getElementById('modal-code-output');
 
       document.getElementById('btn-open-code-modal').addEventListener('click', () => {
-        codeOutput.textContent = `<svg width="25" height="26" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        codeOutput.textContent = `<svg width="25" height="26" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow: visible !important;">
   <g id="group-word">
     <path id="glyph-word-w" data-glyph="W" d="M1.45723 7.32164C1.13981 7.32164 0.966677 7.2082 0.937821 6.98133L0.014428 0.567169L0 0.433111C0 0.213118 0.158708 0.103122 0.476124 0.103122H0.995533C1.31295 0.103122 1.48608 0.216555 1.51494 0.443423L2.19306 5.65106H2.22191L2.94331 0.443423C2.97217 0.216555 3.14531 0.103122 3.46272 0.103122H4.24183C4.55925 0.103122 4.73239 0.216555 4.76124 0.443423L5.48264 5.65106H5.5115L6.18962 0.443423C6.21847 0.216555 6.39161 0.103122 6.70902 0.103122H7.06972C7.38714 0.103122 7.54585 0.213118 7.54585 0.433111L7.53142 0.567169L6.60803 6.98133C6.57917 7.2082 6.40604 7.32164 6.08862 7.32164H5.06423C4.7372 7.32164 4.55925 7.2082 4.53039 6.98133L3.85228 2.45429H3.82342L3.14531 6.98133C3.11645 7.2082 2.9385 7.32164 2.61147 7.32164H1.45723Z" fill="#ffffff"/>
     <path id="glyph-word-o" data-glyph="O" d="M12.4606 6.9504C12.047 7.26664 11.4507 7.42476 10.6715 7.42476C9.89243 7.42476 9.29607 7.26664 8.88247 6.9504C8.46887 6.63416 8.26206 6.1873 8.26206 5.60982V1.81494C8.26206 1.23746 8.46887 0.790599 8.88247 0.474359C9.29607 0.15812 9.89243 0 10.6715 0C11.4507 0 12.047 0.15812 12.4606 0.474359C12.8742 0.790599 13.081 1.23746 13.081 1.81494V5.60982C13.081 6.1873 12.8742 6.63416 12.4606 6.9504ZM9.84914 5.682C9.84914 6.15636 10.1233 6.39354 10.6715 6.39354C11.2198 6.39354 11.4939 6.15636 11.4939 5.682V1.74276C11.4939 1.2684 11.2198 1.03122 10.6715 1.03122C10.1233 1.03122 9.84914 1.2684 9.84914 1.74276V5.682Z" fill="#ffffff"/>

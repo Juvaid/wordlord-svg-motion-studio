@@ -1,125 +1,69 @@
-# WordLord Media // SVG Motion Architecture Studio & Animation Library
+# WordLord Media // SVG Motion Architecture Studio & Kinetic Animation Deck
 
-> An interactive, zero-dependency kinetic laboratory, visual style preview dashboard, and animation specification engine built for the **WordLord Media** vector brand mark.
+> Interactive kinetic laboratory, visual style preview dashboard, and animation specification engine built for the **WordLord Media** vector mark.
 
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
-![Status](https://img.shields.io/badge/status-Phase_1_Architecture_Ready-emerald.svg)
-![Platform](https://img.shields.io/badge/platform-Standalone_HTML5-orange.svg)
+![Status](https://img.shields.io/badge/status-12_Live_Animations-emerald.svg)
+![UI](https://img.shields.io/badge/UI-CapCut_Visual_Cards-orange.svg)
+![Glow](https://img.shields.io/badge/Glow-Unclipped_Volumetric_Aura-blue.svg)
 
 ---
 
 ## ⚡ Overview
 
-This studio provides an engineering and design foundation for animating the official **WordLord Media** logo (`25×26` sub-pixel vector mark). It decomposes the typographic mark into distinct semantic layers—including the monolithic tall `D` ligature connecting `WORD` and `LORD`, and the electric vermilion (`#FF4E2E`) `MEDIA` accent—allowing precise targeted CSS keyframe, SVG stroke draw, and GSAP timeline choreography.
+A high-performance, zero-dependency kinetic motion studio designed specifically for the **WordLord Media** logo (`25×26` sub-pixel vector mark). The studio isolates typographic letterforms—including the monolithic tall `D` ligature connecting `WORD` and `LORD`, and the electric vermilion (`#FF4E2E`) `MEDIA` mark—allowing precise targeted CSS keyframe, SVG stroke draw, and timeline choreography.
 
-### Features at a Glance
+### Features
 
-- **Interactive Motion Viewport**: Real-time canvas with sub-pixel grid, zoom controls ($50\% \rightarrow 400\%$), drag-to-pan, and background atmosphere swatches (Void, Studio, Paper, CAD Blue, Ember).
-- **Glyph Inspector Mode**: Hover over any letter to inspect live bounding boxes, dimensions, anchor coordinates, and SVG path IDs.
-- **8 Curated Brand Styles**: Switch between Signature Core, Swiss Wireframe Spec, Cyberpunk Neon Pulse, Obsidian & Silver, Studio Warm Light, Frosted Glass Prism, Phosphor CRT, and CAD Blueprint.
-- **Color & Glow Token Lab**: Granular control over stroke width, glow radius, and independent layer colors.
-- **Animation Library Deck (Phase 1 Baseline)**: 10 structured animation specifications spanning Hero Reveals, Ambient Loops, Micro-Interactions, and Glitch FX, with live baseline test triggers.
-- **Multi-Track Timeline & Scrubber**: Video-editor style playback bar with keyframe tracks for `WORD`, `LORD`, `TALL D`, and `MEDIA`, timecode counter, loop mode, and variable playback speed ($0.25\times \rightarrow 2.0\times$).
-- **Zero-Dependency Exporter**: Instant copy and download of semantic SVG, modular CSS keyframes, GSAP 3 timelines, and JSON design tokens.
-
----
-
-## 🧬 Vector Structure & Hierarchy
-
-```
-<svg viewBox="0 0 25 26">
-├── #group-media-shadow   (Base dark extrusion layer for depth)
-├── #group-word           (Line 1: Glyphs W, O, R)
-├── #group-lord           (Line 2: Glyphs L, O, R)
-├── #group-ligature       (Monolithic tall 'D' spanning Y: 0.1 to 15.7)
-└── #group-media          (Line 3: Electric Red #FF4E2E — M, E, D, I, A)
-```
-
-The ligature `D` on the right acts as an architectural pillar unifying both rows (`WOR-D` and `LOR-D`), anchored above the high-energy `MEDIA` wordmark.
+- **Fluid Resizable Workspace**: Interactive draggable splitters between sidebars, canvas, and timeline. Instantly maximize stage with top bar view toggles.
+- **CapCut-Style Visual Grid**: Sleek 2-column cards with hover-to-play overlays, active crimson borders, and zero text clutter.
+- **Floating `(i)` Popover Specs**: Technical parameters (engine, cubic-bezier easing curves, durations, and selectors) appear only on hover over the discreet `(i)` icon.
+- **Unclipped Volumetric Glow Engine**: Fixed SVG subregion clipping via `overflow: visible !important` and $600\%$ extended filter boundary regions (`#unclipped-media-glow`).
+- **12 Curated Live Animations**: Spanning In/Reveals, Continuous Ambient Loops, and Glitch FX.
+- **8 Curated Brand Styles**: Signature Core, Swiss Wireframe, Cyberpunk Neon, Obsidian Luxury, Studio Paper, Frosted Glass, Phosphor CRT, and CAD Blueprint.
+- **Multi-Track Timeline**: Keyframe tracks for `WORD`, `LORD`, `TALL D`, and `MEDIA`, timecode counter, loop toggle, and variable playback speed ($0.5\times \rightarrow 2.0\times$).
 
 ---
 
-## 🎨 Curated Style Presets
+## 🎬 The 12 Live Motion Presets
 
-| Preset | Aesthetic | Key Tokens |
-|---|---|---|
-| **Signature Core** | Brand default, obsidian dark luxury | White glyphs, `#FF4E2E` accent, matte dark `#090A0D` |
-| **Swiss Wireframe** | Technical brutalism, architectural CAD | $0.3\text{px}$ vector outlines, transparent fills |
-| **Cyberpunk Neon** | Kinetic glow, chromatic radiation | Multi-stop drop-shadow, high-vibrancy `#FF3366` |
-| **Obsidian & Silver** | High-end luxury editorial | Platinum `#D1D5DB`, deep ruby red `#E11D48` |
-| **Studio Warm Light** | Editorial print on cotton paper | Pitch black `#111215`, warm paper `#F4F4F7` |
-| **Frosted Glass** | Prismatic depth & refraction | Translucent alpha fills, layered soft diffusion |
-| **Phosphor CRT** | 90s broadcast oscilloscope | Emerald phosphor `#34D399` halo on `#04120F` |
-| **CAD Blueprint** | Architectural engineering schematic | Cyan `#38BDF8` line art on cobalt `#091B33` |
+| # | Effect Name | Category | Engine | Easing & Character |
+|---|---|---|---|---|
+| **01** | **Typewriter Cascade** | Reveal / In | CSS Stagger | `cubic-bezier(0.16, 1, 0.3, 1)` sequential glyph snap |
+| **02** | **Wireframe Draw** | Reveal / In | SVG Stroke | `ease-out-quint` vector path tracing into solid fill |
+| **03** | **Ligature Clamp** | Reveal / In | Lateral Slide | Dual lateral clamp locking into the monolithic tall `D` |
+| **04** | **Liquid Wave Wipe** | Reveal / In | Dynamic Polygon | Fluid top-to-bottom vertical clip-path reveal |
+| **05** | **3D Depth Slam** | Reveal / In | Transform Z-Scale | High-impact slam from 3D space with overshoot bounce |
+| **06** | **Origami Unfold** | Reveal / In | Perspective RotateX | $90^\circ$ architectural 3D perspective fold down |
+| **07** | **Volumetric Aura** | Ambient Loop | Expanded SVG Filter | Unclipped $600\%$ volumetric respiration glow on MEDIA |
+| **08** | **Zero-G Drift** | Ambient Loop | Multi-Axis Sinusoidal | Weightless organic floating with subtle layer parallax |
+| **09** | **Laser Specular** | Ambient Loop | Specular Gradient | $45^\circ$ diagonal gleam beam sweeping every $2.8\text{s}$ |
+| **10** | **Heartbeat Pulse** | Ambient Loop | Cardio Rhythm | Double-thump kinetic cardiovascular vibration |
+| **11** | **Cyber Glitch** | Glitch / FX | Chromatic Offset | Multi-channel RGB split and scanline displacement |
+| **12** | **Matrix Disperse** | Glitch / FX | Sub-pixel Scanline | Bitstream fragment scattering into phosphor trails |
 
 ---
 
-## 🎬 Animation Library (Phase 1 Architecture)
+## 💡 Glow Clipping Fix Details
 
-### 1. Hero Reveals
-- `01 // Monospace Typewriter Cascade`: High-velocity typographic stagger snapping into place. *(Base Live)*
-- `02 // Neon Vector Wireframe Draw`: SVG `stroke-dashoffset` path tracing blooming into solid fills. *(Base Live)*
-- `03 // Kinetic Ligature Clamp`: Opposing horizontal slides locking into the tall `D`. *(Base Live)*
-- `04 // Liquid Mask Vertical Wipe`: Fluid vertical clip-path reveal. *(Phase 2 Spec)*
+In SVGs with small viewBox dimensions (e.g. `25×26`), applying CSS `filter: drop-shadow(...)` on inner `<g>` tags causes browser rasterizers to clip filters at the group or SVG bounding box.
 
-### 2. Ambient Loops & Idle States
-- `05 // MEDIA Luminescence Breath`: Soft sinusoidal respiration loop on the red accent. *(Base Live)*
-- `06 // Zero-G Weightless Drift`: Gentle floating physics with delicate multi-axis rotation. *(Base Live)*
-- `07 // Specular Laser Sweep`: Diagonal $45^\circ$ specular gleam band. *(Phase 2 Spec)*
-- `10 // Audio-Reactive BPM Pulse`: Equalizer bounce using the tall `D` as a VU pillar. *(Phase 2 Spec)*
-
-### 3. Micro-Interactions & Outros
-- `08 // Magnetic Cursor Spring`: Interactive pointer attraction with spring physics. *(Phase 2 Spec)*
-- `09 // Cyber Glitch Dispersion`: Chromatic RGB split and matrix disruption. *(Base Live)*
+**The Fix:**
+1. Explicitly declared `overflow: visible !important;` on `#main-stage-svg`, all `<g>`, all `<path>`, and the stage wrappers.
+2. Constructed a dedicated volumetric aura layer using an SVG `<filter id="unclipped-media-glow">` with `x="-250%" y="-250%" width="600%" height="600%"`, giving the Gaussian blur filters 6 times the bounding area to spread out naturally without hard rectangle edges.
 
 ---
 
 ## 🚀 Quick Start
 
-Open `index.html` (or `wordlord-svg-animation-studio.html`) directly in any browser:
+Open `index.html` in any browser:
 
 ```bash
-# macOS
 open index.html
-
-# Linux
-xdg-open index.html
-
-# Windows
-start index.html
 ```
 
-Or serve locally with any static server:
-
-```bash
-npx serve .
-# or
-python3 -m http.server 3000
-```
-
----
-
-## 📦 Directory Structure
-
-```
-wordlord-svg-motion-studio/
-├── index.html                           # Main studio entrypoint
-├── wordlord-svg-animation-studio.html   # Named studio copy
-├── assets/
-│   ├── logo-v2.svg                      # Original raw SVG asset
-│   └── wordlord-kinetic-logo.svg        # Clean SVG with semantic IDs & groups
-├── README.md                            # Studio documentation
-└── .gitignore                           # Git ignore rules
-```
-
----
-
-## 🛠️ Roadmap (Phase 2 Planning)
-
-- [ ] **Timeline Keyframe Editor**: Interactive keyframe handles for dragging stagger points directly on the scrubber tracks.
-- [ ] **SVG Morphing Engine**: Smooth vector deformation between the minimal wireframe and solid mark.
-- [ ] **Web Audio Integration**: Real-time microphone/audio input driving dynamic frequency scaling on the ligature.
-- [ ] **Lottie / Rive Exporter**: Direct JSON export for native iOS/Android and Flutter apps.
+Or view online:
+- **Live Demo**: [juvaid.github.io/wordlord-svg-motion-studio](https://juvaid.github.io/wordlord-svg-motion-studio/)
 
 ---
 
