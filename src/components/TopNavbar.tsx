@@ -12,10 +12,12 @@ import {
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
+import { getMotionIcon } from '../utils/presetIcons';
 
 interface TopNavbarProps {
   scale: number;
   bgMode: BackgroundMode;
+  activeMotionId: string;
   activeMotionName: string;
   activeStyleName: string;
   onZoomIn: () => void;
@@ -31,6 +33,7 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({
   scale,
   bgMode,
+  activeMotionId,
   activeMotionName,
   activeStyleName,
   onZoomIn,
@@ -45,7 +48,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   return (
     <header className="h-12 bg-[#0c0e14] border-b border-[#1f2430] flex items-center justify-between px-3.5 z-40 select-none">
       {/* Brand Identity */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-shrink-0">
         <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#1a1e29] to-[#0d0f14] border border-[#2a3040] flex items-center justify-center shadow-md">
           {/* Mini Vector Mark */}
           <svg width="15" height="15" viewBox="0 0 25 26" fill="none">
@@ -60,7 +63,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <span className="text-[9px] font-mono px-1 py-0.2 bg-[#ff4e2e]/10 text-[#ff4e2e] border border-[#ff4e2e]/20 rounded font-normal">v5.0</span>
           </div>
           <div className="text-[9px] font-mono text-slate-500 tracking-tight flex items-center gap-1">
-            <span>{activeMotionName}</span>
+            <span className="inline-flex items-center gap-1 text-slate-300">
+              {getMotionIcon(activeMotionId, 10)}
+              <span>{activeMotionName}</span>
+            </span>
             <span>•</span>
             <span className="text-slate-400">{activeStyleName}</span>
           </div>

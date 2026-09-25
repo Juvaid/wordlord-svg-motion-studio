@@ -19,6 +19,7 @@ import {
 import { BezierGraph } from './BezierGraph';
 import { BezierPoints, PlaybackMode, GeometryMode } from '../types';
 import { Tooltip } from './Tooltip';
+import { getMotionIcon } from '../utils/presetIcons';
 import { 
   InspectorSection, 
   SliderField, 
@@ -27,6 +28,7 @@ import {
 } from './inspector';
 
 interface RightInspectorProps {
+  motionId?: string;
   motionName: string;
   category: string;
   duration: number;
@@ -65,6 +67,7 @@ interface RightInspectorProps {
 type CategoryFilter = 'all' | 'dynamics' | 'optics' | 'spatial' | 'palette' | 'code';
 
 export const RightInspector: React.FC<RightInspectorProps> = ({
+  motionId = 'typewriter',
   motionName,
   category,
   duration,
@@ -191,11 +194,16 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
 
       {/* 2. Preset Metadata Banner */}
       <div className="px-3 py-2 border-b border-[#1f2430] bg-[#12151e]/40 flex items-center justify-between flex-shrink-0">
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-display font-black text-slate-100 uppercase tracking-wide truncate">
-            {motionName}
-          </span>
-          <span className="text-[9px] font-mono text-slate-500">60 FPS Hardware Timing</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1 rounded bg-black/50 border border-white/10 flex-shrink-0">
+            {getMotionIcon(motionId, 12)}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-display font-black text-slate-100 uppercase tracking-wide truncate">
+              {motionName}
+            </span>
+            <span className="text-[9px] font-mono text-slate-500">60 FPS Hardware Timing</span>
+          </div>
         </div>
         <span className="text-[10px] font-mono font-semibold text-[#ff4e2e] px-1.5 py-0.5 rounded bg-[#ff4e2e]/10 border border-[#ff4e2e]/20 flex-shrink-0">
           {duration.toFixed(2)}s
@@ -205,27 +213,29 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       {/* 3. Category Filter Tabs */}
       <div className="px-2 py-1.5 border-b border-[#1f2430] bg-[#0a0c10] flex items-center gap-1 overflow-x-auto flex-shrink-0 no-scrollbar">
         {[
-          { id: 'all' as const, label: 'All' },
-          { id: 'dynamics' as const, label: 'Timing' },
-          { id: 'optics' as const, label: 'Optics' },
-          { id: 'spatial' as const, label: '3D' },
-          { id: 'palette' as const, label: 'Palette' },
-          { id: 'code' as const, label: 'Code' }
+          { id: 'all' as const, label: 'All', icon: <Compass size={11} className="text-slate-400" /> },
+          { id: 'dynamics' as const, label: 'Timing', icon: <Sliders size={11} className="text-[#ff4e2e]" /> },
+          { id: 'optics' as const, label: 'Optics', icon: <Sparkles size={11} className="text-[#00ffff]" /> },
+          { id: 'spatial' as const, label: '3D', icon: <Box size={11} className="text-[#38bdf8]" /> },
+          { id: 'palette' as const, label: 'Palette', icon: <Palette size={11} className="text-pink-400" /> },
+          { id: 'code' as const, label: 'Code', icon: <Code2 size={11} className="text-[#a5b4fc]" /> }
         ].map((tab) => {
           const isActive = categoryFilter === tab.id;
           return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setCategoryFilter(tab.id)}
-              className={`px-2 py-1 rounded text-[9.5px] font-mono whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-white/10 text-white font-semibold shadow-sm border border-white/15'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-              }`}
-            >
-              {tab.label}
-            </button>
+            <Tooltip key={tab.id} content={`Show ${tab.label} section`} side="bottom">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter(tab.id)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[9.5px] font-mono whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-white/10 text-white font-semibold shadow-sm border border-white/15'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
+                }`}
+              >
+                {tab.icon}
+                {width >= 275 && <span>{tab.label}</span>}
+              </button>
+            </Tooltip>
           );
         })}
       </div>

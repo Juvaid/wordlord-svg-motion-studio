@@ -483,6 +483,7 @@ export const App: React.FC = () => {
       <TopNavbar
         scale={scale}
         bgMode={bgMode}
+        activeMotionId={activeMotion.id}
         activeMotionName={activeMotion.name}
         activeStyleName={activeStyle.name}
         onZoomIn={() => setScale(s => Math.min(3.5, s * 1.15))}
@@ -553,6 +554,7 @@ export const App: React.FC = () => {
         {/* Right Properties & Inspector Lab */}
         <RightInspector
           width={rightWidth}
+          motionId={activeMotion.id}
           motionName={activeMotion.name}
           category={activeMotion.badge}
           duration={duration}

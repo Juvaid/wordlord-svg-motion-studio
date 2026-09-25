@@ -1,17 +1,28 @@
 import React, { useMemo } from 'react';
 import { 
-  Zap, 
+  Clapperboard, 
   Palette, 
-  Layers, 
+  Shapes, 
   Search, 
   Info,
-  Check
+  Check,
+  Compass,
+  ScanEye,
+  Activity,
+  Box,
+  Cpu,
+  Waves,
+  Sparkles,
+  Type,
+  Component,
+  Columns3
 } from 'lucide-react';
 import { MOTIONS } from '../data/motions';
 import { STYLES } from '../data/styles';
 import { GLYPHS } from '../data/glyphs';
 import { MotionPreset, StylePreset } from '../types';
 import { Tooltip } from './Tooltip';
+import { getMotionIcon, getStyleIcon } from '../utils/presetIcons';
 
 interface LeftLibraryProps {
   activeTab: 'motions' | 'styles' | 'glyphs';
@@ -42,7 +53,20 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
   onCategoryFilterChange,
   onShowInfo
 }) => {
-  const motionCategories = ['All', 'Reveal', 'Kinetic', '3D', 'Glitch', 'Ambient', 'Optics'];
+  // Width breakpoints for ultra-narrow responsive adaptation
+  const isIconOnlyTabs = width < 255;
+  const isCompactTabs = width >= 255 && width < 305;
+  const isSingleColGrid = width < 285;
+
+  const motionCategories = [
+    { name: 'All', icon: <Compass size={11} className="text-slate-400" /> },
+    { name: 'Reveal', icon: <ScanEye size={11} className="text-[#ff4e2e]" /> },
+    { name: 'Kinetic', icon: <Activity size={11} className="text-[#f97316]" /> },
+    { name: '3D', icon: <Box size={11} className="text-[#38bdf8]" /> },
+    { name: 'Glitch', icon: <Cpu size={11} className="text-[#22c55e]" /> },
+    { name: 'Ambient', icon: <Waves size={11} className="text-[#a855f7]" /> },
+    { name: 'Optics', icon: <Sparkles size={11} className="text-[#00ffff]" /> }
+  ];
 
   const filteredMotions = useMemo(() => {
     return MOTIONS.filter(m => {
@@ -65,7 +89,7 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
   }, [searchQuery]);
 
   const renderThumbnailMark = (fillPrimary = '#ffffff', fillMedia = '#ff4e2e', stroke = 'none', strokeW = '0px') => (
-    <svg width="26" height="26" viewBox="0 0 25 26" fill="none" className="block overflow-visible drop-shadow">
+    <svg width="24" height="24" viewBox="0 0 25 26" fill="none" className="block overflow-visible drop-shadow">
       <g>
         <path d="M1.457 7.322L0.014 0.567L0 0.433h0.476l0.52 0.01l0.518 0.443L2.193 5.65h0.029L2.943 0.443h0.52l0.779 0.01l0.72 5.2h0.028l0.678-5.2h0.878l-0.923 6.414h-1.025l-0.678-4.527h-0.029l-0.678 4.527H1.457z" fill={fillPrimary} stroke={stroke} strokeWidth={strokeW} />
         <path d="M12.46 6.95c-0.413 0.317-1.01 0.475-1.789 0.475s-1.375-0.158-1.789-0.475C8.469 6.634 8.262 6.187 8.262 5.61V1.815c0-0.578 0.207-1.024 0.62-1.34C9.296 0.158 9.892 0 10.671 0s1.376 0.158 1.789 0.474c0.414 0.317 0.621 0.763 0.621 1.341v3.795c0 0.577-0.207 1.024-0.621 1.34zm-2.611-1.268c0 0.474 0.274 0.712 0.822 0.712s0.822-0.238 0.822-0.712V1.743c0-0.474-0.274-0.712-0.822-0.712s-0.822 0.238-0.822 0.712v3.939z" fill={fillPrimary} stroke={stroke} strokeWidth={strokeW} />
@@ -94,10 +118,11 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
       style={{ width: `${width}px` }}
       className="flex-shrink-0 bg-[#0e1117] border-r border-[#1f2430] flex flex-col h-full z-30 select-none overflow-hidden"
     >
-      {/* Tab Switcher Header */}
+      {/* 1. Adaptive Tab Switcher Header */}
       <div className="flex bg-[#0a0c10] border-b border-[#1f2430] p-1.5 gap-1 flex-shrink-0">
-        <Tooltip content="Keyframe Motion Choreography Presets" side="bottom">
+        <Tooltip content="Motion Choreography Presets (12)" side="bottom" delay={350}>
           <button
+            type="button"
             onClick={() => onTabChange('motions')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
               activeTab === 'motions'
@@ -105,13 +130,18 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Zap size={13} className={activeTab === 'motions' ? 'text-[#ff4e2e]' : ''} />
-            <span>Motions (12)</span>
+            <Clapperboard size={14} className={activeTab === 'motions' ? 'text-[#ff4e2e]' : 'text-slate-400'} />
+            {!isIconOnlyTabs && (
+              <span className="truncate">
+                {isCompactTabs ? 'Motions' : 'Motions (12)'}
+              </span>
+            )}
           </button>
         </Tooltip>
 
-        <Tooltip content="Optical Styles, Shaders & Palette Presets" side="bottom">
+        <Tooltip content="Optical Styles & Palettes (8)" side="bottom" delay={350}>
           <button
+            type="button"
             onClick={() => onTabChange('styles')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
               activeTab === 'styles'
@@ -119,13 +149,18 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Palette size={13} className={activeTab === 'styles' ? 'text-[#38bdf8]' : ''} />
-            <span>Styles (8)</span>
+            <Palette size={14} className={activeTab === 'styles' ? 'text-[#38bdf8]' : 'text-slate-400'} />
+            {!isIconOnlyTabs && (
+              <span className="truncate">
+                {isCompactTabs ? 'Styles' : 'Styles (8)'}
+              </span>
+            )}
           </button>
         </Tooltip>
 
-        <Tooltip content="All 17 Sub-pixel Vector Mark Glyphs" side="bottom">
+        <Tooltip content="Sub-pixel Vector Glyphs (17)" side="bottom" delay={350}>
           <button
+            type="button"
             onClick={() => onTabChange('glyphs')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
               activeTab === 'glyphs'
@@ -133,52 +168,122 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Layers size={13} className={activeTab === 'glyphs' ? 'text-emerald-400' : ''} />
-            <span>Glyphs (17)</span>
+            <Shapes size={14} className={activeTab === 'glyphs' ? 'text-emerald-400' : 'text-slate-400'} />
+            {!isIconOnlyTabs && (
+              <span className="truncate">
+                {isCompactTabs ? 'Glyphs' : 'Glyphs (17)'}
+              </span>
+            )}
           </button>
         </Tooltip>
       </div>
 
-      {/* Search Bar & Category Filters */}
-      <div className="p-3 border-b border-[#1f2430] flex flex-col gap-2 flex-shrink-0 bg-[#0c0e14]">
+      {/* 2. Search Bar & Category Filter Pills */}
+      <div className="p-2.5 border-b border-[#1f2430] flex flex-col gap-2 flex-shrink-0 bg-[#0c0e14]">
         <div className="relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={`Filter ${activeTab}...`}
-            className="w-full bg-[#131620] border border-[#222736] focus:border-[#ff4e2e] focus:outline-none rounded-md pl-7 pr-2.5 py-1.5 text-xs font-mono text-slate-200 placeholder:text-slate-500"
+            placeholder={width < 260 ? 'Search...' : `Filter ${activeTab}...`}
+            className="w-full bg-[#131620] border border-[#222736] focus:border-[#ff4e2e] focus:outline-none rounded-md pl-7 pr-2.5 py-1.5 text-xs font-mono text-slate-200 placeholder:text-slate-500 transition-colors"
           />
         </div>
 
-        {/* Category Pills */}
+        {/* Category Pills with Unique Icons */}
         {activeTab === 'motions' && (
           <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
-            {motionCategories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => onCategoryFilterChange(cat)}
-                className={`text-[9px] font-mono px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${
-                  categoryFilter === cat
-                    ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-semibold'
-                    : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {motionCategories.map(cat => {
+              const isActive = categoryFilter === cat.name;
+              return (
+                <Tooltip key={cat.name} content={`Filter by: ${cat.name}`} side="bottom" delay={300}>
+                  <button
+                    type="button"
+                    onClick={() => onCategoryFilterChange(cat.name)}
+                    className={`flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-semibold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                    }`}
+                  >
+                    {cat.icon}
+                    <span>{cat.name}</span>
+                  </button>
+                </Tooltip>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Cards Scrollable Body */}
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5">
+      {/* 3. Cards Scrollable Body */}
+      <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
         {/* Motions Tab */}
         {activeTab === 'motions' && (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className={`grid gap-2 ${isSingleColGrid ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {filteredMotions.map(motion => {
               const isSelected = activeMotionId === motion.id;
+              const motionIcon = getMotionIcon(motion.id, 11);
+
+              // Single Column Horizontal Row (Ultra-Narrow Panel: No clipping!)
+              if (isSingleColGrid) {
+                return (
+                  <div
+                    key={motion.id}
+                    onClick={() => onSelectMotion(motion)}
+                    className={`group relative bg-[#131620] border rounded-lg p-2 cursor-pointer flex items-center gap-2.5 transition-all ${
+                      isSelected
+                        ? 'border-[#ff4e2e] bg-[#ff4e2e]/[0.08] shadow-md shadow-[#ff4e2e]/10'
+                        : 'border-[#202534] hover:border-slate-500 hover:bg-[#181c28]'
+                    }`}
+                  >
+                    {/* Compact Stage Thumbnail */}
+                    <div className="w-12 h-12 flex-shrink-0 bg-[#07080c] border border-white/5 rounded-md flex items-center justify-center overflow-hidden relative">
+                      <div className="scale-75 group-hover:scale-90 transition-transform duration-300">
+                        {renderThumbnailMark()}
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-[#ff4e2e] rounded-full flex items-center justify-center shadow">
+                          <Check size={8} strokeWidth={3} className="text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata: Unclipped Title & Specs */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-bold text-slate-100 font-display truncate">
+                          {motion.name}
+                        </span>
+                        <Tooltip content="View Specification Details" side="top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onShowInfo(motion.name, motion.desc, motion.specs);
+                            }}
+                            className="p-0.5 text-slate-500 hover:text-slate-300 rounded flex-shrink-0"
+                            aria-label="View Specifications"
+                          >
+                            <Info size={11} />
+                          </button>
+                        </Tooltip>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[9px] font-mono text-slate-400 mt-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-300 bg-white/5 px-1.5 py-0.2 rounded border border-white/10">
+                          {motionIcon}
+                          <span>{motion.badge}</span>
+                        </span>
+                        <span className="text-slate-500">{motion.defaultDuration}s</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Standard 2-Column Grid (Width >= 285px)
               return (
                 <div
                   key={motion.id}
@@ -193,6 +298,10 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                   <div className="h-16 bg-[#07080c] border border-white/5 rounded-md flex items-center justify-center overflow-hidden relative">
                     <div className="group-hover:scale-110 transition-transform duration-300">
                       {renderThumbnailMark()}
+                    </div>
+                    {/* Unique Motion Icon Watermark Badge */}
+                    <div className="absolute top-1.5 left-1.5 p-1 rounded bg-black/60 border border-white/10 flex items-center justify-center shadow">
+                      {motionIcon}
                     </div>
                     {isSelected && (
                       <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-[#ff4e2e] rounded-full flex items-center justify-center shadow">
@@ -209,6 +318,7 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                       </span>
                       <Tooltip content="View Specification Details" side="top">
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onShowInfo(motion.name, motion.desc, motion.specs);
@@ -221,7 +331,9 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                       </Tooltip>
                     </div>
                     <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 mt-0.5">
-                      <span className="text-[#ff4e2e] font-semibold">{motion.badge}</span>
+                      <span className="text-[#ff4e2e] font-semibold flex items-center gap-1">
+                        {motion.badge}
+                      </span>
                       <span>{motion.defaultDuration}s</span>
                     </div>
                   </div>
@@ -233,9 +345,67 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
 
         {/* Styles Tab */}
         {activeTab === 'styles' && (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className={`grid gap-2 ${isSingleColGrid ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {filteredStyles.map(style => {
               const isSelected = activeStyleId === style.id;
+              const styleIcon = getStyleIcon(style.id, 11);
+
+              if (isSingleColGrid) {
+                return (
+                  <div
+                    key={style.id}
+                    onClick={() => onSelectStyle(style)}
+                    className={`group relative bg-[#131620] border rounded-lg p-2 cursor-pointer flex items-center gap-2.5 transition-all ${
+                      isSelected
+                        ? 'border-[#38bdf8] bg-[#38bdf8]/[0.08] shadow-md shadow-[#38bdf8]/10'
+                        : 'border-[#202534] hover:border-slate-500 hover:bg-[#181c28]'
+                    }`}
+                  >
+                    <div
+                      className="w-12 h-12 flex-shrink-0 rounded-md border border-white/5 flex items-center justify-center overflow-hidden relative"
+                      style={{ background: style.bgGradient }}
+                    >
+                      <div className="scale-75 group-hover:scale-90 transition-transform duration-300">
+                        {renderThumbnailMark(style.fillWord, style.fillMedia, style.strokeColor, `${style.strokeWidth}px`)}
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-[#38bdf8] rounded-full flex items-center justify-center shadow">
+                          <Check size={8} strokeWidth={3} className="text-black" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-bold text-slate-100 font-display truncate">
+                          {style.name}
+                        </span>
+                        <Tooltip content="View Style Details" side="top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onShowInfo(style.name, style.desc, { 'Category': style.category, 'Glow Radius': `${style.glowRadius}px` });
+                            }}
+                            className="p-0.5 text-slate-500 hover:text-slate-300 rounded flex-shrink-0"
+                            aria-label="View Style Specs"
+                          >
+                            <Info size={11} />
+                          </button>
+                        </Tooltip>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[9px] font-mono text-slate-400 mt-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-300 bg-white/5 px-1.5 py-0.2 rounded border border-white/10">
+                          {styleIcon}
+                          <span>{style.category}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={style.id}
@@ -246,13 +416,15 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                       : 'border-[#202534] hover:border-slate-500 hover:bg-[#181c28]'
                   }`}
                 >
-                  {/* Style Preview Stage */}
                   <div
                     className="h-16 rounded-md border border-white/5 flex items-center justify-center overflow-hidden relative"
                     style={{ background: style.bgGradient }}
                   >
                     <div className="group-hover:scale-110 transition-transform duration-300">
                       {renderThumbnailMark(style.fillWord, style.fillMedia, style.strokeColor, `${style.strokeWidth}px`)}
+                    </div>
+                    <div className="absolute top-1.5 left-1.5 p-1 rounded bg-black/60 border border-white/10 flex items-center justify-center shadow">
+                      {styleIcon}
                     </div>
                     {isSelected && (
                       <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-[#38bdf8] rounded-full flex items-center justify-center shadow">
@@ -261,7 +433,6 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                     )}
                   </div>
 
-                  {/* Style Meta */}
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-100 font-display truncate">
@@ -269,6 +440,7 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                       </span>
                       <Tooltip content="View Style Details" side="top">
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onShowInfo(style.name, style.desc, { 'Category': style.category, 'Glow Radius': `${style.glowRadius}px` });
@@ -292,24 +464,34 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
 
         {/* Glyphs Tab */}
         {activeTab === 'glyphs' && (
-          <div className="grid grid-cols-3 gap-2">
-            {filteredGlyphs.map(glyph => (
-              <Tooltip key={glyph.id} content={`Glyph ${glyph.char} (${glyph.group})`} side="top">
-                <div
-                  className="bg-[#131620] border border-[#202534] hover:border-slate-500 rounded-lg p-2 flex flex-col items-center gap-1.5 transition-all cursor-default"
-                >
-                  <div className="w-full h-12 bg-[#07080c] rounded flex items-center justify-center">
-                    <svg width="20" height="20" viewBox="0 0 25 26" fill="none">
-                      <path d={glyph.path} fill={glyph.group === 'MEDIA' ? '#ff4e2e' : '#ffffff'} />
-                    </svg>
+          <div className={`grid gap-2 ${width < 250 ? 'grid-cols-2' : width > 360 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            {filteredGlyphs.map(glyph => {
+              const groupIcon = glyph.group === 'WORD' ? <Type size={9} /> :
+                                glyph.group === 'LORD' ? <Component size={9} /> :
+                                glyph.group === 'LIGATURE' ? <Columns3 size={9} /> :
+                                <Sparkles size={9} className="text-[#ff4e2e]" />;
+
+              return (
+                <Tooltip key={glyph.id} content={`Glyph ${glyph.char} (${glyph.group})`} side="top">
+                  <div
+                    className="bg-[#131620] border border-[#202534] hover:border-slate-500 rounded-lg p-2 flex flex-col items-center gap-1.5 transition-all cursor-default"
+                  >
+                    <div className="w-full h-12 bg-[#07080c] rounded flex items-center justify-center">
+                      <svg width="20" height="20" viewBox="0 0 25 26" fill="none">
+                        <path d={glyph.path} fill={glyph.group === 'MEDIA' ? '#ff4e2e' : '#ffffff'} />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] font-bold text-slate-200 font-mono">{glyph.char}</span>
+                      <span className="text-[8px] font-mono text-slate-500 flex items-center gap-0.5">
+                        {groupIcon}
+                        <span>{glyph.group}</span>
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-[11px] font-bold text-slate-200 font-mono">{glyph.char}</span>
-                    <span className="text-[8px] font-mono text-slate-500">{glyph.group}</span>
-                  </div>
-                </div>
-              </Tooltip>
-            ))}
+                </Tooltip>
+              );
+            })}
           </div>
         )}
       </div>
