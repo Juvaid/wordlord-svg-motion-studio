@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Download, Check, RefreshCw, AlertCircle, Eye, Sliders, Maximize2, Gauge, Zap } from 'lucide-react';
+import { X, Film, Download, Check, RefreshCw, AlertCircle, Eye, Sliders, Maximize2, Gauge, Zap, Box } from 'lucide-react';
 import { renderAnimationToVideo, VideoExportResult } from '../utils/videoExporter';
 import { getMotionIcon } from '../utils/presetIcons';
 import { GLYPH_PATHS } from '../data/vectorPaths';
@@ -7,6 +7,7 @@ import { GLYPH_PATHS } from '../data/vectorPaths';
 interface VideoExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSwitchTo3DExport?: () => void;
   motionId: string;
   motionName: string;
   duration: number;
@@ -37,6 +38,7 @@ interface VideoExportModalProps {
 export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   isOpen,
   onClose,
+  onSwitchTo3DExport,
   motionId,
   motionName,
   duration,
@@ -147,13 +149,26 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
             <Film size={16} className="text-[#ff4e2e]" />
             <span>Export 60 FPS Video (MP4 / WebM)</span>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isRendering}
-            className="p-1 text-slate-400 hover:text-white rounded disabled:opacity-30"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onSwitchTo3DExport && !isRendering && (
+              <button
+                type="button"
+                onClick={onSwitchTo3DExport}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ff4e2e]/10 hover:bg-[#ff4e2e]/20 border border-[#ff4e2e]/30 text-[#ff4e2e] text-[10.5px] font-mono font-medium transition-all shadow-sm"
+                title="Switch directly to 3D Extrusion Studio & Export 3D Video"
+              >
+                <Box size={12} />
+                <span>Switch to 3D Extruded Export</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              disabled={isRendering}
+              className="p-1 text-slate-400 hover:text-white rounded disabled:opacity-30"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}

@@ -460,7 +460,10 @@ export function evaluate3DMotion(
   logoGroup.rotation.set(baseRotX + gyroY, baseRotY + gyroX, baseRotZ);
 
   // 1. Evaluate Primary Motion Engine
+  resetMeshesToOrigin(meshes);
+
   switch (mode) {
+    case 'typewriter':
     case 'reveal': {
       meshes.forEach((mesh, idx) => {
         const partRef = activeParts[mesh.userData.index];
@@ -476,32 +479,152 @@ export function evaluate3DMotion(
         mesh.position.y = (mesh.userData.baseY || 0) + dropY;
         mesh.position.z = (mesh.userData.baseZ || 0) + dropZ;
         mesh.rotation.x = spinX;
+        mesh.scale.setScalar(Math.max(0.001, Math.min(1, bounce)));
       });
       break;
     }
 
-    case 'sync2d': {
-      // Direct 2D Motion Keyframe Synchronizer into 3D Space
+    case 'depth-slam': {
+      const p = Math.max(0, Math.min(1, t / 0.7));
+      const slam = p === 1 ? 1 : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10 - 0.75) * ((2 * Math.PI) / 3));
+      const zOffset = (1 - slam) * 240 * amp;
+      const scaleVal = 1 + (1 - slam) * 1.4 * amp;
+      meshes.forEach(m => {
+        m.position.z = (m.userData.baseZ || 0) + zOffset;
+        m.scale.set(scaleVal, scaleVal, 1 + (1 - slam) * 0.5);
+      });
+      logoGroup.rotation.x = baseRotX + (1 - slam) * 0.25 * amp + gyroY;
+      break;
+    }
+
+    case 'ligature-clamp': {
+      const p = Math.max(0, Math.min(1, t / 0.8));
+      const clampEase = 1 - Math.pow(1 - p, 4);
       meshes.forEach((mesh, idx) => {
-        const partRef = activeParts[mesh.userData.index];
-        const staggerDelay = idx * 0.055;
-        const partT = Math.max(0, Math.min(1, (t - staggerDelay) / 0.45));
+        const name = (mesh.userData.name || '').toUpperCase();
+        const isD = name.includes('D') || name.includes('LIGATURE');
+        const isLeft = idx < meshes.length / 2;
+        if (isD) {
+          const drop = (1 - clampEase) * 140 * amp;
+          mesh.position.y = (mesh.userData.baseY || 0) + drop;
+          mesh.position.z = (mesh.userData.baseZ || 0) + (1 - clampEase) * 50 * amp;
+        } else if (isLeft) {
+          const slideX = (1 - clampEase) * -120 * amp;
+          mesh.position.x = (mesh.userData.baseX || 0) + slideX;
+        } else {
+          const slideX = (1 - clampEase) * 120 * amp;
+          mesh.position.x = (mesh.userData.baseX || 0) + slideX;
+        }
+      });
+      break;
+    }
 
-        // Smooth cubic ease out
+    case 'origami': {
+      meshes.forEach((mesh, idx) => {
+        const delay = idx * (0.35 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - delay) / 0.5));
         const ease = 1 - Math.pow(1 - partT, 3);
-        const dropY = (1 - ease) * 90 * amp;
-        const dropZ = (1 - ease) * -70 * amp;
-        const rotY = (1 - ease) * Math.PI * 0.4 * amp;
+        const foldAngle = (1 - ease) * (idx % 2 === 0 ? Math.PI * 0.5 : -Math.PI * 0.5) * amp;
+        mesh.rotation.x = foldAngle;
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -50 * amp;
+        mesh.scale.set(Math.max(0.001, ease), Math.max(0.001, ease), Math.max(0.001, ease));
+      });
+      break;
+    }
 
-        mesh.position.y = (mesh.userData.baseY || 0) + dropY;
-        mesh.position.z = (mesh.userData.baseZ || 0) + dropZ;
-        mesh.rotation.y = rotY;
+    case 'wiredraw': {
+      const p = Math.max(0, Math.min(1, t / 0.85));
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.3 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.55));
+        mesh.scale.z = Math.max(0.01, partT);
+        mesh.position.z = (mesh.userData.baseZ || 0) - (1 - partT) * 35 * amp;
+      });
+      const angle = t * Math.PI * 2;
+      lights.rimLight.position.x = Math.sin(angle) * 320;
+      break;
+    }
+
+    case 'liquid-wipe': {
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.25 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.5));
+        const ripple = Math.sin(partT * Math.PI * 3) * (1 - partT) * 15 * amp;
+        mesh.position.y = (mesh.userData.baseY || 0) - (1 - partT) * 90 * amp + ripple;
+        mesh.position.z = (mesh.userData.baseZ || 0) + ripple;
+        mesh.scale.y = Math.max(0.001, partT);
+      });
+      break;
+    }
+
+    case 'laser-sweep':
+    case 'sweep': {
+      logoGroup.rotation.y = baseRotY + (Math.sin(t * Math.PI * 2) * 0.15) + gyroX;
+      const angle = t * Math.PI * 2;
+      lights.rimLight.position.x = Math.cos(angle) * 360;
+      lights.rimLight.position.z = Math.sin(angle) * 360;
+      lights.keyLight.intensity = config.keyIntensity * (1 + Math.sin(angle * 2) * 0.45);
+      break;
+    }
+
+    case 'cyber-glitch': {
+      const glitchPhase = Math.sin(t * 35);
+      const isGlitching = Math.abs(glitchPhase) > 0.6;
+      meshes.forEach((mesh, idx) => {
+        if (isGlitching && (idx + Math.floor(t * 12)) % 2 === 0) {
+          mesh.position.x = (mesh.userData.baseX || 0) + (Math.sin(t * 100 + idx) * 10 * amp);
+          mesh.position.z = (mesh.userData.baseZ || 0) + (Math.cos(t * 70 + idx) * 15 * amp);
+        }
+      });
+      break;
+    }
+
+    case 'pulse-glow': {
+      const breath = Math.sin(t * Math.PI * 2) * 0.5 + 0.5;
+      const scaleB = 1 + breath * 0.08 * amp;
+      meshes.forEach(m => {
+        m.scale.set(scaleB, scaleB, 1 + breath * 0.3 * amp);
+        m.position.z = (m.userData.baseZ || 0) + breath * 16 * amp;
+      });
+      lights.rimLight.intensity = config.rimIntensity * (0.7 + breath * 0.9);
+      break;
+    }
+
+    case 'split-converge': {
+      const p = Math.max(0, Math.min(1, t / 0.75));
+      const ease = 1 - Math.pow(1 - p, 3);
+      meshes.forEach((mesh, idx) => {
+        const dir = idx % 2 === 0 ? 1 : -1;
+        mesh.position.y = (mesh.userData.baseY || 0) + dir * (1 - ease) * 120 * amp;
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -60 * amp;
+        mesh.rotation.x = dir * (1 - ease) * 0.45 * amp;
+      });
+      break;
+    }
+
+    case 'matrix-rain': {
+      meshes.forEach((mesh, idx) => {
+        const delay = idx * (0.45 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - delay) / 0.4));
+        const fall = Math.pow(1 - partT, 2) * 200 * amp;
+        mesh.position.y = (mesh.userData.baseY || 0) + fall;
+        mesh.scale.setScalar(Math.max(0.001, partT));
+      });
+      break;
+    }
+
+    case 'elastic-pop': {
+      meshes.forEach((mesh, idx) => {
+        const delay = idx * (0.35 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - delay) / 0.45));
+        const s = partT === 1 ? 1 : Math.sin(partT * Math.PI * 2.5) * Math.pow(1 - partT, 2) * 0.45 + partT;
+        mesh.scale.setScalar(Math.max(0.001, s));
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - partT) * -45 * amp;
       });
       break;
     }
 
     case 'turntable': {
-      resetMeshesToOrigin(meshes);
       logoGroup.rotation.y = baseRotY + (t * Math.PI * 2) + gyroX;
       logoGroup.rotation.x = baseRotX + (Math.sin(t * Math.PI * 4) * 0.08 * amp) + gyroY;
       logoGroup.position.y = basePosY + Math.sin(t * Math.PI * 2) * 8 * amp;
@@ -524,16 +647,6 @@ export function evaluate3DMotion(
       break;
     }
 
-    case 'sweep': {
-      resetMeshesToOrigin(meshes);
-      logoGroup.rotation.y = baseRotY + (Math.sin(t * Math.PI * 2) * 0.15) + gyroX;
-      const angle = t * Math.PI * 2;
-      lights.rimLight.position.x = Math.cos(angle) * 360;
-      lights.rimLight.position.z = Math.sin(angle) * 360;
-      lights.keyLight.intensity = config.keyIntensity * (1 + Math.sin(angle * 2) * 0.35);
-      break;
-    }
-
     case 'explode': {
       const explodePhase = Math.sin(t * Math.PI) * amp;
       meshes.forEach((mesh, idx) => {
@@ -548,9 +661,28 @@ export function evaluate3DMotion(
     }
 
     case 'camera': {
-      resetMeshesToOrigin(meshes);
       logoGroup.rotation.y = baseRotY + Math.sin(t * Math.PI * 2) * 0.3 + gyroX;
       logoGroup.rotation.x = baseRotX + Math.cos(t * Math.PI * 2) * 0.15 + gyroY;
+      break;
+    }
+
+    case 'sync2d':
+    default: {
+      // Direct 2D Motion Keyframe Synchronizer into 3D Space
+      meshes.forEach((mesh, idx) => {
+        const staggerDelay = idx * 0.055;
+        const partT = Math.max(0, Math.min(1, (t - staggerDelay) / 0.45));
+
+        // Smooth cubic ease out
+        const ease = 1 - Math.pow(1 - partT, 3);
+        const dropY = (1 - ease) * 90 * amp;
+        const dropZ = (1 - ease) * -70 * amp;
+        const rotY = (1 - ease) * Math.PI * 0.4 * amp;
+
+        mesh.position.y = (mesh.userData.baseY || 0) + dropY;
+        mesh.position.z = (mesh.userData.baseZ || 0) + dropZ;
+        mesh.rotation.y = rotY;
+      });
       break;
     }
   }

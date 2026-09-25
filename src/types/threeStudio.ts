@@ -30,7 +30,25 @@ export type ThreeMotionMode =
   | 'sweep' 
   | 'explode' 
   | 'camera'
-  | 'sync2d';
+  | 'sync2d'
+  | 'typewriter'
+  | 'wiredraw'
+  | 'ligature-clamp'
+  | 'liquid-wipe'
+  | 'depth-slam'
+  | 'origami'
+  | 'laser-sweep'
+  | 'magnetic-snap'
+  | 'neon-flicker'
+  | 'cyber-glitch'
+  | 'isometric-cube'
+  | 'quantum-pulse'
+  | 'matrix-stream'
+  | 'smoke-dissolve'
+  | 'solar-flare'
+  | 'minimal-fade'
+  | 'audio-reactive'
+  | (string & {});
 
 export type PbrPresetId = 
   | 'crimson' 

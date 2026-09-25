@@ -19,6 +19,7 @@ import {
   PBR_PRESETS, 
   LIGHTING_RIGS 
 } from '../data/threePresets';
+import { MOTIONS } from '../data/motions';
 import { 
   ThreeStudioConfig, 
   PbrPresetId, 
@@ -48,9 +49,7 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
   const [activeTab, setActiveTab] = useState<'assets' | 'materials' | 'lighting' | 'motions'>('assets');
   const isNarrow = width < 255;
 
-  const motionList: { id: ThreeMotionMode; name: string; desc: string; icon: any }[] = [
-    { id: 'sync2d', name: '2D Motion Synced', desc: `Syncs with active 2D preset (${config.active2dMotionId || 'Typewriter'})`, icon: Layers },
-    { id: 'reveal', name: '3D Reveal Spring', desc: 'Cascade drop overshoot with multi-part settling', icon: Flame },
+  const spatialEngineList: { id: ThreeMotionMode; name: string; desc: string; icon: any }[] = [
     { id: 'turntable', name: 'Turntable 360°', desc: 'Smooth continuous luxury turntable rotation', icon: RotateCw },
     { id: 'wave', name: 'Sinusoidal Wave', desc: 'Harmonic undulating wave across all glyphs', icon: Activity },
     { id: 'sweep', name: 'Rim Light Sweep', desc: 'Dramatic orbiting key & rim specular highlights', icon: Radio },
@@ -236,41 +235,122 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
 
         {/* TAB 4: MOTIONS */}
         {activeTab === 'motions' && (
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold px-1">
-              3D Animation Engines
-            </span>
-
-            {motionList.map(mot => {
-              const Icon = mot.icon;
-              const isSel = config.motionMode === mot.id;
-              return (
-                <button
-                  key={mot.id}
-                  onClick={() => onSelectMotion(mot.id)}
-                  className={`flex flex-col p-2.5 rounded-lg border text-left transition-all ${
-                    isSel
-                      ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
-                      : 'bg-[#121520] border-[#222736] hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1 rounded ${isSel ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-400'}`}>
-                        <Icon size={12} />
-                      </div>
-                      <span className={`text-xs font-bold ${isSel ? 'text-white' : 'text-slate-200'}`}>
-                        {mot.name}
+          <div className="flex flex-col gap-3">
+            {/* Sync 2D Active Mode */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold px-1">
+                Timeline Synchronization
+              </span>
+              <button
+                onClick={() => onSelectMotion('sync2d')}
+                className={`flex flex-col p-2.5 rounded-lg border text-left transition-all ${
+                  config.motionMode === 'sync2d'
+                    ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
+                    : 'bg-[#121520] border-[#222736] hover:border-slate-500'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1 rounded ${config.motionMode === 'sync2d' ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-400'}`}>
+                      <Layers size={12} />
+                    </div>
+                    <div>
+                      <span className={`text-xs font-bold block ${config.motionMode === 'sync2d' ? 'text-white' : 'text-slate-200'}`}>
+                        2D Motion Synced
+                      </span>
+                      <span className="text-[9px] font-mono text-[#ff4e2e]">
+                        Active: {config.active2dMotionId || 'typewriter'}
                       </span>
                     </div>
-                    {isSel && <Check size={12} className="text-[#ff4e2e]" />}
                   </div>
-                  <span className="text-[9.5px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {mot.desc}
-                  </span>
-                </button>
-              );
-            })}
+                  {config.motionMode === 'sync2d' && <Check size={12} className="text-[#ff4e2e]" />}
+                </div>
+                <span className="text-[9.5px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                  Realtime mirrored keyframes and curve dynamics from the 2D SVG workspace into 3D extrusion.
+                </span>
+              </button>
+            </div>
+
+            {/* Group 1: 3D Spatial Engines */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                  Spatial 3D Engines
+                </span>
+                <span className="text-[9px] font-mono text-slate-500">{spatialEngineList.length} Engines</span>
+              </div>
+
+              {spatialEngineList.map(mot => {
+                const Icon = mot.icon;
+                const isSel = config.motionMode === mot.id;
+                return (
+                  <button
+                    key={mot.id}
+                    onClick={() => onSelectMotion(mot.id)}
+                    className={`flex flex-col p-2.5 rounded-lg border text-left transition-all ${
+                      isSel
+                        ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
+                        : 'bg-[#121520] border-[#222736] hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1 rounded ${isSel ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-400'}`}>
+                          <Icon size={12} />
+                        </div>
+                        <span className={`text-xs font-bold ${isSel ? 'text-white' : 'text-slate-200'}`}>
+                          {mot.name}
+                        </span>
+                      </div>
+                      {isSel && <Check size={12} className="text-[#ff4e2e]" />}
+                    </div>
+                    <span className="text-[9.5px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      {mot.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Group 2: Kinetic Vector Motion Library */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                  Kinetic Vector Motions
+                </span>
+                <span className="text-[9px] font-mono text-slate-500">{MOTIONS.length} Presets</span>
+              </div>
+
+              {MOTIONS.map(mot => {
+                const isSel = config.motionMode === mot.id;
+                return (
+                  <button
+                    key={mot.id}
+                    onClick={() => onSelectMotion(mot.id as ThreeMotionMode)}
+                    className={`flex flex-col p-2.5 rounded-lg border text-left transition-all ${
+                      isSel
+                        ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
+                        : 'bg-[#121520] border-[#222736] hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-black/40 text-slate-400 border border-white/5">
+                          {mot.badge}
+                        </span>
+                        <span className={`text-xs font-bold ${isSel ? 'text-white' : 'text-slate-200'}`}>
+                          {mot.name}
+                        </span>
+                      </div>
+                      {isSel && <Check size={12} className="text-[#ff4e2e]" />}
+                    </div>
+                    <span className="text-[9.5px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      {mot.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

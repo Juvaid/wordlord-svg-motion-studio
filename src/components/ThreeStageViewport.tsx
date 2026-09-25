@@ -86,6 +86,33 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Animation Playback Synchronization Refs (eliminates stale closures)
+  const timeRef = useRef<number>(config.time || 0);
+  const isPlayingRef = useRef<boolean>(config.isPlaying);
+  const speedRef = useRef<number>(config.speed || 1);
+  const durationRef = useRef<number>(config.duration || 4);
+  const workAreaRef = useRef(config.workArea || { inPoint: 0, outPoint: 1 });
+  const motionModeRef = useRef(config.motionMode);
+  const amplitudeRef = useRef<number>(config.amplitude || 1);
+  const onUpdateConfigRef = useRef(onUpdateConfig);
+
+  useEffect(() => {
+    timeRef.current = config.time || 0;
+  }, [config.time]);
+
+  useEffect(() => {
+    isPlayingRef.current = config.isPlaying;
+  }, [config.isPlaying]);
+
+  useEffect(() => {
+    speedRef.current = config.speed;
+    durationRef.current = config.duration;
+    workAreaRef.current = config.workArea || { inPoint: 0, outPoint: 1 };
+    motionModeRef.current = config.motionMode;
+    amplitudeRef.current = config.amplitude;
+    onUpdateConfigRef.current = onUpdateConfig;
+  }, [config.speed, config.duration, config.workArea, config.motionMode, config.amplitude, onUpdateConfig]);
+
   // 1. Initialize Scene & Renderer
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -423,7 +450,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       animId = requestAnimationFrame(renderLoop);
 
       const now = performance.now();
-      const deltaSec = Math.min(0.1, (now - lastFrameTime) / 1000);
+      const deltaSec = Math.min(0.05, (now - lastFrameTime) / 1000);
       lastFrameTime = now;
 
       // FPS tracking
@@ -451,32 +478,35 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
         controlsRef.current.update();
       }
 
-      // Evaluate Motion Frame if playing (respecting In/Out Work Area loop bounds)
-      if (config.isPlaying) {
-        const inTime = (config.workArea?.inPoint ?? 0) * config.duration;
-        const outTime = (config.workArea?.outPoint ?? 1) * config.duration;
-        let newTime = config.time + (deltaSec * config.speed);
+      // Advance time if playing (respecting In/Out Work Area loop bounds)
+      const dur = durationRef.current > 0 ? durationRef.current : 4;
+      if (isPlayingRef.current) {
+        const inTime = (workAreaRef.current?.inPoint ?? 0) * dur;
+        const outTime = (workAreaRef.current?.outPoint ?? 1) * dur;
+        let newTime = timeRef.current + (deltaSec * speedRef.current);
         if (newTime >= outTime) {
           newTime = inTime;
         } else if (newTime < inTime) {
           newTime = inTime;
         }
-        onUpdateConfig({ time: newTime });
+        timeRef.current = newTime;
+        onUpdateConfigRef.current({ time: newTime });
+      }
 
-        const normalizedTime = config.duration > 0 ? (newTime / config.duration) : 0;
-        if (lightsRef.current) {
-          evaluate3DMotion(
-            logoGroupRef.current,
-            meshesRef.current,
-            config.motionMode,
-            normalizedTime,
-            config.amplitude,
-            mouseGyroRef.current,
-            { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
-            config,
-            parts
-          );
-        }
+      // Evaluate Motion Frame on EVERY frame (both playing and paused/scrubbed)
+      const normalizedTime = dur > 0 ? (timeRef.current / dur) : 0;
+      if (lightsRef.current && logoGroupRef.current) {
+        evaluate3DMotion(
+          logoGroupRef.current,
+          meshesRef.current,
+          motionModeRef.current,
+          normalizedTime,
+          amplitudeRef.current,
+          mouseGyroRef.current,
+          { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
+          config,
+          parts
+        );
       }
 
       // Render
@@ -493,11 +523,6 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       cancelAnimationFrame(animId);
     };
   }, [
-    config.isPlaying, 
-    config.speed, 
-    config.duration, 
-    config.motionMode, 
-    config.amplitude, 
     config.shadingMode, 
     config.bloomEnabled, 
     config.stackedEffects,

@@ -523,9 +523,21 @@ export const App: React.FC = () => {
   }, [pushUndoSnapshot, showToast]);
 
   const handleSelect3DMotion = useCallback((motion: ThreeMotionMode) => {
-    setThreeConfig(prev => ({ ...prev, motionMode: motion, time: 0, isPlaying: true }));
-    showToast(`Motion: ${motion.toUpperCase()}`);
-  }, [showToast]);
+    const is2d = MOTIONS.some(m => m.id === motion);
+    if (is2d) {
+      setActiveMotionId(motion);
+    }
+    setThreeConfig(prev => ({ 
+      ...prev, 
+      motionMode: motion, 
+      active2dMotionId: is2d ? motion : prev.active2dMotionId,
+      time: 0, 
+      isPlaying: true 
+    }));
+    const motionName = MOTIONS.find(m => m.id === motion)?.name || motion.toUpperCase();
+    showToast(`3D Motion: ${motionName}`);
+    playTick(soundEnabled, 650, 0.02);
+  }, [soundEnabled, showToast]);
 
   const handleUpdatePart = useCallback((idx: number, partial: Partial<ThreePart>) => {
     setThreeParts(prev => {
@@ -1201,12 +1213,74 @@ export const App: React.FC = () => {
     });
   };
 
+  // Bidirectional Studio Mode Switcher (2D <-> 3D Seamless Shift)
+  const handleSetStudioMode = useCallback((newMode: '2d' | '3d' | 'motion-graphics') => {
+    if (newMode === studioMode) return;
+
+    if (newMode === '3d') {
+      // Shifting from 2D -> 3D: Carry over duration, progress, play state, active preset, and primary colors
+      const current2dMotion = MOTIONS.find(m => m.id === activeMotionId);
+      setThreeConfig(prev => {
+        const isCurrent2d = MOTIONS.some(m => m.id === activeMotionId);
+        return {
+          ...prev,
+          active2dMotionId: activeMotionId,
+          motionMode: prev.motionMode === 'sync2d' ? 'sync2d' : (isCurrent2d ? (activeMotionId as ThreeMotionMode) : prev.motionMode),
+          duration: duration,
+          time: currentProgress * duration,
+          isPlaying: isPlaying,
+          faceColor: colors.word,
+          sideColor: colors.media
+        };
+      });
+      showToast(`Switched to 3D Extruded Studio (Synced with ${current2dMotion?.name || '2D Motion'})`);
+    } else if (newMode === '2d') {
+      // Shifting from 3D -> 2D: Carry over motion preset if kinetic, sync duration, and scrub to exact ratio
+      const matching2d = MOTIONS.find(m => m.id === threeConfig.motionMode);
+      if (matching2d) {
+        setActiveMotionId(matching2d.id);
+      }
+      setDuration(threeConfig.duration || 4.0);
+      const ratio = threeConfig.duration > 0 ? (threeConfig.time / threeConfig.duration) : 0;
+      seekToProgress(Math.max(0, Math.min(1, ratio)));
+      if (threeConfig.isPlaying) {
+        startPlayback();
+      } else {
+        stopPlayback();
+      }
+      showToast(`Switched to 2D Vector Motion (${matching2d?.name || activeMotion.name})`);
+    } else if (newMode === 'motion-graphics') {
+      showToast('Switched to Motion Graphics Workstation');
+    }
+
+    setStudioMode(newMode);
+    playTick(soundEnabled, 620, 0.02);
+  }, [
+    studioMode, 
+    activeMotionId, 
+    activeMotion.name, 
+    duration, 
+    currentProgress, 
+    isPlaying, 
+    colors.word, 
+    colors.media, 
+    threeConfig.motionMode, 
+    threeConfig.duration, 
+    threeConfig.time, 
+    threeConfig.isPlaying, 
+    seekToProgress, 
+    startPlayback, 
+    stopPlayback, 
+    soundEnabled, 
+    showToast
+  ]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#07080c] text-slate-100 font-sans">
       {/* Top Navigation Bar */}
       <TopNavbar
         studioMode={studioMode}
-        onSetStudioMode={setStudioMode}
+        onSetStudioMode={handleSetStudioMode}
         scale={scale}
         bgMode={bgMode}
         activeMotionId={activeMotion.id}
@@ -1463,6 +1537,11 @@ export const App: React.FC = () => {
       <VideoExportModal
         isOpen={isVideoExportOpen}
         onClose={() => setIsVideoExportOpen(false)}
+        onSwitchTo3DExport={() => {
+          setIsVideoExportOpen(false);
+          handleSetStudioMode('3d');
+          setIs3DExportOpen(true);
+        }}
         motionId={activeMotion.id}
         motionName={activeMotion.name}
         duration={duration}
@@ -1484,6 +1563,11 @@ export const App: React.FC = () => {
       <ThreeExportModal
         isOpen={is3DExportOpen}
         onClose={() => setIs3DExportOpen(false)}
+        onSwitchTo2DExport={() => {
+          setIs3DExportOpen(false);
+          handleSetStudioMode('2d');
+          setIsVideoExportOpen(true);
+        }}
         config={threeConfig}
         canvas={document.getElementById('three-stage-canvas') as HTMLCanvasElement | null}
       />

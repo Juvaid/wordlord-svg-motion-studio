@@ -13,7 +13,8 @@ import {
   Sliders,
   Globe,
   Ratio,
-  Gauge
+  Gauge,
+  Layers
 } from 'lucide-react';
 import { exportThreeGLTF, exportThreeSnapshot } from '../utils/threeEngine';
 import { ThreeStudioConfig } from '../types/threeStudio';
@@ -21,6 +22,7 @@ import { ThreeStudioConfig } from '../types/threeStudio';
 interface ThreeExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSwitchTo2DExport?: () => void;
   config: ThreeStudioConfig;
   canvas: HTMLCanvasElement | null;
 }
@@ -28,6 +30,7 @@ interface ThreeExportModalProps {
 export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
   isOpen,
   onClose,
+  onSwitchTo2DExport,
   config,
   canvas
 }) => {
@@ -259,13 +262,26 @@ scene.add(rimLight);
             <Box size={16} className="text-[#ff4e2e]" />
             <span>Export 3D Animation & Assets</span>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isRecording}
-            className="p-1 text-slate-400 hover:text-white rounded disabled:opacity-30"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onSwitchTo2DExport && !isRecording && (
+              <button
+                type="button"
+                onClick={onSwitchTo2DExport}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 border border-[#38bdf8]/30 text-[#38bdf8] text-[10.5px] font-mono font-medium transition-all shadow-sm"
+                title="Switch directly to 2D Vector Studio & Export Crisp Vector MP4"
+              >
+                <Layers size={12} />
+                <span>Switch to 2D Vector Export</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              disabled={isRecording}
+              className="p-1 text-slate-400 hover:text-white rounded disabled:opacity-30"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Tabs */}
