@@ -3,6 +3,7 @@ import { GLYPH_PATHS } from '../data/vectorPaths';
 import { BackgroundMode } from '../types';
 
 interface StageViewportProps {
+  animKey?: number;
   animClass: string;
   duration: number;
   easeFormula: string;
@@ -16,6 +17,7 @@ interface StageViewportProps {
   scale: number;
   pan: { x: number; y: number };
   bgMode: BackgroundMode;
+  bgGradient?: string;
   colors: {
     word: string;
     lord: string;
@@ -35,6 +37,7 @@ interface StageViewportProps {
 }
 
 export const StageViewport: React.FC<StageViewportProps> = ({
+  animKey = 0,
   animClass,
   duration,
   easeFormula,
@@ -48,6 +51,7 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   scale,
   pan,
   bgMode,
+  bgGradient,
   colors,
   layerVisibility,
   onPanChange,
@@ -96,7 +100,7 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   // Background style
   const getBgStyle = () => {
     if (bgMode === 'radial') {
-      return { background: 'radial-gradient(circle at 50% 50%, #161a26 0%, #06070a 100%)' };
+      return { background: bgGradient || 'radial-gradient(circle at 50% 50%, #161a26 0%, #06070a 100%)' };
     }
     if (bgMode === 'grid') {
       return {
@@ -132,6 +136,7 @@ export const StageViewport: React.FC<StageViewportProps> = ({
       {/* Visual Bounding Spec Box */}
       <div
         id="stage-wrapper"
+        key={animKey}
         className={`relative transition-transform duration-75 ease-out ${animClass}`}
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,

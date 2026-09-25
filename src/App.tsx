@@ -5,6 +5,7 @@ import { StageViewport } from './components/StageViewport';
 import { RightInspector } from './components/RightInspector';
 import { TimelineFooter } from './components/TimelineFooter';
 import { ExportModal } from './components/ExportModal';
+import { PanelResizer } from './components/PanelResizer';
 import { MOTIONS } from './data/motions';
 import { STYLES } from './data/styles';
 import { playTick, playWhoosh } from './utils/audio';
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
   // 1. Studio State
   const [activeMotionId, setActiveMotionId] = useState<string>('typewriter');
   const [activeStyleId, setActiveStyleId] = useState<string>('signature');
+  const [animKey, setAnimKey] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0.95);
   const [stagger, setStagger] = useState<number>(60);
   const [bezier, setBezier] = useState<BezierPoints>({ p1: { x: 0.16, y: 1.0 }, p2: { x: 0.3, y: 1.0 } });
@@ -31,6 +33,11 @@ export const App: React.FC = () => {
   const [isLooping, setIsLooping] = useState<boolean>(true);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [currentProgress, setCurrentProgress] = useState<number>(0);
+
+  // Resizable Panels State
+  const [leftWidth, setLeftWidth] = useState<number>(290);
+  const [rightWidth, setRightWidth] = useState<number>(320);
+  const [timelineHeight, setTimelineHeight] = useState<number>(210);
 
   // Optics & 3D
   const [glowRadius, setGlowRadius] = useState<number>(20);
@@ -187,17 +194,13 @@ export const App: React.FC = () => {
     if (!stage) return;
 
     const anims = stage.getAnimations({ subtree: true });
+    const targetMs = p * duration * 1000;
+
     if (anims && anims.length > 0) {
       anims.forEach(anim => {
         if (!fromLoop) anim.pause();
-        const timing = anim.effect ? anim.effect.getComputedTiming() : null;
-        const dur = typeof timing?.duration === 'number' ? timing.duration : (duration * 1000);
-        const delay = typeof timing?.delay === 'number' ? timing.delay : 0;
-        let t = (p * duration * 1000) - delay;
-        if (t < 0) t = 0;
-        if (t > dur) t = dur;
         try {
-          anim.currentTime = t;
+          anim.currentTime = targetMs;
         } catch {
           // ignore
         }
@@ -217,16 +220,20 @@ export const App: React.FC = () => {
 
   // Re-trigger animation cleanly
   const restartAnimation = useCallback(() => {
+    setAnimKey(k => k + 1);
     const stage = document.getElementById('stage-wrapper');
     if (!stage) return;
+
     stage.classList.remove(activeMotion.animClass);
     void stage.offsetWidth;
     stage.classList.add(activeMotion.animClass);
 
-    // resume running play state
     stage.style.animationPlayState = 'running';
+    stage.style.animationDelay = '0s';
     stage.querySelectorAll('[data-glyph], #laser-sweep-rect, #main-stage-svg').forEach(el => {
-      (el as HTMLElement).style.animationPlayState = 'running';
+      const h = el as HTMLElement;
+      h.style.animationPlayState = 'running';
+      h.style.animationDelay = '';
     });
   }, [activeMotion.animClass]);
 
@@ -250,10 +257,10 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (isPlaying) stopPlayback();
     else startPlayback();
-  };
+  }, [isPlaying, stopPlayback, startPlayback]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -290,17 +297,60 @@ export const App: React.FC = () => {
     };
   }, [isPlaying, isLooping, playbackMode, playbackSpeed, duration, currentProgress, restartAnimation, seekToProgress, stopPlayback, soundEnabled]);
 
-  // Keyboard Shortcuts (Spacebar = Play/Pause)
+  // Keyboard Shortcuts (Space, 0, 1, 2, 3, R, E, L, M, Home, End, Arrows)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.code === 'Space') {
         e.preventDefault();
         handlePlayPause();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        seekToProgress(0);
+        restartAnimation();
+        playTick(soundEnabled, 700, 0.02);
+      } else if (e.code === 'KeyE') {
+        e.preventDefault();
+        setIsExportOpen(true);
+      } else if (e.code === 'KeyL') {
+        e.preventDefault();
+        setIsLooping(l => !l);
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        setSoundEnabled(s => !s);
+      } else if (e.code === 'Digit1') {
+        setBgMode('dark');
+      } else if (e.code === 'Digit2') {
+        setBgMode('radial');
+      } else if (e.code === 'Digit3') {
+        setBgMode('grid');
+      } else if (e.code === 'Digit0') {
+        setScale(1.0);
+        setPan({ x: 0, y: 0 });
+      } else if (e.code === 'Home') {
+        e.preventDefault();
+        stopPlayback();
+        seekToProgress(0);
+      } else if (e.code === 'End') {
+        e.preventDefault();
+        stopPlayback();
+        seekToProgress(1);
+      } else if (e.code === 'ArrowLeft' || e.code === 'Comma') {
+        e.preventDefault();
+        stopPlayback();
+        seekToProgress(Math.max(0, currentProgress - (1/60)/duration));
+      } else if (e.code === 'ArrowRight' || e.code === 'Period') {
+        e.preventDefault();
+        stopPlayback();
+        seekToProgress(Math.min(1, currentProgress + (1/60)/duration));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause]);
+  }, [handlePlayPause, seekToProgress, restartAnimation, stopPlayback, currentProgress, duration, soundEnabled]);
 
   // Handle Preset Switching
   const handleSelectMotion = (m: MotionPreset) => {
@@ -363,10 +413,11 @@ export const App: React.FC = () => {
         onOpenExport={() => setIsExportOpen(true)}
       />
 
-      {/* Main Workspace Body (3-Column Layout) */}
+      {/* Main Workspace Body (3-Column Layout with Resizable Dividers) */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left Creative Library */}
         <LeftLibrary
+          width={leftWidth}
           activeTab={activeTab}
           activeMotionId={activeMotionId}
           activeStyleId={activeStyleId}
@@ -380,8 +431,16 @@ export const App: React.FC = () => {
           onShowInfo={(title, desc) => showToast(`${title}: ${desc}`)}
         />
 
+        {/* Vertical Resizer: Left Library <-> Stage */}
+        <PanelResizer
+          direction="vertical"
+          onResize={(delta) => setLeftWidth(w => Math.max(220, Math.min(420, w + delta)))}
+          title="Drag to resize Library panel"
+        />
+
         {/* Center Vector Motion Canvas */}
         <StageViewport
+          animKey={animKey}
           animClass={activeMotion.animClass}
           duration={duration}
           easeFormula={easeFormula}
@@ -395,14 +454,23 @@ export const App: React.FC = () => {
           scale={scale}
           pan={pan}
           bgMode={bgMode}
+          bgGradient={activeStyle.bgGradient}
           colors={colors}
           layerVisibility={layerVisibility}
           onPanChange={setPan}
           onScaleChange={setScale}
         />
 
+        {/* Vertical Resizer: Stage <-> Right Inspector */}
+        <PanelResizer
+          direction="vertical"
+          onResize={(delta) => setRightWidth(w => Math.max(260, Math.min(460, w - delta)))}
+          title="Drag to resize Inspector panel"
+        />
+
         {/* Right Properties & Inspector Lab */}
         <RightInspector
+          width={rightWidth}
           motionName={activeMotion.name}
           category={activeMotion.badge}
           duration={duration}
@@ -433,8 +501,16 @@ export const App: React.FC = () => {
         />
       </div>
 
+      {/* Horizontal Resizer: Workspace <-> Timeline */}
+      <PanelResizer
+        direction="horizontal"
+        onResize={(delta) => setTimelineHeight(h => Math.max(130, Math.min(380, h + delta)))}
+        title="Drag to resize Timeline height"
+      />
+
       {/* Bottom Professional NLE Timeline */}
       <TimelineFooter
+        height={timelineHeight}
         duration={duration}
         currentProgress={currentProgress}
         isPlaying={isPlaying}

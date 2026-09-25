@@ -4,16 +4,13 @@ import {
   RotateCcw, 
   ZoomIn, 
   ZoomOut, 
-  Maximize2, 
   Code2, 
-  Download, 
   Grid, 
   Monitor, 
-  Sparkles,
-  Layers,
-  Box
+  Sparkles
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
+import { Tooltip } from './Tooltip';
 
 interface TopNavbarProps {
   scale: number;
@@ -65,79 +62,115 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </div>
       </div>
 
-      {/* Center Stage Tools */}
+      {/* Center Stage Viewport Navigation Tools */}
       <div className="flex items-center gap-1 bg-[#131620] border border-[#222736] rounded-md p-0.5">
-        <button
-          onClick={onZoomOut}
-          title="Zoom Out"
-          className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-        >
-          <ZoomOut size={13} strokeWidth={2} />
-        </button>
-        <span className="text-[10px] font-mono font-medium px-1.5 text-slate-300 min-w-[3rem] text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <button
-          onClick={onZoomIn}
-          title="Zoom In"
-          className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-        >
-          <ZoomIn size={13} strokeWidth={2} />
-        </button>
+        <Tooltip content="Zoom Out" shortcut="-" side="bottom">
+          <button
+            onClick={onZoomOut}
+            aria-label="Zoom Out"
+            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+          >
+            <ZoomOut size={13} strokeWidth={2} />
+          </button>
+        </Tooltip>
+
+        <Tooltip content="Current Scale (Scroll or drag stage)" side="bottom">
+          <span className="text-[10px] font-mono font-medium px-1.5 text-slate-300 min-w-[3.2rem] text-center cursor-default">
+            {Math.round(scale * 100)}%
+          </span>
+        </Tooltip>
+
+        <Tooltip content="Zoom In" shortcut="+" side="bottom">
+          <button
+            onClick={onZoomIn}
+            aria-label="Zoom In"
+            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+          >
+            <ZoomIn size={13} strokeWidth={2} />
+          </button>
+        </Tooltip>
+
         <div className="w-[1px] h-3.5 bg-[#222736] mx-0.5" />
-        <button
-          onClick={onResetView}
-          title="Reset View (100%)"
-          className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-        >
-          <RotateCcw size={13} strokeWidth={2} />
-        </button>
+
+        <Tooltip content="Reset View (100% Zoom & Centered Pan)" shortcut="0" side="bottom">
+          <button
+            onClick={onResetView}
+            aria-label="Reset View"
+            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+          >
+            <RotateCcw size={13} strokeWidth={2} />
+          </button>
+        </Tooltip>
       </div>
 
-      {/* Right Actions & Canvas Modes */}
+      {/* Right Actions & Canvas Stage Modes */}
       <div className="flex items-center gap-2">
         {/* Background Mode Selector */}
         <div className="flex items-center bg-[#131620] border border-[#222736] rounded-md p-0.5">
-          <button
-            onClick={() => onSetBgMode('dark')}
-            title="Dark Stage"
-            className={`p-1.5 rounded transition-all ${bgMode === 'dark' ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Monitor size={13} strokeWidth={2} />
-          </button>
-          <button
-            onClick={() => onSetBgMode('radial')}
-            title="Radial Spotlight"
-            className={`p-1.5 rounded transition-all ${bgMode === 'radial' ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Sparkles size={13} strokeWidth={2} />
-          </button>
-          <button
-            onClick={() => onSetBgMode('grid')}
-            title="Dot Calibration Grid"
-            className={`p-1.5 rounded transition-all ${bgMode === 'grid' ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Grid size={13} strokeWidth={2} />
-          </button>
+          <Tooltip content="Solid Dark Stage" shortcut="1" side="bottom">
+            <button
+              onClick={() => onSetBgMode('dark')}
+              aria-label="Solid Dark Stage"
+              className={`p-1.5 rounded transition-all ${
+                bgMode === 'dark'
+                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Monitor size={13} strokeWidth={2} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Radial Ambient Spotlight" shortcut="2" side="bottom">
+            <button
+              onClick={() => onSetBgMode('radial')}
+              aria-label="Radial Ambient Spotlight"
+              className={`p-1.5 rounded transition-all ${
+                bgMode === 'radial'
+                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles size={13} strokeWidth={2} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Sub-pixel Dot Calibration Grid" shortcut="3" side="bottom">
+            <button
+              onClick={() => onSetBgMode('grid')}
+              aria-label="Sub-pixel Dot Calibration Grid"
+              className={`p-1.5 rounded transition-all ${
+                bgMode === 'grid'
+                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Grid size={13} strokeWidth={2} />
+            </button>
+          </Tooltip>
         </div>
 
-        {/* Quick Play Trigger */}
-        <button
-          onClick={onQuickPlay}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181c26] hover:bg-[#202534] border border-[#262c3e] hover:border-slate-500 text-slate-200 rounded-md text-xs font-mono transition-all shadow-sm"
-        >
-          <Play size={12} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
-          <span>Replay</span>
-        </button>
+        {/* Quick Replay Trigger */}
+        <Tooltip content="Re-trigger Animation from Start" shortcut="R" side="bottom">
+          <button
+            onClick={onQuickPlay}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181c26] hover:bg-[#202534] border border-[#262c3e] hover:border-slate-500 text-slate-200 rounded-md text-xs font-mono transition-all shadow-sm"
+          >
+            <Play size={12} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
+            <span>Replay</span>
+          </button>
+        </Tooltip>
 
         {/* Export Modal Trigger */}
-        <button
-          onClick={onOpenExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded-md text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all"
-        >
-          <Code2 size={13} strokeWidth={2.2} />
-          <span>Export Code</span>
-        </button>
+        <Tooltip content="Export Standalone SVG, CSS & React Component" shortcut="E" side="bottom">
+          <button
+            onClick={onOpenExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded-md text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all"
+          >
+            <Code2 size={13} strokeWidth={2.2} />
+            <span>Export Code</span>
+          </button>
+        </Tooltip>
       </div>
     </header>
   );
