@@ -178,6 +178,7 @@ export interface ThreeStudioConfig {
   speed: number;
   gyroEnabled: boolean;
   active2dMotionId: string;
+  workArea?: { inPoint: number; outPoint: number };
 
   // Viewport Settings
   shadingMode: ViewportShadingMode;

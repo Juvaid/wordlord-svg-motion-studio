@@ -48,6 +48,7 @@ import {
   GeometryMode, 
   BackgroundMode,
   TimelineTrack,
+  WorkArea,
   BentoConfig 
 } from './types';
 import { MotionGraphicsViewport } from './components/MotionGraphicsViewport';
@@ -118,6 +119,10 @@ export const App: React.FC = () => {
   const [studioMode, setStudioMode] = useState<'2d' | '3d' | 'motion-graphics'>('2d');
   const [is3DExportOpen, setIs3DExportOpen] = useState(false);
   const [isCustomSvgOpen, setIsCustomSvgOpen] = useState(false);
+
+  // Timeline Work Area & Keyframe Selection State
+  const [workArea, setWorkArea] = useState<WorkArea>({ inPoint: 0.0, outPoint: 1.0 });
+  const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
 
   // Motion Graphics (SaaS Notion Bento Card UI Graphic Studio) State
   const [bentoConfig, setBentoConfig] = useState<BentoConfig>({
@@ -804,6 +809,7 @@ export const App: React.FC = () => {
       label: `Mark @ ${curTime}s`
     };
 
+    pushUndoSnapshot('Add Keyframe');
     setUserTracks(prev => {
       return prev.map(t => {
         if (t.id === 'master') {
@@ -816,12 +822,56 @@ export const App: React.FC = () => {
       });
     });
 
+    setSelectedKeyframeId(newKf.id);
     playTick(soundEnabled, 900, 0.03);
     showToast(`Added Keyframe at ${curTime}s`);
-  }, [currentProgress, duration, soundEnabled, showToast]);
+  }, [currentProgress, duration, soundEnabled, showToast, pushUndoSnapshot]);
+
+  // Retime / Move Keyframe along timeline
+  const handleMoveKeyframe = useCallback((trackId: string, keyframeId: string, newTimeRatio: number) => {
+    setUserTracks(prev => prev.map(t => {
+      if (t.id === trackId) {
+        return {
+          ...t,
+          keyframes: t.keyframes.map(k => k.id === keyframeId ? { ...k, timeRatio: newTimeRatio } : k)
+        };
+      }
+      return t;
+    }));
+    seekToProgress(newTimeRatio);
+    playTick(soundEnabled, 800, 0.015);
+  }, [seekToProgress, soundEnabled]);
+
+  // Delete Selected Keyframe
+  const handleDeleteKeyframe = useCallback((keyframeId: string) => {
+    pushUndoSnapshot('Delete Keyframe');
+    setUserTracks(prev => prev.map(t => ({
+      ...t,
+      keyframes: t.keyframes.filter(k => k.id !== keyframeId)
+    })));
+    setSelectedKeyframeId(null);
+    playTick(soundEnabled, 400, 0.03);
+    showToast('Deleted Keyframe');
+  }, [pushUndoSnapshot, soundEnabled, showToast]);
+
+  // Toggle 3D Mesh Part Visibility from timeline
+  const handleToggle3DPartGroup = useCallback((groupKey: string) => {
+    setThreeParts(prev => prev.map(p => {
+      let match = false;
+      if (groupKey === 'word') match = ['W', 'O', 'R'].includes(p.name);
+      else if (groupKey === 'lord') match = ['L', 'O', 'R'].includes(p.name);
+      else if (groupKey === 'ligature') match = p.name === 'D';
+      else if (groupKey === 'media') match = ['M', 'E', 'D', 'I', 'A'].includes(p.name);
+      if (match) return { ...p, visible: !p.visible };
+      return p;
+    }));
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) return;
+
+    const inP = workArea.inPoint;
+    const outP = workArea.outPoint;
 
     const loop = (timestamp: number) => {
       if (!startTimeRef.current) {
@@ -832,15 +882,16 @@ export const App: React.FC = () => {
       const durMs = duration * 1000;
       let p = elapsed / durMs;
 
-      if (p >= 1) {
+      // Work Area Loop Boundary Constraint
+      if (p >= outP) {
         if (isLooping || playbackMode === 'loop') {
-          startTimeRef.current = timestamp;
-          p = 0;
+          startTimeRef.current = timestamp - (inP * duration * 1000 / playbackSpeed);
+          p = inP;
           playWhoosh(soundEnabled);
           restartAnimation();
         } else {
           stopPlayback();
-          seekToProgress(1, false);
+          seekToProgress(outP, false);
           return;
         }
       }
@@ -853,7 +904,7 @@ export const App: React.FC = () => {
     return () => {
       if (tlRafRef.current) cancelAnimationFrame(tlRafRef.current);
     };
-  }, [isPlaying, isLooping, playbackMode, playbackSpeed, duration, currentProgress, restartAnimation, seekToProgress, stopPlayback, soundEnabled]);
+  }, [isPlaying, isLooping, playbackMode, playbackSpeed, duration, currentProgress, restartAnimation, seekToProgress, stopPlayback, soundEnabled, workArea]);
 
   // Global Desktop Keyboard Shortcuts: Space, Cmd+Z, Cmd+Shift+Z, Cmd+S, Tab, ?, R, V, E, 1..4, Esc
   useEffect(() => {
@@ -1001,6 +1052,43 @@ export const App: React.FC = () => {
           else if (e.code === 'Digit2') setBgMode('radial');
           else if (e.code === 'Digit3') setBgMode('grid');
         }
+        return;
+      }
+
+      // Work Area Loop In-Point: [ (BracketLeft)
+      if (e.code === 'BracketLeft') {
+        e.preventDefault();
+        const curP = studioMode === '3d' 
+          ? (threeConfig.duration > 0 ? threeConfig.time / threeConfig.duration : 0) 
+          : currentProgress;
+        const newIn = Math.max(0, Math.min(curP, workArea.outPoint - 0.05));
+        setWorkArea(prev => ({ ...prev, inPoint: newIn }));
+        setThreeConfig(prev => ({ ...prev, workArea: { inPoint: newIn, outPoint: workArea.outPoint } }));
+        const dur = studioMode === '3d' ? threeConfig.duration : duration;
+        showToast(`In-Point: ${(newIn * dur).toFixed(2)}s`);
+        playTick(soundEnabled, 750, 0.02);
+        return;
+      }
+
+      // Work Area Loop Out-Point: ] (BracketRight)
+      if (e.code === 'BracketRight') {
+        e.preventDefault();
+        const curP = studioMode === '3d' 
+          ? (threeConfig.duration > 0 ? threeConfig.time / threeConfig.duration : 0) 
+          : currentProgress;
+        const newOut = Math.min(1, Math.max(curP, workArea.inPoint + 0.05));
+        setWorkArea(prev => ({ ...prev, outPoint: newOut }));
+        setThreeConfig(prev => ({ ...prev, workArea: { inPoint: workArea.inPoint, outPoint: newOut } }));
+        const dur = studioMode === '3d' ? threeConfig.duration : duration;
+        showToast(`Out-Point: ${(newOut * dur).toFixed(2)}s`);
+        playTick(soundEnabled, 750, 0.02);
+        return;
+      }
+
+      // Delete Keyframe: Del / Backspace
+      if ((e.code === 'Delete' || e.code === 'Backspace') && selectedKeyframeId) {
+        e.preventDefault();
+        handleDeleteKeyframe(selectedKeyframeId);
         return;
       }
 
@@ -1299,14 +1387,29 @@ export const App: React.FC = () => {
         title="Drag to resize Timeline height"
       />
 
-      {/* Bottom Professional Timeline (2D Multi-Track vs 3D Normalized Scrubber) */}
+      {/* Bottom Professional Multi-Track Timeline (2D Multi-Track vs 3D Sequencer) */}
       {studioMode === '3d' ? (
         <ThreeTimelineFooter
           height={timelineHeight}
           config={threeConfig}
+          parts={threeParts}
+          workArea={workArea}
+          soundEnabled={soundEnabled}
           onUpdateConfig={handleUpdateThreeConfig}
           onTogglePlay={() => setThreeConfig(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
-          onResetTime={() => setThreeConfig(prev => ({ ...prev, time: 0 }))}
+          onResetTime={() => setThreeConfig(prev => ({ ...prev, time: workArea.inPoint * prev.duration }))}
+          onStepBack={() => { setThreeConfig(prev => ({ ...prev, isPlaying: false, time: Math.max(0, prev.time - (1/60)) })); playTick(soundEnabled, 550, 0.015); }}
+          onStepForward={() => { setThreeConfig(prev => ({ ...prev, isPlaying: false, time: Math.min(threeConfig.duration, prev.time + (1/60)) })); playTick(soundEnabled, 550, 0.015); }}
+          onJumpStart={() => { setThreeConfig(prev => ({ ...prev, time: workArea.inPoint * prev.duration })); playTick(soundEnabled, 700, 0.02); }}
+          onJumpEnd={() => { setThreeConfig(prev => ({ ...prev, time: workArea.outPoint * prev.duration })); playTick(soundEnabled, 700, 0.02); }}
+          onSetWorkArea={(inP, outP) => {
+            setWorkArea({ inPoint: inP, outPoint: outP });
+            setThreeConfig(prev => ({ ...prev, workArea: { inPoint: inP, outPoint: outP } }));
+            showToast(`Work Area: [${Math.round(inP * 100)}% - ${Math.round(outP * 100)}%]`);
+          }}
+          onToggleSound={() => { setSoundEnabled(s => !s); showToast(`Audio FX: ${!soundEnabled ? 'ON' : 'MUTED'}`); }}
+          onTogglePartGroupVisibility={handleToggle3DPartGroup}
+          onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}
         />
       ) : (
         <TimelineFooter
@@ -1318,9 +1421,12 @@ export const App: React.FC = () => {
           soundEnabled={soundEnabled}
           playbackSpeed={playbackSpeed}
           tracks={tracks}
+          workArea={workArea}
+          selectedKeyframeId={selectedKeyframeId}
+          studioMode={studioMode}
           onPlayPause={handlePlayPause}
-          onJumpStart={handleResetToStart}
-          onJumpEnd={() => { stopPlayback(); seekToProgress(1); playTick(soundEnabled, 700, 0.02); }}
+          onJumpStart={() => { seekToProgress(workArea.inPoint); playTick(soundEnabled, 700, 0.02); }}
+          onJumpEnd={() => { seekToProgress(workArea.outPoint); playTick(soundEnabled, 700, 0.02); }}
           onStepBack={() => { stopPlayback(); seekToProgress(Math.max(0, currentProgress - (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
           onStepForward={() => { stopPlayback(); seekToProgress(Math.min(1, currentProgress + (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
           onToggleLoop={() => { setIsLooping(l => !l); showToast(`Loop: ${!isLooping ? 'ON' : 'OFF'}`); }}
@@ -1329,6 +1435,13 @@ export const App: React.FC = () => {
           onSeekProgress={(p) => seekToProgress(p)}
           onToggleLayerVisibility={handleToggleLayerVisibility}
           onAddKeyframe={handleAddKeyframe}
+          onDeleteKeyframe={handleDeleteKeyframe}
+          onMoveKeyframe={handleMoveKeyframe}
+          onSelectKeyframe={setSelectedKeyframeId}
+          onSetWorkArea={(inP, outP) => {
+            setWorkArea({ inPoint: inP, outPoint: outP });
+            showToast(`Work Area: [${Math.round(inP * 100)}% - ${Math.round(outP * 100)}%]`);
+          }}
           onJumpPrevKeyframe={handleJumpPrevKeyframe}
           onJumpNextKeyframe={handleJumpNextKeyframe}
           onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}

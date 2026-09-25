@@ -451,12 +451,19 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
         controlsRef.current.update();
       }
 
-      // Evaluate Motion Frame if playing
+      // Evaluate Motion Frame if playing (respecting In/Out Work Area loop bounds)
       if (config.isPlaying) {
-        const newTime = (config.time + (deltaSec * config.speed)) % config.duration;
+        const inTime = (config.workArea?.inPoint ?? 0) * config.duration;
+        const outTime = (config.workArea?.outPoint ?? 1) * config.duration;
+        let newTime = config.time + (deltaSec * config.speed);
+        if (newTime >= outTime) {
+          newTime = inTime;
+        } else if (newTime < inTime) {
+          newTime = inTime;
+        }
         onUpdateConfig({ time: newTime });
 
-        const normalizedTime = newTime / config.duration;
+        const normalizedTime = config.duration > 0 ? (newTime / config.duration) : 0;
         if (lightsRef.current) {
           evaluate3DMotion(
             logoGroupRef.current,

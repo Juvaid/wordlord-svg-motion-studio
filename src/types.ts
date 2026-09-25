@@ -55,6 +55,18 @@ export type GeometryMode = 'fill' | 'stroke' | 'hybrid';
 
 export type BackgroundMode = 'dark' | 'radial' | 'grid' | 'checker';
 
+export interface WorkArea {
+  inPoint: number; // 0.0 to 1.0
+  outPoint: number; // 0.0 to 1.0
+}
+
+export interface TimelineKeyframe {
+  id: string;
+  timeRatio: number;
+  label: string;
+  value?: any;
+}
+
 export interface TimelineTrack {
   id: string;
   name: string;
@@ -64,11 +76,7 @@ export interface TimelineTrack {
   locked: boolean;
   startRatio: number;
   widthRatio: number;
-  keyframes: Array<{
-    id: string;
-    timeRatio: number;
-    label: string;
-  }>;
+  keyframes: TimelineKeyframe[];
 }
 
 export interface StudioState {

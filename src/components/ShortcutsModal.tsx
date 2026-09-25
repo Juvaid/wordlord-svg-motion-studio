@@ -26,15 +26,19 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({
       ]
     },
     {
-      title: '2D Motion & Timeline',
+      title: 'Timeline & Sequencer (All Workspaces)',
       items: [
-        { keys: ['R'], action: 'Replay Animation from 0:00' },
-        { keys: ['Home'], action: 'Jump to Sequence Start (0.00s)' },
-        { keys: ['End'], action: 'Jump to Sequence End (1.00s)' },
-        { keys: ['←', '→'], action: 'Step Backward / Forward 1 Frame' },
+        { keys: ['Space'], action: 'Play / Pause Sequence' },
+        { keys: ['['], action: 'Set Work Area In-Point' },
+        { keys: [']'], action: 'Set Work Area Out-Point' },
         { keys: ['K'], action: 'Insert Keyframe at Playhead' },
-        { keys: ['[', ']'], action: 'Jump to Prev / Next Keyframe' },
-        { keys: ['1', '2', '3'], action: 'Switch Dark / Radial / Grid Stage' }
+        { keys: ['Del'], action: 'Delete Selected Keyframe' },
+        { keys: ['J'], action: 'Jump to Previous Keyframe / Phase' },
+        { keys: ['Shift', 'J'], action: 'Jump to Next Keyframe / Phase' },
+        { keys: ['←', '→'], action: 'Step Backward / Forward 1 Frame' },
+        { keys: ['Home', 'End'], action: 'Jump to In-Point / Out-Point' },
+        { keys: ['L'], action: 'Toggle Loop Mode' },
+        { keys: ['M'], action: 'Toggle Audio Clicks' }
       ]
     },
     {
