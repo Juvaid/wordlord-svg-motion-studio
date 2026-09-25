@@ -29,7 +29,8 @@ export type ThreeMotionMode =
   | 'wave' 
   | 'sweep' 
   | 'explode' 
-  | 'camera';
+  | 'camera'
+  | 'sync2d';
 
 export type PbrPresetId = 
   | 'crimson' 
@@ -46,6 +47,23 @@ export type LightingRigId =
   | 'luxury' 
   | 'noir';
 
+export type EnvironmentScenePreset = 
+  | 'studio'
+  | 'radial'
+  | 'cyber'
+  | 'luxury'
+  | 'obsidian'
+  | 'transparent';
+
+export interface StackedEffectsConfig {
+  hoverFloat: boolean;
+  turntableSpin: boolean;
+  harmonicWave: boolean;
+  lightSweep: boolean;
+  gyroTilt: boolean;
+  sync2dMotion: boolean;
+}
+
 export interface ThreeStudioConfig {
   // Geometry
   depth: number;
@@ -54,6 +72,28 @@ export interface ThreeStudioConfig {
   bevelSegments: number;
   meshScale: number;
   autoCenter: boolean;
+
+  // Object Transform (Blender style Position, Rotation, Scale)
+  posX: number;
+  posY: number;
+  posZ: number;
+  rotX: number; // degrees
+  rotY: number; // degrees
+  rotZ: number; // degrees
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+
+  // Camera Settings
+  fov: number; // 25 to 90 degrees
+  cameraDistance: number;
+
+  // Environment & Scene Settings
+  envPreset: EnvironmentScenePreset;
+  fogDensity: number;
+  floorRoughness: number;
+  floorMetalness: number;
+  gridColor: string;
 
   // Surface Material
   faceColor: string;
@@ -86,12 +126,14 @@ export interface ThreeStudioConfig {
 
   // Motion & Animation
   motionMode: ThreeMotionMode;
+  stackedEffects: StackedEffectsConfig;
   isPlaying: boolean;
   amplitude: number;
   time: number;
   duration: number;
   speed: number;
   gyroEnabled: boolean;
+  active2dMotionId: string;
 
   // Viewport Settings
   shadingMode: ViewportShadingMode;

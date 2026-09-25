@@ -49,6 +49,7 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
   const isNarrow = width < 255;
 
   const motionList: { id: ThreeMotionMode; name: string; desc: string; icon: any }[] = [
+    { id: 'sync2d', name: '2D Motion Synced', desc: `Syncs with active 2D preset (${config.active2dMotionId || 'Typewriter'})`, icon: Layers },
     { id: 'reveal', name: '3D Reveal Spring', desc: 'Cascade drop overshoot with multi-part settling', icon: Flame },
     { id: 'turntable', name: 'Turntable 360°', desc: 'Smooth continuous luxury turntable rotation', icon: RotateCw },
     { id: 'wave', name: 'Sinusoidal Wave', desc: 'Harmonic undulating wave across all glyphs', icon: Activity },

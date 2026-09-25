@@ -8,6 +8,11 @@ import {
   Sliders, 
   RotateCcw, 
   Layers, 
+  Move, 
+  Maximize2, 
+  Camera, 
+  Globe, 
+  Zap, 
   ChevronDown, 
   ChevronUp 
 } from 'lucide-react';
@@ -16,7 +21,11 @@ import {
   SliderField, 
   ColorSwatchField 
 } from './inspector';
-import { ThreeStudioConfig, ThreePart } from '../types/threeStudio';
+import { 
+  ThreeStudioConfig, 
+  ThreePart, 
+  EnvironmentScenePreset 
+} from '../types/threeStudio';
 
 interface ThreeRightInspectorProps {
   width: number;
@@ -25,6 +34,7 @@ interface ThreeRightInspectorProps {
   onUpdateConfig: (partial: Partial<ThreeStudioConfig>) => void;
   onUpdatePart: (index: number, partial: Partial<ThreePart>) => void;
   onResetParts: () => void;
+  onResetTransforms: () => void;
 }
 
 export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
@@ -33,9 +43,36 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   parts,
   onUpdateConfig,
   onUpdatePart,
-  onResetParts
+  onResetParts,
+  onResetTransforms
 }) => {
   const [expandedPartIdx, setExpandedPartIdx] = useState<number | null>(null);
+
+  const envOptions: { id: EnvironmentScenePreset; label: string }[] = [
+    { id: 'studio', label: 'Studio Dark' },
+    { id: 'radial', label: 'Spotlight' },
+    { id: 'cyber', label: 'Cyber Void' },
+    { id: 'luxury', label: 'Sunset' },
+    { id: 'obsidian', label: 'OLED Black' },
+    { id: 'transparent', label: 'Alpha Trans' }
+  ];
+
+  const handleToggleStackEffect = (key: keyof typeof config.stackedEffects) => {
+    const current = config.stackedEffects || {
+      hoverFloat: false,
+      turntableSpin: false,
+      harmonicWave: false,
+      lightSweep: false,
+      gyroTilt: true,
+      sync2dMotion: false
+    };
+    onUpdateConfig({
+      stackedEffects: {
+        ...current,
+        [key]: !current[key]
+      }
+    });
+  };
 
   return (
     <aside 
@@ -49,18 +86,232 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           <span>3D Properties & PBR</span>
         </div>
         <button
-          onClick={onResetParts}
-          title="Reset Geometry & Parts"
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          onClick={onResetTransforms}
+          title="Reset Blender Transforms (Alt+G / Alt+R)"
+          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono"
         >
-          <RotateCcw size={12} />
+          <RotateCcw size={11} />
+          <span>Reset</span>
         </button>
       </div>
 
       {/* Inspector Scroll Area */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 custom-scrollbar">
         
-        {/* SECTION 1: EXTRUSION & BEVEL */}
+        {/* SECTION 1: BLENDER OBJECT TRANSFORMS (Position, Rotation, Scale) */}
+        <InspectorSection id="3d-transforms" title="Object Transform (Blender N-Panel)" icon={<Move size={12} className="text-[#ff4e2e]" />}>
+          {/* Location / Position */}
+          <div className="flex flex-col gap-1.5 pb-1 border-b border-white/5">
+            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+              Location / Position (X, Y, Z)
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              <SliderField
+                label="Pos X"
+                value={config.posX || 0}
+                min={-200}
+                max={200}
+                step={2}
+                unit="px"
+                onChange={(val) => onUpdateConfig({ posX: val })}
+              />
+              <SliderField
+                label="Pos Y"
+                value={config.posY || 0}
+                min={-200}
+                max={200}
+                step={2}
+                unit="px"
+                onChange={(val) => onUpdateConfig({ posY: val })}
+              />
+              <SliderField
+                label="Pos Z"
+                value={config.posZ || 0}
+                min={-200}
+                max={200}
+                step={2}
+                unit="px"
+                onChange={(val) => onUpdateConfig({ posZ: val })}
+              />
+            </div>
+          </div>
+
+          {/* Rotation / Angle */}
+          <div className="flex flex-col gap-1.5 pb-1 border-b border-white/5">
+            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+              Rotation / Angle (X, Y, Z)
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              <SliderField
+                label="Rot X"
+                value={config.rotX || 0}
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ rotX: val })}
+              />
+              <SliderField
+                label="Rot Y"
+                value={config.rotY || 0}
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ rotY: val })}
+              />
+              <SliderField
+                label="Rot Z"
+                value={config.rotZ || 0}
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ rotZ: val })}
+              />
+            </div>
+          </div>
+
+          {/* Scale */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+              Scale Dimensions (X, Y, Z)
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              <SliderField
+                label="Scale X"
+                value={config.scaleX || 1.0}
+                min={0.2}
+                max={3.0}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ scaleX: val })}
+              />
+              <SliderField
+                label="Scale Y"
+                value={config.scaleY || 1.0}
+                min={0.2}
+                max={3.0}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ scaleY: val })}
+              />
+              <SliderField
+                label="Scale Z"
+                value={config.scaleZ || 1.0}
+                min={0.2}
+                max={3.0}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ scaleZ: val })}
+              />
+            </div>
+          </div>
+        </InspectorSection>
+
+        {/* SECTION 2: EFFECT STACKING & 2D MOTION SYNCHRONIZER */}
+        <InspectorSection id="3d-effect-stack" title="Effect Stacking & 2D Keyframe Sync" icon={<Zap size={12} className="text-[#ff4e2e]" />}>
+          <div className="flex flex-col gap-1.5">
+            {[
+              { key: 'sync2dMotion' as const, label: 'Sync 2D Motion Keyframes', desc: 'Applies active 2D motion preset timing & ease' },
+              { key: 'turntableSpin' as const, label: 'Turntable 360° Luxury Spin', desc: 'Continuous smooth orbital turntable rotation' },
+              { key: 'harmonicWave' as const, label: 'Harmonic Sinusoidal Wave', desc: 'Phase-offset undulating wave across glyphs' },
+              { key: 'hoverFloat' as const, label: 'Organic Hover Float', desc: 'Natural vertical breathing buoyancy' },
+              { key: 'lightSweep' as const, label: 'Orbiting Light Sweep', desc: 'Dynamic rotating key & rim specular glints' },
+              { key: 'gyroTilt' as const, label: 'Cursor Gyro Tilt Tracking', desc: 'Perspective tilts towards mouse cursor' }
+            ].map(eff => {
+              const active = config.stackedEffects ? config.stackedEffects[eff.key] : false;
+              return (
+                <button
+                  key={eff.key}
+                  type="button"
+                  onClick={() => handleToggleStackEffect(eff.key)}
+                  className={`flex flex-col p-2 rounded-lg border text-left transition-all ${
+                    active
+                      ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] shadow-sm'
+                      : 'bg-[#121520] border-[#222736] hover:border-slate-500'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className={`text-[10.5px] font-bold ${active ? 'text-white' : 'text-slate-300'}`}>
+                      {eff.label}
+                    </span>
+                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${active ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-500'}`}>
+                      {active ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <span className="text-[8.5px] text-slate-400 mt-0.5">
+                    {eff.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </InspectorSection>
+
+        {/* SECTION 3: ENVIRONMENT & BACKGROUND (Blender World) */}
+        <InspectorSection id="3d-environment" title="Environment & Scene Backdrop" icon={<Globe size={12} className="text-[#ff4e2e]" />}>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+              Atmospheric Preset
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {envOptions.map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => onUpdateConfig({ envPreset: opt.id })}
+                  className={`py-1.5 px-1 rounded text-center border text-[9.5px] font-mono transition-colors truncate ${
+                    config.envPreset === opt.id
+                      ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
+                      : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <SliderField
+              label="Floor Roughness"
+              value={config.floorRoughness || 0.65}
+              min={0.05}
+              max={1.0}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ floorRoughness: val })}
+            />
+            <SliderField
+              label="Floor Metalness"
+              value={config.floorMetalness || 0.35}
+              min={0.0}
+              max={1.0}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ floorMetalness: val })}
+            />
+          </div>
+        </InspectorSection>
+
+        {/* SECTION 4: CAMERA OPTICS (FOV & Distance) */}
+        <InspectorSection id="3d-camera" title="Camera Optics (Blender Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />}>
+          <SliderField
+            label="Field of View (FOV)"
+            value={config.fov || 45}
+            min={20}
+            max={85}
+            step={1}
+            unit="°"
+            onChange={(val) => onUpdateConfig({ fov: val })}
+          />
+          <SliderField
+            label="Camera Distance"
+            value={config.cameraDistance || 420}
+            min={180}
+            max={850}
+            step={10}
+            unit="px"
+            onChange={(val) => onUpdateConfig({ cameraDistance: val })}
+          />
+        </InspectorSection>
+
+        {/* SECTION 5: EXTRUSION & BEVEL */}
         <InspectorSection id="3d-geometry" title="Extrusion & Bevel Geometry" icon={<Box size={12} className="text-[#ff4e2e]" />}>
           <SliderField
             label="Extrude Depth"
@@ -98,7 +349,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ bevelSegments: val })}
           />
           <SliderField
-            label="Viewport Mesh Scale"
+            label="Master Mesh Scale"
             value={config.meshScale}
             min={0.5}
             max={2.0}
@@ -107,7 +358,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           />
         </InspectorSection>
 
-        {/* SECTION 2: PBR SURFACE MATERIALS */}
+        {/* SECTION 6: PBR SURFACE MATERIALS */}
         <InspectorSection id="3d-pbr" title="PBR Surface & Fluting" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
           <div className="grid grid-cols-2 gap-2">
             <ColorSwatchField
@@ -181,7 +432,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           )}
         </InspectorSection>
 
-        {/* SECTION 3: STUDIO LIGHTING */}
+        {/* SECTION 7: STUDIO LIGHTING */}
         <InspectorSection id="3d-lighting" title="Studio Lighting Rig" icon={<Sun size={12} className="text-[#ff4e2e]" />}>
           <div className="grid grid-cols-2 gap-2">
             <ColorSwatchField
@@ -246,7 +497,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
         </InspectorSection>
 
-        {/* SECTION 4: UNREAL BLOOM OPTICS */}
+        {/* SECTION 8: UNREAL BLOOM OPTICS */}
         <InspectorSection id="3d-bloom" title="Unreal Bloom Post-Processing" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
           <div className="flex items-center justify-between">
             <span className="text-[10.5px] font-mono text-slate-300">Glow Bloom Engine</span>
@@ -292,7 +543,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           )}
         </InspectorSection>
 
-        {/* SECTION 5: MULTI-PART / LETTERS INSPECTOR */}
+        {/* SECTION 9: MULTI-PART / LETTERS INSPECTOR */}
         <InspectorSection id="3d-parts" title={`Parts Breakdown (${parts.length} Glyphs)`} icon={<Layers size={12} className="text-[#ff4e2e]" />}>
           <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
             {parts.map((part, pIdx) => {

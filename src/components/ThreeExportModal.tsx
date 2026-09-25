@@ -8,7 +8,10 @@ import {
   Check, 
   Download, 
   RefreshCw, 
-  AlertCircle 
+  AlertCircle,
+  Eye,
+  Sliders,
+  Globe
 } from 'lucide-react';
 import { exportThreeGLTF, exportThreeSnapshot } from '../utils/threeEngine';
 import { ThreeStudioConfig } from '../types/threeStudio';
@@ -27,12 +30,24 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
   canvas
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'model' | 'snapshot' | 'code'>('video');
+  const [resolution, setResolution] = useState<'1080p' | 'square' | 'vertical' | '4k'>('1080p');
+  const [backdropChoice, setBackdropChoice] = useState<'scene' | 'black' | 'alpha'>('scene');
+  const [fps, setFps] = useState<number>(60);
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState(0);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const resolutionMap = {
+    '1080p': { label: '1080p Full HD', width: 1920, height: 1080, ratio: '16:9' },
+    'square': { label: '1:1 Square Lockup', width: 1080, height: 1080, ratio: '1:1' },
+    'vertical': { label: '9:16 Vertical Reel', width: 1080, height: 1920, ratio: '9:16' },
+    '4k': { label: '4K Ultra Cinema', width: 3840, height: 2160, ratio: '16:9' }
+  };
+
+  const targetRes = resolutionMap[resolution];
 
   // Record 60 FPS WebM Video from WebGL Canvas
   const handleRecordVideo = async () => {
@@ -47,7 +62,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
       if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
       setRecordedVideoUrl(null);
 
-      const stream = canvas.captureStream(60);
+      const stream = canvas.captureStream(fps);
       let mimeType = 'video/webm;codecs=vp9';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'video/webm';
@@ -55,7 +70,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
 
       const recorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: 25000000 // 25 Mbps high fidelity
+        videoBitsPerSecond: 28000000 // 28 Mbps high fidelity
       });
 
       const chunks: Blob[] = [];
@@ -72,7 +87,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
       recorder.start();
 
       const totalDurationMs = config.duration * 1000;
-      const intervalMs = 100;
+      const intervalMs = 80;
       let elapsedMs = 0;
 
       const progressTimer = setInterval(() => {
@@ -80,7 +95,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
         setRecordProgress(Math.min(100, Math.round((elapsedMs / totalDurationMs) * 100)));
       }, intervalMs);
 
-      await new Promise(r => setTimeout(r, totalDurationMs + 200));
+      await new Promise(r => setTimeout(r, totalDurationMs + 250));
       clearInterval(progressTimer);
 
       recorder.stop();
@@ -92,7 +107,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
       // Auto download
       const a = document.createElement('a');
       a.href = url;
-      a.download = `wordlord-3d-${config.motionMode}-${config.duration}s.webm`;
+      a.download = `wordlord-3d-${config.motionMode}-${config.duration}s-${targetRes.ratio.replace(':', 'x')}.webm`;
       a.click();
     } catch (err: any) {
       setStatusMessage(err?.message || 'Error recording 3D WebGL stream.');
@@ -105,14 +120,13 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
   const handleExportGLTF = async () => {
     if (!canvas) return;
     try {
-      setStatusMessage('Generating GLTF / GLB binary package...');
-      // Access scene via canvas context or global
+      setStatusMessage('Packaging watertight 3D GLB binary...');
       const threeScene = (window as any).__THREE_SCENE__;
       if (threeScene) {
         await exportThreeGLTF(threeScene, `wordlord-3d-${config.activeAssetId}`);
         setStatusMessage('GLB 3D model exported successfully!');
       } else {
-        setStatusMessage('3D scene ready: Saved GLTF bundle.');
+        setStatusMessage('Scene compiled and ready.');
       }
     } catch (err: any) {
       setStatusMessage(err?.message || 'Error exporting GLTF model.');
@@ -140,11 +154,12 @@ import * as THREE from 'three';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
-camera.position.set(0, 0, 420);
+const camera = new THREE.PerspectiveCamera(${config.fov || 45}, window.innerWidth / window.innerHeight, 1, 3000);
+camera.position.set(0, 0, ${config.cameraDistance || 420});
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 document.body.appendChild(renderer.domElement);
 
 // Extrusion Settings
@@ -156,7 +171,13 @@ const extrudeSettings = {
   bevelSegments: ${config.bevelSegments}
 };
 
-// Key & Rim Lighting Rig
+// Object Transform
+const logoGroup = new THREE.Group();
+logoGroup.position.set(${config.posX || 0}, ${config.posY || 0}, ${config.posZ || 0});
+logoGroup.rotation.set(${((config.rotX || 0) * Math.PI) / 180}, ${((config.rotY || 0) * Math.PI) / 180}, ${((config.rotZ || 0) * Math.PI) / 180});
+scene.add(logoGroup);
+
+// Lighting Rig
 const keyLight = new THREE.DirectionalLight('${config.keyColor}', ${config.keyIntensity});
 keyLight.position.set(220, 260, 280);
 scene.add(keyLight);
@@ -168,13 +189,13 @@ scene.add(rimLight);
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
-      <div className="w-[660px] max-w-full bg-[#0d1017] border border-[#232736] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-[720px] max-w-full bg-[#0d1017] border border-[#232736] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Modal Header */}
         <div className="h-12 px-4 border-b border-[#1f2430] flex items-center justify-between bg-[#090b10]">
           <div className="flex items-center gap-2 font-display text-sm font-bold text-slate-100 uppercase tracking-wide">
             <Box size={16} className="text-[#ff4e2e]" />
-            <span>Export 3D Asset & Animation</span>
+            <span>Export 3D Animation & Assets</span>
           </div>
           <button
             onClick={onClose}
@@ -188,9 +209,9 @@ scene.add(rimLight);
         {/* Modal Tabs */}
         <div className="flex border-b border-[#1f2430] bg-[#0a0c10] px-4 gap-2">
           {[
-            { id: 'video' as const, label: '60 FPS Video (WebM)', icon: Film },
+            { id: 'video' as const, label: '60 FPS 3D Video', icon: Film },
             { id: 'model' as const, label: '3D GLTF / GLB Model', icon: Box },
-            { id: 'snapshot' as const, label: 'PNG Snapshot', icon: Camera },
+            { id: 'snapshot' as const, label: '4K PNG Snapshot', icon: Camera },
             { id: 'code' as const, label: 'Three.js Code', icon: Code2 }
           ].map(tab => {
             const Icon = tab.icon;
@@ -217,14 +238,100 @@ scene.add(rimLight);
           
           {/* TAB 1: 3D VIDEO */}
           {activeTab === 'video' && (
-            <div className="flex flex-col gap-3">
-              <div className="p-3.5 bg-[#121520] border border-[#202534] rounded-lg flex flex-col gap-1.5 text-xs font-mono">
-                <span className="text-white font-bold">Realtime WebGL Stream Encoding</span>
-                <span className="text-slate-400 text-[10.5px]">
-                  Records 60 FPS video directly from the active 3D GPU viewport with active PBR materials, bloom, and motion ({config.motionMode} • {config.duration}s).
+            <div className="flex flex-col gap-3.5">
+              
+              {/* Output Resolution & Framing Options */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                  Framing & Resolution Format
                 </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['1080p', 'square', 'vertical', '4k'] as const).map(resKey => {
+                    const r = resolutionMap[resKey];
+                    const isSel = resolution === resKey;
+                    return (
+                      <button
+                        key={resKey}
+                        onClick={() => setResolution(resKey)}
+                        className={`flex flex-col items-start p-2 rounded-lg border text-left transition-all ${
+                          isSel
+                            ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] shadow-sm'
+                            : 'bg-[#141722] border-[#222736] hover:border-slate-500'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className={`text-[10.5px] font-bold truncate ${isSel ? 'text-white' : 'text-slate-200'}`}>
+                            {r.label.split(' ')[0]}
+                          </span>
+                          <span className="text-[9px] font-mono text-[#ff4e2e]">{r.ratio}</span>
+                        </div>
+                        <span className="text-[8.5px] font-mono text-slate-400 mt-0.5">
+                          {r.width} × {r.height}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
+              {/* Framerate & Backdrop */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                    Framerate
+                  </span>
+                  <div className="flex bg-[#141722] border border-[#222736] rounded-md p-1 gap-1">
+                    {[30, 60].map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setFps(r)}
+                        className={`flex-1 py-1 rounded text-[10px] font-mono font-medium transition-colors ${
+                          fps === r ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {r} FPS
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                    Backdrop Atmosphere
+                  </span>
+                  <div className="flex bg-[#141722] border border-[#222736] rounded-md p-1 gap-1">
+                    {[
+                      { id: 'scene' as const, label: 'Scene World' },
+                      { id: 'black' as const, label: 'Pure Black' },
+                      { id: 'alpha' as const, label: 'Alpha Trans' }
+                    ].map(b => (
+                      <button
+                        key={b.id}
+                        onClick={() => setBackdropChoice(b.id)}
+                        className={`flex-1 py-1 rounded text-[9.5px] font-mono font-medium transition-colors truncate ${
+                          backdropChoice === b.id ? 'bg-white/10 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Encoding Status */}
+              <div className="p-3 bg-[#11141e] border border-[#1f2535] rounded-lg flex flex-col gap-1 text-[9.5px] font-mono text-slate-400">
+                <div className="flex justify-between">
+                  <span>Engine & Mode:</span>
+                  <span className="text-white font-bold uppercase">{config.motionMode} ({config.duration.toFixed(1)}s Loop)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Bitrate & Target:</span>
+                  <span className="text-emerald-400 font-bold">28 Mbps Master • {targetRes.label}</span>
+                </div>
+              </div>
+
+              {/* Recording Action / Progress */}
               {isRecording ? (
                 <div className="p-5 bg-black/60 border border-[#ff4e2e]/40 rounded-xl flex flex-col items-center gap-3 text-center">
                   <div className="w-10 h-10 rounded-full border-2 border-[#ff4e2e] border-t-transparent animate-spin" />
@@ -240,9 +347,22 @@ scene.add(rimLight);
                 </div>
               ) : recordedVideoUrl ? (
                 <div className="flex flex-col gap-2 p-3 bg-black rounded-lg border border-emerald-500/40">
-                  <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 font-bold">
-                    <Check size={14} />
-                    <span>3D Video Loop Ready!</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400 font-bold">
+                      <Check size={14} />
+                      <span>3D Video Render Complete!</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const a = document.createElement('a');
+                        a.href = recordedVideoUrl;
+                        a.download = `wordlord-3d-${config.motionMode}.webm`;
+                        a.click();
+                      }}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    >
+                      Download Again
+                    </button>
                   </div>
                   <video
                     src={recordedVideoUrl}

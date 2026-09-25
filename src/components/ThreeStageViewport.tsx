@@ -1,32 +1,27 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { 
-  Eye, 
   RotateCcw, 
   Grid, 
   Sun, 
   Sparkles, 
   Box, 
   Compass, 
-  Layers, 
-  Maximize2,
-  Crosshair
+  Maximize2
 } from 'lucide-react';
 import { 
   ThreeStudioConfig, 
   ThreePart, 
-  ViewportShadingMode, 
   CameraAnglePreset 
 } from '../types/threeStudio';
 import { 
   generateFlutedTexture, 
   buildExtrudedParts, 
-  evaluate3DMotion, 
-  resetMeshesToOrigin 
+  evaluate3DMotion 
 } from '../utils/threeEngine';
 
 interface ThreeStageViewportProps {
@@ -62,15 +57,12 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     rimLight: THREE.DirectionalLight;
     fillLight: THREE.DirectionalLight;
     ambientLight: THREE.AmbientLight;
-    keyHelper?: THREE.DirectionalLightHelper;
-    rimHelper?: THREE.DirectionalLightHelper;
   } | null>(null);
   const floorRef = useRef<{ mesh: THREE.Mesh; grid: THREE.GridHelper } | null>(null);
   const flutedTextureRef = useRef<THREE.Texture | null>(null);
 
   const [polyCount, setPolyCount] = useState<number>(0);
   const [fps, setFps] = useState<number>(60);
-  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
   const mouseGyroRef = useRef<{ x: number; y: number; targetX: number; targetY: number }>({
     x: 0,
     y: 0,
@@ -82,20 +74,17 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
 
-    const width = containerRef.current.clientWidth || 800;
-    const height = containerRef.current.clientHeight || 600;
+    // Fail-safe dimensions (never allow 0 to prevent WebGL zero-size framebuffer crash)
+    const width = Math.max(128, containerRef.current.clientWidth || 800);
+    const height = Math.max(128, containerRef.current.clientHeight || 600);
 
     // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(config.transparentBg ? 0x000000 : 0x0b0e14);
-    if (!config.transparentBg) {
-      scene.fog = new THREE.FogExp2(0x0b0e14, 0.0016);
-    }
     sceneRef.current = scene;
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
-    camera.position.set(0, 0, 420);
+    // Camera (with FOV from config)
+    const camera = new THREE.PerspectiveCamera(config.fov || 45, width / height, 1, 3500);
+    camera.position.set(0, 0, config.cameraDistance || 420);
     cameraRef.current = camera;
 
     // WebGL Renderer
@@ -111,15 +100,15 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.15;
     rendererRef.current = renderer;
 
     // Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxDistance = 1200;
-    controls.minDistance = 80;
+    controls.dampingFactor = 0.06;
+    controls.maxDistance = 1400;
+    controls.minDistance = 60;
     controlsRef.current = controls;
 
     // Lighting Setup
@@ -132,7 +121,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     keyLight.shadow.mapSize.width = 2048;
     keyLight.shadow.mapSize.height = 2048;
     keyLight.shadow.camera.near = 50;
-    keyLight.shadow.camera.far = 1000;
+    keyLight.shadow.camera.far = 1200;
     keyLight.shadow.bias = -0.0005;
     scene.add(keyLight);
 
@@ -147,11 +136,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     lightsRef.current = { keyLight, rimLight, fillLight, ambientLight };
 
     // Floor Mesh & Grid
-    const floorGeo = new THREE.PlaneGeometry(1600, 1600);
+    const floorGeo = new THREE.PlaneGeometry(2000, 2000);
     const floorMat = new THREE.MeshStandardMaterial({
       color: 0x090b10,
-      roughness: 0.65,
-      metalness: 0.35
+      roughness: config.floorRoughness || 0.65,
+      metalness: config.floorMetalness || 0.35
     });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
@@ -159,7 +148,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    const floorGrid = new THREE.GridHelper(1600, 60, 0xff4e2e, 0x1e2433);
+    const floorGrid = new THREE.GridHelper(2000, 60, 0xff4e2e, 0x1e2433);
     floorGrid.position.y = -139.8;
     scene.add(floorGrid);
 
@@ -186,11 +175,13 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     composerRef.current = composer;
     bloomPassRef.current = bloomPass;
 
-    // Handle Resize
+    // Handle Resize (with zero-size protection)
     const handleResize = () => {
       if (!containerRef.current || !cameraRef.current || !rendererRef.current || !composerRef.current) return;
       const w = containerRef.current.clientWidth;
       const h = containerRef.current.clientHeight;
+      if (w < 10 || h < 10) return; // Prevent zero-size framebuffer crash
+
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
@@ -199,6 +190,14 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(containerRef.current);
+
+    // Initial render tick to guarantee immediate visibility
+    requestAnimationFrame(() => {
+      handleResize();
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    });
 
     return () => {
       resizeObserver.disconnect();
@@ -228,9 +227,68 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       }
     });
     setPolyCount(totalTriangles);
-  }, [parts, config.depth, config.bevelThickness, config.bevelSize, config.bevelSegments, config.meshScale, config.faceColor, config.sideColor, config.roughness, config.metalness, config.clearcoat, config.transmission, config.flutingEnabled, config.fluteScale]);
+  }, [
+    parts, 
+    config.depth, 
+    config.bevelThickness, 
+    config.bevelSize, 
+    config.bevelSegments, 
+    config.meshScale, 
+    config.autoCenter,
+    config.posX,
+    config.posY,
+    config.posZ,
+    config.rotX,
+    config.rotY,
+    config.rotZ,
+    config.scaleX,
+    config.scaleY,
+    config.scaleZ,
+    config.faceColor, 
+    config.sideColor, 
+    config.roughness, 
+    config.metalness, 
+    config.clearcoat, 
+    config.transmission, 
+    config.flutingEnabled, 
+    config.fluteScale
+  ]);
 
-  // 3. Update Lights & Bloom Settings
+  // 3. Update Environment, Fog & Background
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const scene = sceneRef.current;
+
+    switch (config.envPreset) {
+      case 'transparent':
+        scene.background = null;
+        scene.fog = null;
+        break;
+      case 'obsidian':
+        scene.background = new THREE.Color(0x000000);
+        scene.fog = null;
+        break;
+      case 'cyber':
+        scene.background = new THREE.Color(0x050711);
+        scene.fog = new THREE.FogExp2(0x050711, 0.002);
+        break;
+      case 'luxury':
+        scene.background = new THREE.Color(0x18120c);
+        scene.fog = new THREE.FogExp2(0x18120c, 0.0018);
+        break;
+      case 'radial':
+        scene.background = new THREE.Color(0x0d121c);
+        scene.fog = new THREE.FogExp2(0x0d121c, 0.0015);
+        break;
+      case 'studio':
+      default:
+        scene.background = new THREE.Color(0x0b0e14);
+        scene.fog = new THREE.FogExp2(0x0b0e14, 0.0016);
+        break;
+    }
+  }, [config.envPreset]);
+
+  // 4. Update Lights & Bloom Settings
   useEffect(() => {
     if (!lightsRef.current) return;
     const { keyLight, rimLight, fillLight, ambientLight } = lightsRef.current;
@@ -247,8 +305,8 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     ambientLight.intensity = config.ambientIntensity;
 
     if (floorRef.current) {
-      floorRef.current.mesh.visible = config.showFloor;
-      floorRef.current.grid.visible = config.showFloor;
+      floorRef.current.mesh.visible = config.showFloor && config.envPreset !== 'transparent';
+      floorRef.current.grid.visible = config.showFloor && config.envPreset !== 'transparent';
     }
 
     if (bloomPassRef.current) {
@@ -257,35 +315,56 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       bloomPassRef.current.radius = config.bloomRadius;
       bloomPassRef.current.threshold = config.bloomThreshold;
     }
-  }, [config.keyColor, config.keyIntensity, config.rimColor, config.rimIntensity, config.fillColor, config.fillIntensity, config.ambientIntensity, config.showFloor, config.bloomEnabled, config.bloomStrength, config.bloomRadius, config.bloomThreshold, config.shadingMode]);
 
-  // 4. Update Viewport Shading Mode (Solid / Wireframe / PBR / Bloom)
+    if (cameraRef.current && config.fov) {
+      cameraRef.current.fov = config.fov;
+      cameraRef.current.updateProjectionMatrix();
+    }
+  }, [
+    config.keyColor, 
+    config.keyIntensity, 
+    config.rimColor, 
+    config.rimIntensity, 
+    config.fillColor, 
+    config.fillIntensity, 
+    config.ambientIntensity, 
+    config.showFloor, 
+    config.envPreset, 
+    config.bloomEnabled, 
+    config.bloomStrength, 
+    config.bloomRadius, 
+    config.bloomThreshold, 
+    config.shadingMode,
+    config.fov
+  ]);
+
+  // 5. Update Viewport Shading Mode (Solid / Wireframe / PBR / Bloom)
   useEffect(() => {
     meshesRef.current.forEach(mesh => {
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       materials.forEach(mat => {
         if (!mat) return;
-        if (config.shadingMode === 'wireframe') {
-          (mat as any).wireframe = true;
-        } else {
-          (mat as any).wireframe = false;
-        }
+        (mat as any).wireframe = config.shadingMode === 'wireframe';
       });
     });
   }, [config.shadingMode]);
 
-  // 5. Main Animation & Render Loop
+  // 6. High-Performance Render Loop (zero deprecated THREE.Clock warnings)
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
     let frameCount = 0;
+    let lastFrameTime = performance.now();
 
     const renderLoop = () => {
       animId = requestAnimationFrame(renderLoop);
 
+      const now = performance.now();
+      const deltaSec = Math.min(0.1, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+
       // FPS tracking
       frameCount++;
-      const now = performance.now();
       if (now - lastTime >= 1000) {
         setFps(frameCount);
         frameCount = 0;
@@ -303,8 +382,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
       // Evaluate Motion Frame if playing
       if (config.isPlaying) {
-        const delta = clockRef.current.getDelta();
-        const newTime = (config.time + (delta * config.speed)) % config.duration;
+        const newTime = (config.time + (deltaSec * config.speed)) % config.duration;
         onUpdateConfig({ time: newTime });
 
         const normalizedTime = newTime / config.duration;
@@ -336,7 +414,17 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [config.isPlaying, config.speed, config.duration, config.motionMode, config.amplitude, config.shadingMode, config.bloomEnabled, parts]);
+  }, [
+    config.isPlaying, 
+    config.speed, 
+    config.duration, 
+    config.motionMode, 
+    config.amplitude, 
+    config.shadingMode, 
+    config.bloomEnabled, 
+    config.stackedEffects,
+    parts
+  ]);
 
   // Pointer move for Gyro Cursor Reaction
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -348,14 +436,14 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     mouseGyroRef.current.targetY = y;
   };
 
-  // Camera presets
+  // Camera angle presets
   const handleSetCameraPreset = (preset: CameraAnglePreset) => {
     if (!cameraRef.current || !controlsRef.current) return;
     onUpdateConfig({ cameraPreset: preset });
 
     switch (preset) {
       case 'front':
-        cameraRef.current.position.set(0, 0, 420);
+        cameraRef.current.position.set(0, 0, config.cameraDistance || 420);
         break;
       case 'iso':
         cameraRef.current.position.set(240, 180, 300);

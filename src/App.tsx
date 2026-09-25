@@ -115,6 +115,22 @@ export const App: React.FC = () => {
     bevelSegments: 5,
     meshScale: 1.0,
     autoCenter: true,
+    posX: 0,
+    posY: 0,
+    posZ: 0,
+    rotX: 0,
+    rotY: 0,
+    rotZ: 0,
+    scaleX: 1.0,
+    scaleY: 1.0,
+    scaleZ: 1.0,
+    fov: 45,
+    cameraDistance: 420,
+    envPreset: 'studio',
+    fogDensity: 0.0016,
+    floorRoughness: 0.65,
+    floorMetalness: 0.35,
+    gridColor: '#ff4e2e',
     faceColor: '#ff263e',
     sideColor: '#4a070e',
     roughness: 0.22,
@@ -139,12 +155,21 @@ export const App: React.FC = () => {
     bloomRadius: 0.5,
     bloomThreshold: 0.75,
     motionMode: 'reveal',
+    stackedEffects: {
+      hoverFloat: false,
+      turntableSpin: false,
+      harmonicWave: false,
+      lightSweep: false,
+      gyroTilt: true,
+      sync2dMotion: false
+    },
     isPlaying: true,
     amplitude: 1.0,
     time: 0.0,
     duration: 5.0,
     speed: 1.0,
     gyroEnabled: true,
+    active2dMotionId: 'typewriter',
     shadingMode: 'rendered',
     cameraPreset: 'front',
     activeAssetId: 'wordlord',
@@ -250,6 +275,23 @@ export const App: React.FC = () => {
     setThreeParts(newParts);
     showToast('Reset parts geometry & offsets');
   }, [threeConfig.activeAssetId, threeConfig.faceColor, threeConfig.sideColor, showToast]);
+
+  const handleResetTransforms = useCallback(() => {
+    setThreeConfig(prev => ({
+      ...prev,
+      posX: 0,
+      posY: 0,
+      posZ: 0,
+      rotX: 0,
+      rotY: 0,
+      rotZ: 0,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      scaleZ: 1.0,
+      meshScale: 1.0
+    }));
+    showToast('Reset 3D Transforms (Position, Rotation, Scale)');
+  }, [showToast]);
 
   const handleImportCustomSvg = useCallback((svgString: string, name?: string) => {
     const newParts = parseSvgIntoParts(svgString, threeConfig.faceColor, threeConfig.sideColor);
@@ -784,6 +826,7 @@ export const App: React.FC = () => {
             onUpdateConfig={handleUpdateThreeConfig}
             onUpdatePart={handleUpdatePart}
             onResetParts={handleResetParts}
+            onResetTransforms={handleResetTransforms}
           />
         )}
       </div>

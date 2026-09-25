@@ -117,7 +117,7 @@ export function parseSvgIntoParts(svgString: string, faceColor: string, sideColo
 }
 
 /**
- * Build Extruded Three.js Meshes from parts with dual materials
+ * Build Extruded Three.js Meshes from parts with normalized coordinates and dual materials
  */
 export function buildExtrudedParts(
   logoGroup: THREE.Group,
@@ -125,7 +125,7 @@ export function buildExtrudedParts(
   config: ThreeStudioConfig,
   flutedTexture: THREE.Texture | null
 ): THREE.Mesh[] {
-  // Clear old meshes
+  // Clear old meshes cleanly
   while (logoGroup.children.length > 0) {
     const obj = logoGroup.children[0] as THREE.Mesh;
     if (obj.geometry) obj.geometry.dispose();
@@ -141,7 +141,7 @@ export function buildExtrudedParts(
   const activeParts = parts.filter(p => p.visible);
   if (activeParts.length === 0) return meshes;
 
-  // Build composite SVG markup so Three.js SVGLoader can compute outer perimeters and inner counter holes
+  // Build composite SVG markup for outer perimeters & counter holes
   let combinedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">`;
   activeParts.forEach(p => {
     combinedSvg += `<path d="${p.pathD}" fill="${p.faceColor}" />`;
@@ -150,10 +150,37 @@ export function buildExtrudedParts(
 
   const loader = new SVGLoader();
   const svgData = loader.parse(combinedSvg);
-  const tempGroup = new THREE.Group();
+
+  // 1. Calculate compound 2D bounding box across all vector shapes
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const parsedItems: { path: any; shapes: THREE.Shape[]; partRef: ThreePart; pIdx: number }[] = [];
 
   svgData.paths.forEach((path, pIdx) => {
     const partRef = activeParts[pIdx];
+    const shapes = SVGLoader.createShapes(path);
+    shapes.forEach(shape => {
+      const points = shape.getPoints();
+      points.forEach(pt => {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+      });
+    });
+    parsedItems.push({ path, shapes, partRef, pIdx });
+  });
+
+  const rawWidth = Math.max(0.01, maxX - minX);
+  const rawHeight = Math.max(0.01, maxY - minY);
+  const rawMaxDim = Math.max(rawWidth, rawHeight);
+
+  // Normalized visual coordinate scale factor (aims for ~280 units design canvas)
+  const targetDim = 280;
+  const normScale = rawMaxDim > 0 ? targetDim / rawMaxDim : 1.0;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  parsedItems.forEach(({ shapes, partRef, pIdx }) => {
     const totalDepth = Math.max(2, config.depth + (partRef ? partRef.depthOffset : 0));
 
     const extrudeSettings: THREE.ExtrudeGeometryOptions = {
@@ -165,7 +192,6 @@ export function buildExtrudedParts(
       curveSegments: 16
     };
 
-    const shapes = SVGLoader.createShapes(path);
     const faceColor = partRef ? partRef.faceColor : config.faceColor;
     const sideColor = partRef ? partRef.sideColor : config.sideColor;
 
@@ -192,7 +218,12 @@ export function buildExtrudedParts(
 
     shapes.forEach(shape => {
       const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      geom.scale(1, -1, 1); // SVG Y is inverted relative to WebGL
+
+      // Center around origin and scale to design dimensions
+      if (config.autoCenter) {
+        geom.translate(-centerX, -centerY, -totalDepth / 2);
+      }
+      geom.scale(normScale, -normScale, 1); // SVG Y is downward, 3D Y is upward
       geom.computeVertexNormals();
 
       const mesh = new THREE.Mesh(geom, [faceMat, sideMat]);
@@ -202,44 +233,28 @@ export function buildExtrudedParts(
         index: pIdx,
         partId: partRef ? partRef.id : null,
         name: partRef ? partRef.name : `Part ${pIdx}`,
-        baseX: partRef ? partRef.offsetX : 0,
-        baseY: partRef ? partRef.offsetY : 0,
-        baseZ: partRef ? partRef.offsetZ : 0
+        baseX: (partRef ? partRef.offsetX : 0),
+        baseY: (partRef ? partRef.offsetY : 0),
+        baseZ: (partRef ? partRef.offsetZ : 0)
       };
 
       meshes.push(mesh);
-      tempGroup.add(mesh);
+      logoGroup.add(mesh);
     });
   });
 
-  // Auto-Center compound geometry
-  if (config.autoCenter) {
-    const box = new THREE.Box3().setFromObject(tempGroup);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-
-    tempGroup.children.forEach((child) => {
-      child.position.sub(center);
-      child.userData.baseX = child.position.x;
-      child.userData.baseY = child.position.y;
-      child.userData.baseZ = child.position.z;
-    });
-
-    // Auto-scale into comfortable studio camera frame
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const maxDim = Math.max(size.x, size.y);
-    const desiredDim = 280;
-    const computedScale = maxDim > 0 ? (desiredDim / maxDim) * config.meshScale : 1.0;
-    logoGroup.scale.set(computedScale, computedScale, computedScale);
-  } else {
-    logoGroup.scale.set(config.meshScale, config.meshScale, config.meshScale);
-  }
-
-  // Transfer meshes to logoGroup
-  while (tempGroup.children.length > 0) {
-    logoGroup.add(tempGroup.children[0]);
-  }
+  // Apply Blender-style Object Transforms (Position, Rotation, Scale)
+  logoGroup.position.set(config.posX || 0, config.posY || 0, config.posZ || 0);
+  logoGroup.rotation.set(
+    ((config.rotX || 0) * Math.PI) / 180,
+    ((config.rotY || 0) * Math.PI) / 180,
+    ((config.rotZ || 0) * Math.PI) / 180
+  );
+  logoGroup.scale.set(
+    (config.scaleX || 1.0) * (config.meshScale || 1.0),
+    (config.scaleY || 1.0) * (config.meshScale || 1.0),
+    (config.scaleZ || 1.0) * (config.meshScale || 1.0)
+  );
 
   return meshes;
 }
@@ -256,7 +271,7 @@ export function resetMeshesToOrigin(meshes: THREE.Mesh[]): void {
 }
 
 /**
- * Evaluate 3D Animation Motion Frame
+ * Evaluate 3D Animation Motion Frame with Effect Stacking & 2D Keyframe Sync
  */
 export function evaluate3DMotion(
   logoGroup: THREE.Group,
@@ -274,17 +289,38 @@ export function evaluate3DMotion(
   const t = normalizedTime;
   const amp = amplitude;
 
-  const gyroX = config.gyroEnabled ? mouseGyro.x * 0.45 * amp : 0;
-  const gyroY = config.gyroEnabled ? -mouseGyro.y * 0.3 * amp : 0;
+  // Base Blender-style object transform angles
+  const baseRotX = ((config.rotX || 0) * Math.PI) / 180;
+  const baseRotY = ((config.rotY || 0) * Math.PI) / 180;
+  const baseRotZ = ((config.rotZ || 0) * Math.PI) / 180;
+  const basePosX = config.posX || 0;
+  const basePosY = config.posY || 0;
+  const basePosZ = config.posZ || 0;
+
+  // Cursor Gyro reaction
+  const hasGyro = config.gyroEnabled || (config.stackedEffects && config.stackedEffects.gyroTilt);
+  const gyroX = hasGyro ? mouseGyro.x * 0.45 * amp : 0;
+  const gyroY = hasGyro ? -mouseGyro.y * 0.3 * amp : 0;
+
+  // Stacked Modifiers
+  const stack = config.stackedEffects || {
+    hoverFloat: false,
+    turntableSpin: false,
+    harmonicWave: false,
+    lightSweep: false,
+    gyroTilt: true,
+    sync2dMotion: false
+  };
 
   const activeParts = parts.filter(p => p.visible);
 
+  // Initialize group transforms
+  logoGroup.position.set(basePosX, basePosY, basePosZ);
+  logoGroup.rotation.set(baseRotX + gyroY, baseRotY + gyroX, baseRotZ);
+
+  // 1. Evaluate Primary Motion Engine
   switch (mode) {
     case 'reveal': {
-      logoGroup.rotation.y = gyroX;
-      logoGroup.rotation.x = gyroY;
-      logoGroup.position.set(0, 0, 0);
-
       meshes.forEach((mesh, idx) => {
         const partRef = activeParts[mesh.userData.index];
         const delay = partRef ? partRef.phaseDelay : (idx * 0.08);
@@ -303,18 +339,37 @@ export function evaluate3DMotion(
       break;
     }
 
+    case 'sync2d': {
+      // Direct 2D Motion Keyframe Synchronizer into 3D Space
+      meshes.forEach((mesh, idx) => {
+        const partRef = activeParts[mesh.userData.index];
+        const staggerDelay = idx * 0.055;
+        const partT = Math.max(0, Math.min(1, (t - staggerDelay) / 0.45));
+
+        // Smooth cubic ease out
+        const ease = 1 - Math.pow(1 - partT, 3);
+        const dropY = (1 - ease) * 90 * amp;
+        const dropZ = (1 - ease) * -70 * amp;
+        const rotY = (1 - ease) * Math.PI * 0.4 * amp;
+
+        mesh.position.y = (mesh.userData.baseY || 0) + dropY;
+        mesh.position.z = (mesh.userData.baseZ || 0) + dropZ;
+        mesh.rotation.y = rotY;
+      });
+      break;
+    }
+
     case 'turntable': {
       resetMeshesToOrigin(meshes);
-      logoGroup.rotation.y = (t * Math.PI * 2) + gyroX;
-      logoGroup.rotation.x = (Math.sin(t * Math.PI * 4) * 0.08 * amp) + gyroY;
-      logoGroup.position.y = Math.sin(t * Math.PI * 2) * 8 * amp;
+      logoGroup.rotation.y = baseRotY + (t * Math.PI * 2) + gyroX;
+      logoGroup.rotation.x = baseRotX + (Math.sin(t * Math.PI * 4) * 0.08 * amp) + gyroY;
+      logoGroup.position.y = basePosY + Math.sin(t * Math.PI * 2) * 8 * amp;
       break;
     }
 
     case 'wave': {
-      logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.2) + gyroX;
-      logoGroup.rotation.x = gyroY;
-      logoGroup.position.set(0, 0, 0);
+      logoGroup.rotation.y = baseRotY + (Math.sin(t * Math.PI * 2) * 0.2) + gyroX;
+      logoGroup.rotation.x = baseRotX + gyroY;
 
       meshes.forEach((mesh, idx) => {
         const partRef = activeParts[mesh.userData.index];
@@ -324,16 +379,13 @@ export function evaluate3DMotion(
         mesh.position.z = (mesh.userData.baseZ || 0) + wave * 22 * amp;
         mesh.position.y = (mesh.userData.baseY || 0) + Math.cos(t * Math.PI * 4 - phase) * 6 * amp;
         mesh.rotation.x = wave * 0.18 * amp;
-        mesh.rotation.y = 0;
       });
       break;
     }
 
     case 'sweep': {
       resetMeshesToOrigin(meshes);
-      logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.15) + gyroX;
-      logoGroup.rotation.x = gyroY;
-
+      logoGroup.rotation.y = baseRotY + (Math.sin(t * Math.PI * 2) * 0.15) + gyroX;
       const angle = t * Math.PI * 2;
       lights.rimLight.position.x = Math.cos(angle) * 360;
       lights.rimLight.position.z = Math.sin(angle) * 360;
@@ -342,18 +394,13 @@ export function evaluate3DMotion(
     }
 
     case 'explode': {
-      logoGroup.rotation.y = gyroX;
-      logoGroup.rotation.x = gyroY;
-
       const explodePhase = Math.sin(t * Math.PI) * amp;
-
       meshes.forEach((mesh, idx) => {
         const angle = (idx / Math.max(1, meshes.length)) * Math.PI * 2;
-        const blastDistance = 80 * explodePhase;
-
-        mesh.position.x = (mesh.userData.baseX || 0) + Math.cos(angle) * blastDistance;
-        mesh.position.y = (mesh.userData.baseY || 0) + Math.sin(angle) * blastDistance * 0.5;
-        mesh.position.z = (mesh.userData.baseZ || 0) + Math.sin(angle * 2) * 40 * explodePhase;
+        const blastDist = 90 * explodePhase;
+        mesh.position.x = (mesh.userData.baseX || 0) + Math.cos(angle) * blastDist;
+        mesh.position.y = (mesh.userData.baseY || 0) + Math.sin(angle) * blastDist * 0.5;
+        mesh.position.z = (mesh.userData.baseZ || 0) + Math.sin(angle * 2) * 45 * explodePhase;
         mesh.rotation.y = angle * explodePhase;
       });
       break;
@@ -361,10 +408,31 @@ export function evaluate3DMotion(
 
     case 'camera': {
       resetMeshesToOrigin(meshes);
-      logoGroup.rotation.y = Math.sin(t * Math.PI * 2) * 0.3 + gyroX;
-      logoGroup.rotation.x = Math.cos(t * Math.PI * 2) * 0.15 + gyroY;
+      logoGroup.rotation.y = baseRotY + Math.sin(t * Math.PI * 2) * 0.3 + gyroX;
+      logoGroup.rotation.x = baseRotX + Math.cos(t * Math.PI * 2) * 0.15 + gyroY;
       break;
     }
+  }
+
+  // 2. Layer on Stacked Modifiers (if enabled simultaneously)
+  if (stack.hoverFloat && mode !== 'turntable') {
+    logoGroup.position.y += Math.sin(t * Math.PI * 2) * 14 * amp;
+  }
+
+  if (stack.turntableSpin && mode !== 'turntable') {
+    logoGroup.rotation.y += (t * Math.PI * 2);
+  }
+
+  if (stack.harmonicWave && mode !== 'wave') {
+    meshes.forEach((mesh, idx) => {
+      mesh.position.z += Math.sin(t * Math.PI * 4 - idx * 0.5) * 12 * amp;
+    });
+  }
+
+  if (stack.lightSweep && mode !== 'sweep') {
+    const angle = t * Math.PI * 2;
+    lights.rimLight.position.x = Math.cos(angle) * 360;
+    lights.rimLight.position.z = Math.sin(angle) * 360;
   }
 }
 
