@@ -43,13 +43,49 @@ export function saveProjectToStorage(snapshot: ProjectStateSnapshot): void {
 }
 
 /**
+ * Validate and sanitize a loaded project snapshot against missing fields or schema shifts
+ */
+export function validateProjectSnapshot(data: any): ProjectStateSnapshot {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Project data must be a valid JSON object.');
+  }
+
+  return {
+    version: typeof data.version === 'string' ? data.version : '5.0.0',
+    timestamp: typeof data.timestamp === 'number' ? data.timestamp : Date.now(),
+    actionName: data.actionName || 'Imported Project',
+    studioMode: ['2d', '3d', 'motion-graphics'].includes(data.studioMode) ? data.studioMode : '2d',
+    bentoConfig: data.bentoConfig && typeof data.bentoConfig === 'object' ? data.bentoConfig : undefined,
+    activeMotionId: typeof data.activeMotionId === 'string' ? data.activeMotionId : 'typewriter',
+    activeStyleId: typeof data.activeStyleId === 'string' ? data.activeStyleId : 'signature',
+    duration: typeof data.duration === 'number' && data.duration > 0 ? data.duration : 1.0,
+    stagger: typeof data.stagger === 'number' ? data.stagger : 60,
+    glowRadius: typeof data.glowRadius === 'number' ? data.glowRadius : 20,
+    glowIntensity: typeof data.glowIntensity === 'number' ? data.glowIntensity : 100,
+    geometryMode: ['fill', 'stroke', 'hybrid'].includes(data.geometryMode) ? data.geometryMode : 'fill',
+    strokeWidth: typeof data.strokeWidth === 'number' ? data.strokeWidth : 1.0,
+    tiltX: typeof data.tiltX === 'number' ? data.tiltX : 0,
+    tiltY: typeof data.tiltY === 'number' ? data.tiltY : 0,
+    colors: {
+      word: data.colors?.word || '#ffffff',
+      lord: data.colors?.lord || '#ffffff',
+      ligature: data.colors?.ligature || '#ffffff',
+      media: data.colors?.media || '#ff4e2e'
+    },
+    threeConfig: data.threeConfig && typeof data.threeConfig === 'object' ? data.threeConfig : {} as ThreeStudioConfig,
+    threeParts: Array.isArray(data.threeParts) ? data.threeParts : []
+  };
+}
+
+/**
  * Load project snapshot from browser local storage
  */
 export function loadProjectFromStorage(): ProjectStateSnapshot | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as ProjectStateSnapshot;
+    const parsed = JSON.parse(raw);
+    return validateProjectSnapshot(parsed);
   } catch (err) {
     console.warn('Could not parse saved project from localStorage', err);
     return null;
@@ -79,10 +115,11 @@ export function importProjectFromFile(file: File): Promise<ProjectStateSnapshot>
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const parsed = JSON.parse(text) as ProjectStateSnapshot;
-        resolve(parsed);
-      } catch (err) {
-        reject(new Error('Invalid project JSON file format.'));
+        const parsed = JSON.parse(text);
+        const validated = validateProjectSnapshot(parsed);
+        resolve(validated);
+      } catch (err: any) {
+        reject(new Error(err?.message || 'Invalid project JSON file format.'));
       }
     };
     reader.onerror = (err) => reject(err);

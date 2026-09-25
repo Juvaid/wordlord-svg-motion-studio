@@ -16,6 +16,7 @@
   - Added dedicated **Motion Graphics Studio** workspace (SaaS Notion Bento Card UI Graphic Studio with Dynamic Vector Stagger, 3D perspective matrix lift, and customizable telemetry grids from `gemini-code-1790343396383.html`).
 
 ## Core Agent Documentation
+- [`.agent/ISSUES.md`](ISSUES.md): Full issue tracker, root causes, historical bug resolutions, and verification test runbooks.
 - [`.agent/FEATURES.md`](FEATURES.md): Comprehensive feature inventory (2D motions, 3D PBR materials, Motion Graphics bento UI, export pipelines).
 - [`.agent/ARCHITECTURE.md`](ARCHITECTURE.md): Technical deep-dive on SVG decomposition, Three.js extrusion, canvas exporters, state flow.
 - [`.agent/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md): Strict visual tokens, Obsidian palette, zero-emoji policy, and inspector primitives.

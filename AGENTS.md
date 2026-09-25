@@ -14,15 +14,17 @@
 
 ## Development & Build Commands
 - `npm run dev`: Starts Vite dev server (runs as background daemon).
+- `npm test`: Runs automated test suite (`scripts/test-suite.js`) verifying preset integrity, state sanitization, and 3D kinematics.
 - `npm run build`: `tsc && vite build && node scripts/copy-build.js` — compiles singlefile and copies to target paths.
 
 ## Durable Architectural Rules
 1. **Zero Emojis**: Always use `lucide-react` vector SVG icons. Never insert unicode emojis in UI, headers, tooltips, or buttons.
 2. **No Nested Cards**: Panels use clean horizontal dividers (`border-b border-[#1f2430]`), subtle background contrast, and full-width content blocks instead of floating boxes with competing borders.
 3. **Non-Destructive State**: All destructive actions push snapshots to `undoStackRef` (up to 60 steps). Named action descriptions and TopNavbar visual history flyout dropdown support 1-click time-travel jumping. Shortcuts `Cmd+Z`, `Cmd+Shift+Z`, `Cmd+S`, `Tab` are supported.
-4. **Clean Builds**: `npx tsc --noEmit` must pass with 0 errors before finishing.
+4. **Clean Builds & Tests**: `npx tsc --noEmit` and `npm test` must pass with 0 errors before finishing.
 
 ## Context Pointers (Progressive Disclosure)
+- Read [`.agent/ISSUES.md`](.agent/ISSUES.md) (or `ISSUES.md`) for the complete issue tracker, root causes, historical fixes, and verification test cases.
 - Read [`.agent/FEATURES.md`](.agent/FEATURES.md) when looking up motion presets, shaders, PBR properties, camera modes, or export capabilities.
 - Read [`.agent/ARCHITECTURE.md`](.agent/ARCHITECTURE.md) when modifying state flow, Three.js extrusion, canvas exporters, or procedural textures.
 - Read [`.agent/DESIGN_SYSTEM.md`](.agent/DESIGN_SYSTEM.md) when building new UI panels, inspector components, color swatches, or modal dialogs.

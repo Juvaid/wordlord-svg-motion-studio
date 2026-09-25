@@ -185,6 +185,24 @@ export function parseSvgIntoParts(svgString: string, faceColor: string, sideColo
       const cy = parseFloat(el.getAttribute('cy') || '0');
       const r = parseFloat(el.getAttribute('r') || '0');
       pathD = `M ${cx - r},${cy} a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`;
+    } else if (tagName === 'polygon') {
+      const rawPoints = el.getAttribute('points') || '';
+      const pairs = rawPoints.trim().split(/[\s,]+/);
+      if (pairs.length >= 4) {
+        pathD = `M ${pairs[0]} ${pairs[1]}`;
+        for (let i = 2; i < pairs.length; i += 2) {
+          if (pairs[i] && pairs[i + 1]) {
+            pathD += ` L ${pairs[i]} ${pairs[i + 1]}`;
+          }
+        }
+        pathD += ' Z';
+      }
+    } else if (tagName === 'ellipse') {
+      const cx = parseFloat(el.getAttribute('cx') || '0');
+      const cy = parseFloat(el.getAttribute('cy') || '0');
+      const rx = parseFloat(el.getAttribute('rx') || '0');
+      const ry = parseFloat(el.getAttribute('ry') || '0');
+      pathD = `M ${cx - rx},${cy} a ${rx},${ry} 0 1,0 ${rx * 2},0 a ${rx},${ry} 0 1,0 -${rx * 2},0`;
     }
 
     if (!pathD.trim()) return;
@@ -304,6 +322,13 @@ export function buildExtrudedParts(
       parsedShapesList.push({ shapes, partRef: part, pIdx });
     });
   });
+
+  if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
+    minX = -100;
+    maxX = 100;
+    minY = -100;
+    maxY = 100;
+  }
 
   const svgWidth = Math.max(1, maxX - minX);
   const svgHeight = Math.max(1, maxY - minY);
