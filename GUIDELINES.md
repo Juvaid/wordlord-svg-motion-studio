@@ -82,3 +82,29 @@ The application follows the industry-standard nonlinear video editing (NLE) and 
   - Always support `@media (prefers-reduced-motion: reduce)`.
   - Contrast ratios for UI chrome must meet or exceed WCAG AA ($\ge 4.5:1$).
   - Never run unbounded rendering loops when the browser tab is hidden (`document.hidden`).
+
+---
+
+## 6. Visual Bézier Curve Graph Standards
+
+- **Rule 6.1 — Interactive Visual Graph**: Easing curves must not be limited to raw text dropdowns. The studio must render an interactive Bézier graph viewport with:
+  - Coordinate axes spanning $[0, 1]$ time and $[0, 1]$ progress (allowing overshoots $[-0.4, 1.4]$ for bounce/anticipation physics).
+  - Draggable control points $P_1(x_1, y_1)$ and $P_2(x_2, y_2)$ with visual tangent handle lines.
+  - Live CSS variable update (`--motion-ease: cubic-bezier(...)`) applied across all active stage animations.
+  - An animated velocity puck/bead running along an acceleration preview strip to physically visualize the acceleration curve.
+- **Rule 6.2 — Instant Preset Matrix**: Provide at least 8 mathematical curve presets with vector SVG waveforms: Kinetic Snap, Smooth Decel, Ease-Out Quint, High-Impact Slam, Back Anticipate, Sinusoidal, Linear Matrix, and Elastic Bounce.
+
+---
+
+## 7. Nonlinear Multi-Track Timeline & Playhead Standards
+
+- **Rule 7.1 — Frame-Accurate Scrubbing**: The timeline must support continuous 60fps frame-by-frame scrubbing:
+  - Clicking or dragging across the time ruler OR any track lane dynamically updates the playhead position and evaluates the SVG poses via Web Animations API (`anim.currentTime = targetMs`).
+  - Playhead must include a physical inverted-diamond grab head, vertical laser stem across all channels, and a live timecode tag badge (`0.42s`) during scrubbing.
+- **Rule 7.2 — Multi-Channel Track Anatomy**:
+  - Maintain separate track channels for: Master Stage, WORD Glyphs, LORD Glyphs, Tall D Ligature, MEDIA Sub-brand, and Volumetric Aura.
+  - Each channel must feature a Layer Solo/Mute toggle (`👁`) that directly controls SVG layer visibility in real time.
+  - Channels must include interactive Keyframe Diamonds (`◆`). Hovering displays frame specification tooltips; clicking snaps the playhead and stage directly to that keyframe timestamp.
+- **Rule 7.3 — NLE Transport Controls**:
+  - Full transport deck: Jump to Start (`|◀`), Step Backward 1 Frame (`◀`), Play/Pause (`▶ / ⏸`, toggleable via `Spacebar`), Step Forward 1 Frame (`▶`), Jump to End (`▶|`), Loop mode, and Speed multipliers (`0.25x` to `2.0x`).
+  - Synthesized Web Audio API haptic feedback: subtle analog clicks on frame step and whoosh sweeps on loop resets without external audio assets.
