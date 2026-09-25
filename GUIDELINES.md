@@ -108,3 +108,18 @@ The application follows the industry-standard nonlinear video editing (NLE) and 
 - **Rule 7.3 — NLE Transport Controls**:
   - Full transport deck: Jump to Start (`|◀`), Step Backward 1 Frame (`◀`), Play/Pause (`▶ / ⏸`, toggleable via `Spacebar`), Step Forward 1 Frame (`▶`), Jump to End (`▶|`), Loop mode, and Speed multipliers (`0.25x` to `2.0x`).
   - Synthesized Web Audio API haptic feedback: subtle analog clicks on frame step and whoosh sweeps on loop resets without external audio assets.
+
+---
+
+## 8. Professional Modular Architecture & Iconography Standards
+
+- **Rule 8.1 — Strict Zero-Emoji Policy**: Emojis are strictly banned in production UI chrome, headers, tab buttons, indicators, and transport decks. All affordances must use clean vector SVG icons from `lucide-react` (e.g., `<Zap />`, `<Palette />`, `<Layers />`, `<Play />`, `<Pause />`, `<SkipBack />`, `<SkipForward />`, `<Repeat />`, `<Volume2 />`, `<Eye />`, `<EyeOff />`, `<Box />`, `<Compass />`, `<Sparkles />`).
+- **Rule 8.2 — Modular Component Architecture**: Codebase is modularized into discrete, typed components in `src/components/`:
+  - `TopNavbar.tsx`: Viewport zoom, background switcher, and code export modal trigger.
+  - `LeftLibrary.tsx`: Creative presets deck with tabs, search filter, and category chips.
+  - `StageViewport.tsx`: Interactive SVG stage with infinite pan/zoom and 3D spatial perspective.
+  - `BezierGraph.tsx`: Interactive mathematical Bézier graph editor with draggable control handles.
+  - `RightInspector.tsx`: Parameter lab for duration, stagger, glow optics, geometry modes, and color pickers.
+  - `TimelineFooter.tsx`: Professional nonlinear multi-track timeline with frame-by-frame scrubbing.
+  - `ExportModal.tsx`: Code export modal for SVG, CSS, React, and JSON specs.
+- **Rule 8.3 — Single-File Production Bundling**: `npm run build` leverages Vite with `vite-plugin-singlefile` to compile the entire React 19 application, Tailwind styles, and Lucide icons into a single, self-contained `index.html`. This delivers the best of both worlds: modern modular developer experience and 100% offline portable runtime with zero server or CDN dependencies.
