@@ -6,6 +6,7 @@ interface BezierGraphProps {
   bezier: BezierPoints;
   onChange: (points: BezierPoints) => void;
   onPlaySound?: () => void;
+  hideHeader?: boolean;
 }
 
 const PRESET_CURVES = [
@@ -22,7 +23,8 @@ const PRESET_CURVES = [
 export const BezierGraph: React.FC<BezierGraphProps> = ({
   bezier,
   onChange,
-  onPlaySound
+  onPlaySound,
+  hideHeader = false
 }) => {
   const [copied, setCopied] = useState(false);
   const [activeHandle, setActiveHandle] = useState<'p1' | 'p2' | null>(null);
@@ -96,21 +98,24 @@ export const BezierGraph: React.FC<BezierGraphProps> = ({
   };
 
   return (
-    <div className="bg-[#12151e] border border-[#202534] rounded-lg p-3 flex flex-col gap-2.5">
-      {/* Title & Copy */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 font-display text-[11px] font-bold uppercase tracking-wider text-slate-200">
-          <Activity size={12} className="text-[#00ffff]" />
-          <span>Bézier Curve Graph</span>
+    <div className="flex flex-col gap-2.5 w-full">
+      {/* Title & Copy (only rendered if hideHeader is false) */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 font-display text-[11px] font-bold uppercase tracking-wider text-slate-200">
+            <Activity size={12} className="text-[#00ffff]" />
+            <span>Bézier Curve Graph</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-0.5 bg-[#181c28] hover:bg-[#222738] border border-[#2b3245] text-[10px] font-mono text-slate-300 rounded transition-all"
+          >
+            {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
         </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-0.5 bg-[#181c28] hover:bg-[#222738] border border-[#2b3245] text-[10px] font-mono text-slate-300 rounded transition-all"
-        >
-          {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
-        </button>
-      </div>
+      )}
 
       {/* SVG Canvas Graph */}
       <div className="relative bg-[#07080c] border border-[#202534] rounded-md overflow-hidden">
