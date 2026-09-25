@@ -151,12 +151,29 @@ The Motion Graphics workspace provides an editorial and presentation layout engi
 
 ---
 
-## 6. Rendering & Export Engine
+## 7. Rendering & Export Engine
+ 
+### High-Bitrate Video Export Pipeline (2D & 3D)
+- **Selectable Bitrate Presets**:
+  - **Cinema Master (60 Mbps)**: Uncompressed master quality with zero gradient banding or macroblocking.
+  - **Ultra HD Studio (45 Mbps)**: Broadcast-grade archival standard (default).
+  - **Broadcast Pro (30 Mbps)**: High-fidelity web and TV delivery.
+  - **Web Crisp (18 Mbps)**: Lightweight high-resolution web streaming.
+  - **Social Ready (10 Mbps)**: Fast mobile social playback.
+  - **Custom Bitrate Slider**: Granular control from 5 Mbps to 100 Mbps with live MB estimation.
+- **Hardware-Accelerated Codec Profiles**:
+  - **MP4 (H.264 High Profile / AVC1)**: Prioritized profiles (`avc1.64002a`, `avc1.640028`, `avc1.4d4020`) for universal playback and pristine neon glow preservation.
+  - **WebM (VP9 Studio)**: Google VP9 high-efficiency profile (`vp09.00.41.08`) for deep color accuracy.
+- **Offscreen Resolution Scaling (3D & 2D)**:
+  - **2D**: Atomic double-buffered rasterization with `imageSmoothingQuality = 'high'` prevents frame drops and browser DOM read flickering.
+  - **3D**: Dynamically scales the WebGL canvas drawing buffer and camera aspect ratio to exact target resolutions (`1920x1080`, `1080x1080`, `1080x1920`, `3840x2160`) during recording, preventing viewport size dependency.
+ 
+| Format | Resolution | Frame Rate | Encoding Bitrate | Engine Pipeline |
+| :--- | :--- | :--- | :--- | :--- |
+| **MP4 (H.264 High Profile)** | 1080p / 4K / 1:1 / 9:16 | 30 / 60 FPS | 5 – 100 Mbps (Default 45 Mbps) | Double-buffered offscreen Canvas rasterizer + MediaRecorder |
+| **WebM (VP9 Studio)** | 1080p / 4K / 1:1 / 9:16 | 30 / 60 FPS | 5 – 100 Mbps (Default 45 Mbps) | WebGL canvas high-res buffer capture |
+| **GLTF / GLB** | 3D Binary Model | Static / Meshes | N/A | `THREE.GLTFExporter` with materials, textures, and embedded lights |
+| **4K PNG Snapshot** | Up to 3840×2160 | N/A | Lossless RGBA | High-res transparent / OLED canvas snapshot |
+| **SVG Vector** | Infinite Vector | Static | N/A | DOM serialization with clean styling attributes |
+| **Project JSON** | Configuration State | Instant | Full State | Full studio serialization including history and custom settings |
 
-| Format | Resolution | Frame Rate | Engine Pipeline |
-| :--- | :--- | :--- | :--- |
-| **MP4 (H.264)** | 1080p / 4K / Custom | 30 / 60 FPS | Double-buffered offscreen Canvas rendering + WebCodecs / MediaRecorder |
-| **WebM (VP9)** | 1080p / 4K / Custom | 30 / 60 FPS | Direct WebGL canvas stream capture |
-| **GLTF / GLB** | 3D Asset | Static / Rigged | `THREE.GLTFExporter` with materials, textures, and embedded lights |
-| **SVG Vector** | Infinite Vector | Static Snapshot | DOM serialization with clean styling attributes |
-| **Project JSON** | Configuration | Instant | Full state serialization including undo stacks and custom settings |
