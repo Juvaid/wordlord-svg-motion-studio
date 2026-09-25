@@ -5,6 +5,8 @@ export interface VideoExportOptions {
   fps?: number;
   width?: number;
   height?: number;
+  bitrate?: number; // Video bitrate in bps (e.g. 50_000_000 for 50 Mbps)
+  format?: 'auto' | 'mp4' | 'webm';
   markScale?: number; // Scaling ratio of logo inside canvas (0.7 to 0.98)
   presetName?: string;
   colors: {
@@ -62,6 +64,8 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     fps = 60,
     width = 1920,
     height = 1080,
+    bitrate = 45000000, // 45 Mbps ultra cinema default
+    format = 'auto',
     markScale = 0.88, // Default 88% screen occupancy for bold, cinematic presence
     presetName = 'motion',
     colors,
@@ -81,12 +85,14 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
   const totalFrames = Math.max(1, Math.round(duration * fps));
   const frameIntervalMs = 1000 / fps;
 
-  // Initialize Offscreen Output Canvas
+  // Initialize Offscreen Output Canvas with High Smoothing
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Could not obtain 2D Canvas context for video export.');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   // Double-buffering: Offscreen scratch canvas for complete, flicker-free atomic frame blitting
   const bufferCanvas = document.createElement('canvas');
@@ -94,42 +100,74 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
   bufferCanvas.height = height;
   const bCtx = bufferCanvas.getContext('2d');
   if (!bCtx) throw new Error('Could not obtain scratch canvas buffer context.');
+  bCtx.imageSmoothingEnabled = true;
+  bCtx.imageSmoothingQuality = 'high';
 
   // Target Stage SVG
   const stage = document.getElementById('stage-wrapper');
   const svgEl = document.getElementById('main-stage-svg') as SVGElement | null;
   if (!stage || !svgEl) throw new Error('Stage SVG element not found in DOM.');
 
-  // Detect optimal browser supported mime-type (prefer MP4 H.264)
+  // Codec candidates prioritized by quality profile
+  const mp4Codecs = [
+    'video/mp4;codecs=avc1.64002A', // H.264 High Profile Level 4.2
+    'video/mp4;codecs=avc1.640028', // H.264 High Profile Level 4.0
+    'video/mp4;codecs=avc1.4d4020', // H.264 Main Profile Level 3.2
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1',
+    'video/mp4'
+  ];
+
+  const webmCodecs = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm'
+  ];
+
   let mimeType = 'video/webm';
   let extension: 'mp4' | 'webm' = 'webm';
 
   if (typeof MediaRecorder !== 'undefined') {
-    if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E,mp4a.40.2')) {
-      mimeType = 'video/mp4;codecs=avc1.42E01E,mp4a.40.2';
-      extension = 'mp4';
-    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
-      mimeType = 'video/mp4;codecs=avc1';
-      extension = 'mp4';
-    } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-      mimeType = 'video/mp4';
-      extension = 'mp4';
-    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-      mimeType = 'video/webm;codecs=vp9';
-      extension = 'webm';
-    } else if (MediaRecorder.isTypeSupported('video/webm')) {
-      mimeType = 'video/webm';
-      extension = 'webm';
+    if (format === 'mp4') {
+      const match = mp4Codecs.find(c => MediaRecorder.isTypeSupported(c));
+      if (match) {
+        mimeType = match;
+        extension = 'mp4';
+      } else {
+        const webmMatch = webmCodecs.find(c => MediaRecorder.isTypeSupported(c));
+        if (webmMatch) {
+          mimeType = webmMatch;
+          extension = 'webm';
+        }
+      }
+    } else if (format === 'webm') {
+      const match = webmCodecs.find(c => MediaRecorder.isTypeSupported(c));
+      if (match) {
+        mimeType = match;
+        extension = 'webm';
+      }
+    } else {
+      // Auto mode: test MP4 High Profile, then VP9
+      const mp4Match = mp4Codecs.find(c => MediaRecorder.isTypeSupported(c));
+      const webmMatch = webmCodecs.find(c => MediaRecorder.isTypeSupported(c));
+      if (mp4Match) {
+        mimeType = mp4Match;
+        extension = 'mp4';
+      } else if (webmMatch) {
+        mimeType = webmMatch;
+        extension = 'webm';
+      }
     }
   }
 
-  // Set up MediaRecorder Stream with high bitrate (28 Mbps)
+  // Set up MediaRecorder Stream with high bitrate (up to 100 Mbps)
   const stream = canvas.captureStream(fps);
   const videoTrack = stream.getVideoTracks()[0] as any;
 
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: 28000000 // 28 Mbps cinema master quality
+    videoBitsPerSecond: bitrate
   });
 
   const chunks: Blob[] = [];

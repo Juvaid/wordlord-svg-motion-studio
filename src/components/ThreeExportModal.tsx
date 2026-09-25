@@ -12,7 +12,8 @@ import {
   Eye,
   Sliders,
   Globe,
-  Ratio
+  Ratio,
+  Gauge
 } from 'lucide-react';
 import { exportThreeGLTF, exportThreeSnapshot } from '../utils/threeEngine';
 import { ThreeStudioConfig } from '../types/threeStudio';
@@ -34,6 +35,8 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
   const [resolution, setResolution] = useState<'1080p' | 'square' | 'vertical' | '4k'>('1080p');
   const [backdropChoice, setBackdropChoice] = useState<'scene' | 'black' | 'alpha'>('scene');
   const [fps, setFps] = useState<number>(60);
+  const [bitrateMbps, setBitrateMbps] = useState<number>(45);
+  const [format, setFormat] = useState<'webm' | 'mp4'>('webm');
   const [showSafeZones, setShowSafeZones] = useState<boolean>(true);
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState(0);
@@ -51,12 +54,23 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
 
   const targetRes = resolutionMap[resolution];
 
-  // High-Fidelity 60 FPS 3D Video Export
+  // High-Fidelity 60 FPS 3D Video Export with Hardware-Accelerated Bitrate
   const handleRecordVideo = async () => {
     if (!canvas) {
       setStatusMessage('WebGL Canvas is not ready for recording.');
       return;
     }
+
+    const renderer = (window as any).__THREE_RENDERER__;
+    const camera = (window as any).__THREE_CAMERA__;
+    const composer = (window as any).__THREE_COMPOSER__;
+
+    // Cache original dimensions and aspect ratio to restore after render
+    const origW = renderer?.domElement?.width || canvas.width;
+    const origH = renderer?.domElement?.height || canvas.height;
+    const origStyleW = renderer?.domElement?.style?.width || canvas.style.width;
+    const origStyleH = renderer?.domElement?.style?.height || canvas.style.height;
+    const origAspect = camera?.aspect;
 
     try {
       setIsRecording(true);
@@ -64,16 +78,47 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
       if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
       setRecordedVideoUrl(null);
 
-      // Setup recorder stream
+      // Scale WebGL renderer buffer to true target resolution during export
+      if (renderer && camera) {
+        camera.aspect = targetRes.width / targetRes.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(targetRes.width, targetRes.height, false);
+        if (composer) composer.setSize(targetRes.width, targetRes.height);
+      }
+
+      // Setup recorder stream at requested framerate
       const stream = canvas.captureStream(fps);
+
+      // Select highest fidelity supported codec
       let mimeType = 'video/webm;codecs=vp9';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm';
+      if (format === 'mp4') {
+        const mp4Candidates = [
+          'video/mp4;codecs="avc1.64002a,mp4a.40.2"',
+          'video/mp4;codecs="avc1.640028"',
+          'video/mp4;codecs=avc1.4d4020',
+          'video/mp4'
+        ];
+        const match = mp4Candidates.find(c => MediaRecorder.isTypeSupported(c));
+        if (match) {
+          mimeType = match;
+        } else {
+          mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+            ? 'video/webm;codecs=vp9'
+            : 'video/webm';
+        }
+      } else {
+        const webmCandidates = [
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm'
+        ];
+        const match = webmCandidates.find(c => MediaRecorder.isTypeSupported(c));
+        if (match) mimeType = match;
       }
 
       const recorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: 28000000 // 28 Mbps cinema master
+        videoBitsPerSecond: bitrateMbps * 1_000_000
       });
 
       const chunks: Blob[] = [];
@@ -107,14 +152,28 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
       const url = URL.createObjectURL(blob);
       setRecordedVideoUrl(url);
 
+      // Determine extension based on negotiated MIME type
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+
       // Auto download
       const a = document.createElement('a');
       a.href = url;
-      a.download = `wordlord-3d-${config.motionMode}-${config.duration}s-${targetRes.ratio.replace(':', 'x')}.webm`;
+      a.download = `wordlord-3d-${config.motionMode}-${config.duration}s-${targetRes.width}x${targetRes.height}-${bitrateMbps}mbps.${ext}`;
       a.click();
     } catch (err: any) {
       setStatusMessage(err?.message || 'Error recording 3D WebGL stream.');
     } finally {
+      // Restore renderer and camera viewport to screen dimensions
+      if (renderer && camera) {
+        camera.aspect = origAspect || (origW / origH);
+        camera.updateProjectionMatrix();
+        renderer.setSize(origW, origH, false);
+        if (renderer.domElement) {
+          if (origStyleW) renderer.domElement.style.width = origStyleW;
+          if (origStyleH) renderer.domElement.style.height = origStyleH;
+        }
+        if (composer) composer.setSize(origW, origH);
+      }
       setIsRecording(false);
     }
   };
@@ -387,6 +446,84 @@ scene.add(rimLight);
                     </div>
                   </div>
 
+                  {/* Codec Format & Bitrate Controls */}
+                  <div className="flex flex-col gap-2 bg-[#121622] border border-[#22283a] rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 font-semibold uppercase tracking-wider">
+                        <Gauge size={12} className="text-[#ff4e2e]" />
+                        <span>Encoding Bitrate & Codec</span>
+                      </div>
+                      <span className="text-[9px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 px-1.5 py-0.5 rounded">
+                        ~{((config.duration * bitrateMbps) / 8).toFixed(1)} MB Est.
+                      </span>
+                    </div>
+
+                    {/* Format Selector */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { key: 'webm' as const, label: 'WebM Master', sub: 'VP9 High Quality' },
+                        { key: 'mp4' as const, label: 'MP4 Video', sub: 'H.264 High Profile' },
+                      ].map(f => (
+                        <button
+                          key={f.key}
+                          type="button"
+                          onClick={() => setFormat(f.key)}
+                          className={`flex flex-col items-center py-1 px-1 rounded border text-center transition-all ${
+                            format === f.key
+                              ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
+                              : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <span className="text-[9.5px] font-mono leading-tight">{f.label}</span>
+                          <span className="text-[7.5px] text-slate-500 leading-tight">{f.sub}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Bitrate Presets */}
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="flex items-center justify-between text-[9.5px] font-mono">
+                        <span className="text-slate-400">Stream Bitrate:</span>
+                        <span className="text-[#ff4e2e] font-bold">{bitrateMbps} Mbps</span>
+                      </div>
+
+                      <div className="grid grid-cols-5 gap-1">
+                        {[
+                          { mbps: 60, label: 'Cinema', badge: '60M' },
+                          { mbps: 45, label: 'Studio', badge: '45M' },
+                          { mbps: 30, label: 'Pro', badge: '30M' },
+                          { mbps: 18, label: 'Web', badge: '18M' },
+                          { mbps: 10, label: 'Social', badge: '10M' },
+                        ].map(p => (
+                          <button
+                            key={p.mbps}
+                            type="button"
+                            onClick={() => setBitrateMbps(p.mbps)}
+                            className={`py-1 px-0.5 rounded border text-center transition-all ${
+                              bitrateMbps === p.mbps
+                                ? 'bg-[#ff4e2e] border-[#ff4e2e] text-white font-bold shadow-sm'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span className="text-[9px] font-mono block leading-tight">{p.badge}</span>
+                            <span className="text-[7px] text-slate-400 block leading-tight">{p.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Fine-tuning Bitrate Slider */}
+                      <input
+                        type="range"
+                        min="5"
+                        max="100"
+                        step="5"
+                        value={bitrateMbps}
+                        onChange={(e) => setBitrateMbps(parseInt(e.target.value, 10))}
+                        className="w-full accent-[#ff4e2e] cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none mt-1"
+                      />
+                    </div>
+                  </div>
+
                   {/* Summary Box */}
                   <div className="p-3 bg-[#11141e] border border-[#1f2535] rounded-lg flex flex-col gap-1 text-[9.5px] font-mono text-slate-400">
                     <div className="flex justify-between">
@@ -395,7 +532,11 @@ scene.add(rimLight);
                     </div>
                     <div className="flex justify-between">
                       <span>Stream Quality:</span>
-                      <span className="text-emerald-400 font-bold">28 Mbps • Zero Drop</span>
+                      <span className="text-emerald-400 font-bold">{bitrateMbps} Mbps • {targetRes.width}×{targetRes.height}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Target Codec:</span>
+                      <span className="text-cyan-400 font-bold">{format.toUpperCase()} ({format === 'mp4' ? 'H.264 High Profile' : 'VP9 Studio'})</span>
                     </div>
                   </div>
                 </div>

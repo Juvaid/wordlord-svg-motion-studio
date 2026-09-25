@@ -224,7 +224,17 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       }
     });
 
+    // Expose references globally for offscreen 4K/1080p recording and GLTF export
+    (window as any).__THREE_SCENE__ = scene;
+    (window as any).__THREE_CAMERA__ = camera;
+    (window as any).__THREE_RENDERER__ = renderer;
+    (window as any).__THREE_COMPOSER__ = composer;
+
     return () => {
+      delete (window as any).__THREE_SCENE__;
+      delete (window as any).__THREE_CAMERA__;
+      delete (window as any).__THREE_RENDERER__;
+      delete (window as any).__THREE_COMPOSER__;
       resizeObserver.disconnect();
       renderer.dispose();
       composer.dispose();

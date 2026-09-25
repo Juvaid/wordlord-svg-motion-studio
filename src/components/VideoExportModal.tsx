@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Download, Check, RefreshCw, AlertCircle, Eye, Sliders, Maximize2 } from 'lucide-react';
+import { X, Film, Download, Check, RefreshCw, AlertCircle, Eye, Sliders, Maximize2, Gauge, Zap } from 'lucide-react';
 import { renderAnimationToVideo, VideoExportResult } from '../utils/videoExporter';
 import { getMotionIcon } from '../utils/presetIcons';
 import { GLYPH_PATHS } from '../data/vectorPaths';
@@ -53,6 +53,8 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
 }) => {
   const [resolution, setResolution] = useState<'1080p' | 'square' | 'vertical' | '720p' | '4k'>('1080p');
   const [fps, setFps] = useState<number>(60);
+  const [bitrateMbps, setBitrateMbps] = useState<number>(45);
+  const [format, setFormat] = useState<'auto' | 'mp4' | 'webm'>('auto');
   const [markScale, setMarkScale] = useState<number>(0.85); // 85% balanced default
   const [bgChoice, setBgChoice] = useState<'theme' | 'black'>('theme');
   const [showSafeZones, setShowSafeZones] = useState<boolean>(true);
@@ -101,6 +103,8 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         layerVisibility,
         bgChoice,
         bgGradient,
+        bitrate: bitrateMbps * 1_000_000,
+        format,
         seekFrame,
         onProgress: (p, frame, total) => {
           setProgress(Math.round(p * 100));
@@ -425,11 +429,94 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                   </div>
                 </div>
 
+                {/* Codec Format & Bitrate Controls */}
+                <div className="flex flex-col gap-2 bg-[#121622] border border-[#22283a] rounded-lg p-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 font-semibold uppercase tracking-wider">
+                      <Gauge size={12} className="text-[#ff4e2e]" />
+                      <span>Encoding Bitrate & Codec</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 px-1.5 py-0.5 rounded">
+                      ~{((duration * bitrateMbps) / 8).toFixed(1)} MB Est.
+                    </span>
+                  </div>
+
+                  {/* Format Selector */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { key: 'auto' as const, label: 'Auto (Best)', sub: 'Hardware Default' },
+                      { key: 'mp4' as const, label: 'MP4 Video', sub: 'H.264 High Profile' },
+                      { key: 'webm' as const, label: 'WebM Master', sub: 'VP9 Ultra-HD' },
+                    ].map(f => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setFormat(f.key)}
+                        className={`flex flex-col items-center py-1 px-1 rounded border text-center transition-all ${
+                          format === f.key
+                            ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
+                            : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-[9.5px] font-mono leading-tight">{f.label}</span>
+                        <span className="text-[7.5px] text-slate-500 leading-tight">{f.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Bitrate Presets */}
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center justify-between text-[9.5px] font-mono">
+                      <span className="text-slate-400">Stream Bitrate:</span>
+                      <span className="text-[#ff4e2e] font-bold">{bitrateMbps} Mbps</span>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { mbps: 60, label: 'Cinema', badge: '60M' },
+                        { mbps: 45, label: 'Studio', badge: '45M' },
+                        { mbps: 30, label: 'Pro', badge: '30M' },
+                        { mbps: 18, label: 'Web', badge: '18M' },
+                        { mbps: 10, label: 'Social', badge: '10M' },
+                      ].map(p => (
+                        <button
+                          key={p.mbps}
+                          type="button"
+                          onClick={() => setBitrateMbps(p.mbps)}
+                          className={`py-1 px-0.5 rounded border text-center transition-all ${
+                            bitrateMbps === p.mbps
+                              ? 'bg-[#ff4e2e] border-[#ff4e2e] text-white font-bold shadow-sm'
+                              : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <span className="text-[9px] font-mono block leading-tight">{p.badge}</span>
+                          <span className="text-[7px] text-slate-400 block leading-tight">{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Fine-tuning Bitrate Slider */}
+                    <input
+                      type="range"
+                      min="5"
+                      max="100"
+                      step="5"
+                      value={bitrateMbps}
+                      onChange={(e) => setBitrateMbps(parseInt(e.target.value, 10))}
+                      className="w-full accent-[#ff4e2e] cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none mt-1"
+                    />
+                  </div>
+                </div>
+
                 {/* Master Render Quality Specs */}
                 <div className="p-3 bg-[#11141e] border border-[#1f2535] rounded-lg flex flex-col gap-1 text-[9.5px] font-mono text-slate-400">
                   <div className="flex justify-between">
                     <span>Encoding Bitrate:</span>
-                    <span className="text-slate-200 font-bold">28 Mbps Master</span>
+                    <span className="text-slate-200 font-bold">{bitrateMbps} Mbps {bitrateMbps >= 45 ? '(Cinema Grade)' : '(Standard)'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Target Format:</span>
+                    <span className="text-cyan-400 font-bold">{format === 'auto' ? 'Auto (Hardware Best)' : format.toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Frame Count:</span>
