@@ -1,69 +1,125 @@
 # WordLord Media // SVG Motion Architecture Studio & Kinetic Animation Deck
 
-> Interactive kinetic laboratory, visual style preview dashboard, and animation specification engine built for the **WordLord Media** vector mark.
+> **Professional Desktop-Grade Motion Graphics Suite for the WordLord Media Vector Identity**  
+> *Built with React 19, TypeScript, Tailwind CSS, Lucide Icons, and Vite SingleFile*
 
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
 ![Status](https://img.shields.io/badge/status-12_Live_Animations-emerald.svg)
-![UI](https://img.shields.io/badge/UI-CapCut_Visual_Cards-orange.svg)
-![Glow](https://img.shields.io/badge/Glow-Unclipped_Volumetric_Aura-blue.svg)
+![UI](https://img.shields.io/badge/UI-Desktop_NLE_Studio-orange.svg)
+![Video](https://img.shields.io/badge/Video-60_FPS_MP4_Export-blue.svg)
+![Glow](https://img.shields.io/badge/Glow-Unclipped_Volumetric_Aura-purple.svg)
 
 ---
 
 ## ⚡ Overview
 
-A high-performance, zero-dependency kinetic motion studio designed specifically for the **WordLord Media** logo (`25×26` sub-pixel vector mark). The studio isolates typographic letterforms—including the monolithic tall `D` ligature connecting `WORD` and `LORD`, and the electric vermilion (`#FF4E2E`) `MEDIA` mark—allowing precise targeted CSS keyframe, SVG stroke draw, and timeline choreography.
+**WordLord SVG Motion Studio v5.0** is an interactive, zero-dependency kinetic laboratory and animation specification engine engineered specifically for the **WordLord Media** logo (`25 × 26` sub-pixel vector mark).
 
-### Features
-
-- **Fluid Resizable Workspace**: Interactive draggable splitters between sidebars, canvas, and timeline. Instantly maximize stage with top bar view toggles.
-- **CapCut-Style Visual Grid**: Sleek 2-column cards with hover-to-play overlays, active crimson borders, and zero text clutter.
-- **Floating `(i)` Popover Specs**: Technical parameters (engine, cubic-bezier easing curves, durations, and selectors) appear only on hover over the discreet `(i)` icon.
-- **Unclipped Volumetric Glow Engine**: Fixed SVG subregion clipping via `overflow: visible !important` and $600\%$ extended filter boundary regions (`#unclipped-media-glow`).
-- **12 Curated Live Animations**: Spanning In/Reveals, Continuous Ambient Loops, and Glitch FX.
-- **8 Curated Brand Styles**: Signature Core, Swiss Wireframe, Cyberpunk Neon, Obsidian Luxury, Studio Paper, Frosted Glass, Phosphor CRT, and CAD Blueprint.
-- **Multi-Track Timeline**: Keyframe tracks for `WORD`, `LORD`, `TALL D`, and `MEDIA`, timecode counter, loop toggle, and variable playback speed ($0.5\times \rightarrow 2.0\times$).
-
----
-
-## 🎬 The 12 Live Motion Presets
-
-| # | Effect Name | Category | Engine | Easing & Character |
-|---|---|---|---|---|
-| **01** | **Typewriter Cascade** | Reveal / In | CSS Stagger | `cubic-bezier(0.16, 1, 0.3, 1)` sequential glyph snap |
-| **02** | **Wireframe Draw** | Reveal / In | SVG Stroke | `ease-out-quint` vector path tracing into solid fill |
-| **03** | **Ligature Clamp** | Reveal / In | Lateral Slide | Dual lateral clamp locking into the monolithic tall `D` |
-| **04** | **Liquid Wave Wipe** | Reveal / In | Dynamic Polygon | Fluid top-to-bottom vertical clip-path reveal |
-| **05** | **3D Depth Slam** | Reveal / In | Transform Z-Scale | High-impact slam from 3D space with overshoot bounce |
-| **06** | **Origami Unfold** | Reveal / In | Perspective RotateX | $90^\circ$ architectural 3D perspective fold down |
-| **07** | **Volumetric Aura** | Ambient Loop | Expanded SVG Filter | Unclipped $600\%$ volumetric respiration glow on MEDIA |
-| **08** | **Zero-G Drift** | Ambient Loop | Multi-Axis Sinusoidal | Weightless organic floating with subtle layer parallax |
-| **09** | **Laser Specular** | Ambient Loop | Specular Gradient | $45^\circ$ diagonal gleam beam sweeping every $2.8\text{s}$ |
-| **10** | **Heartbeat Pulse** | Ambient Loop | Cardio Rhythm | Double-thump kinetic cardiovascular vibration |
-| **11** | **Cyber Glitch** | Glitch / FX | Chromatic Offset | Multi-channel RGB split and scanline displacement |
-| **12** | **Matrix Disperse** | Glitch / FX | Sub-pixel Scanline | Bitstream fragment scattering into phosphor trails |
-
----
-
-## 💡 Glow Clipping Fix Details
-
-In SVGs with small viewBox dimensions (e.g. `25×26`), applying CSS `filter: drop-shadow(...)` on inner `<g>` tags causes browser rasterizers to clip filters at the group or SVG bounding box.
-
-**The Fix:**
-1. Explicitly declared `overflow: visible !important;` on `#main-stage-svg`, all `<g>`, all `<path>`, and the stage wrappers.
-2. Constructed a dedicated volumetric aura layer using an SVG `<filter id="unclipped-media-glow">` with `x="-250%" y="-250%" width="600%" height="600%"`, giving the Gaussian blur filters 6 times the bounding area to spread out naturally without hard rectangle edges.
+The studio isolates individual typographic letterforms—including the monolithic tall `D` ligature connecting `WORD` and `LORD`, and the electric scarlet (`#FF4E2E`) `MEDIA` mark—allowing frame-accurate CSS keyframe choreography, SVG stroke drawing, interactive Bézier curve editing, real-time volumetric glow tuning, and 60 FPS MP4 video rendering right in your browser.
 
 ---
 
 ## 🚀 Quick Start
 
-Open `index.html` in any browser:
+### 1. Run the Local Development Server
+To launch the live studio locally with instant Hot Module Reloading (HMR):
 
 ```bash
-open index.html
+git clone https://github.com/Juvaid/wordlord-svg-motion-studio.git
+cd wordlord-svg-motion-studio
+npm install
+npm run dev
 ```
 
-Or view online:
-- **Live Demo**: [juvaid.github.io/wordlord-svg-motion-studio](https://juvaid.github.io/wordlord-svg-motion-studio/)
+Open **`http://localhost:5173/`** in your browser.
+
+### 2. Standalone Single-File Distribution (Zero Server Required)
+You can also open the compiled single-file bundle directly from your local filesystem without running any server:
+
+```bash
+open dist/index.html
+# or
+open wordlord-svg-animation-studio.html
+```
+
+### 3. Build for Production
+Compiles all 1,914 modules into a standalone 388 kB offline HTML bundle:
+
+```bash
+npm run build
+```
+
+---
+
+## 🎛️ Studio Architecture & Key Modules
+
+| Panel | Description | Key Features |
+|---|---|---|
+| **Top Navigation** | Global canvas controls & quick exports | 40%–350% Zoom, 3 Stage Modes (Dark, Radial Spotlight, Grid), Rewind to 0s (`Home`), Replay (`R`), Export MP4 (`V`), Export Code (`E`). |
+| **Creative Library** (Left) | Preset selection deck (Resizable 220–420px) | **12 Motion Presets**, **8 Optical Shader Styles**, and **17 Vector Mark Glyphs** with search and category filtering. |
+| **Stage Viewport** (Center) | Hardware-accelerated vector canvas | Sub-pixel `25×26` mark rendered at `320×332px`, 3D Perspective Tilt (Pitch & Yaw `-35°` to `+35°`), Unclipped Volumetric Optical Bloom. |
+| **Properties Inspector** (Right)| Collapsible tuning laboratory (Resizable 260–460px)| Motion Dynamics sliders, **Interactive Bézier Graph**, Volumetric Optics, 3D Tilt angles, **2x2 Brand Color Grid**, and Live CSS Manifest. |
+| **Professional NLE Timeline** (Bottom)| Multi-track keyframing (Resizable 130–380px)| **6 Discrete Lanes**, Draggable laser playhead, Click-to-seek keyframe diamonds, Add Keyframe (`K`), Jump Keyframe (`J` / `Shift+J`), Speed multiplier ($0.25\times \rightarrow 2.0\times$). |
+
+---
+
+## 🎬 The 12 Live Motion Presets
+
+| # | Preset Name | Category | Duration | Easing & Choreography |
+|---|---|---|---|---|
+| **01** | **Typewriter Cascade** | Reveal | 0.95s | `cubic-bezier(0.16, 1, 0.3, 1)` sequential 17-glyph snap reveal. |
+| **02** | **Neon Wireframe Draw** | Kinetic | 1.40s | `cubic-bezier(0.25, 1, 0.5, 1)` vector path stroke tracing into solid fill. |
+| **03** | **Ligature Monolith Lock** | Kinetic | 1.10s | Opposing horizontal translation clamped by vertical tall D monolith drop. |
+| **04** | **Liquid Plasma Wipe** | Optics | 1.10s | Animated SVG polygon clip-path fluid downward displacement. |
+| **05** | **Cinematic Depth Slam** | 3D | 0.85s | High-impact Z-scale slam from 2.2x with Gaussian lens focus pull. |
+| **06** | **Origami Dimension Fold** | 3D | 1.20s | 90° 3D rotational perspective unfold with virtual lighting shifts. |
+| **07** | **Cyberpunk Chroma Glitch**| Glitch | 0.75s | Quantized multi-slice RGB chromatic skew aberration. |
+| **08** | **Volumetric Pulse Bloom** | Ambient | 2.20s | Continuous harmonic sine wave respiration breathing neon drop-shadows. |
+| **09** | **Anamorphic Laser Sweep** | Optics | 1.35s | 45° diagonal specular gleam beam traversing the mark with additive blend. |
+| **10** | **Kinetic Split & Lock** | Kinetic | 1.05s | Quadrant fly-in: WORD from north, LORD from south, MEDIA from below. |
+| **11** | **Matrix Glyph Cascade** | Glitch | 1.30s | Phosphor green waterfall cascade dropping glyphs into baseline. |
+| **12** | **Elastic Pop Harmonic** | Kinetic | 0.90s | Spring physics simulation scaling glyphs from 0.35x with settle bounce. |
+
+---
+
+## 🎥 60 FPS Hardware-Accelerated MP4 Video Exporter
+
+Export production-ready video files directly from the browser:
+- **Formats**: Hardware-encoded **MP4 (H.264)** with WebM fallback.
+- **Resolution Options**:
+  - `1920 × 1080` (1080p Full HD — 16:9)
+  - `1080 × 1080` (1:1 Square Lockup — Instagram / Social)
+  - `1280 × 720` (720p Fast Preview)
+  - `3840 × 2160` (4K Ultra HD Cinema Master)
+- **Real-Time Progress**: Live frame counter and progress percentage.
+- **Embedded Player**: Immediate in-modal video playback review.
+
+---
+
+## ⌨️ Global Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Space` | Play / Pause playback |
+| `0` / `Home` / `Esc` | **Rewind & Reset to 0:00 (Start)** |
+| `R` | **Replay** animation from beginning |
+| `V` | Open **Export MP4 Video** modal |
+| `E` | Open **Export Code & Specs** modal |
+| `J` | Jump to **previous keyframe** |
+| `Shift + J` | Jump to **next keyframe** |
+| `K` | **Add keyframe marker** at current playhead |
+| `←` / `→` | Step **backward / forward 1 frame** (1/60s) |
+| `End` | Jump to end of composition |
+| `L` | Toggle **continuous loop** mode |
+| `M` | Toggle **audio haptic clicks** |
+| `1`, `2`, `3` | Switch stage background (Dark / Radial Spotlight / Grid) |
+| `-` / `+` | Zoom canvas out / in |
+
+---
+
+## 📄 Complete Feature Specification
+
+For detailed architectural analysis, vector coordinate references, and bug fix documentation, read [`FEATURES.md`](./FEATURES.md).
 
 ---
 
