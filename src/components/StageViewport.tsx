@@ -1,4 +1,14 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { 
+  RotateCcw, 
+  ZoomIn, 
+  ZoomOut, 
+  Maximize2, 
+  Move,
+  Compass,
+  MousePointer,
+  Hand
+} from 'lucide-react';
 import { GLYPH_PATHS } from '../data/vectorPaths';
 import { BackgroundMode } from '../types';
 
@@ -58,36 +68,79 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   onScaleChange
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [activeTool, setActiveTool] = useState<'select' | 'hand'>('select');
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-  // Pan interaction
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button === 0 && (e.altKey || (e.target as HTMLElement).tagName === 'MAIN')) {
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
+  // Track Spacebar for temporary pan mode & navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement as HTMLElement)?.tagName;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) return;
+
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      } else if (e.code === 'KeyH' && !e.altKey && !e.metaKey && !e.ctrlKey) {
+        // H: Hand Tool
+        e.preventDefault();
+        setActiveTool('hand');
+      } else if (e.code === 'KeyV' && !e.altKey && !e.metaKey && !e.ctrlKey) {
+        // V: Select Pointer Tool
+        e.preventDefault();
+        setActiveTool('select');
+      } else if ((e.key === '0' || e.code === 'Digit0') && (e.altKey || e.metaKey || e.ctrlKey)) {
+        // Reset Zoom & Pan (Cmd+0 or Alt+0)
+        e.preventDefault();
+        onScaleChange(1.0);
+        onPanChange({ x: 0, y: 0 });
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+        setIsPanning(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [onScaleChange, onPanChange]);
+
+  // Robust Pan Interaction with explicit pointer capture
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Can pan if: Hand Tool is active OR Middle Click OR Left Click while Space/Alt held
+    const canPan = activeTool === 'hand' 
+      ? (e.button === 0 || e.button === 1)
+      : (e.button === 1 || (e.button === 0 && (e.altKey || isSpacePressed)));
+    
+    if (!canPan) return;
+
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setIsPanning(true);
+    setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
-  const handlePointerMove = useCallback((e: PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isPanning) return;
     onPanChange({ x: e.clientX - startPan.x, y: e.clientY - startPan.y });
-  }, [isPanning, onPanChange, startPan]);
+  };
 
-  const handlePointerUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
-  useEffect(() => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isPanning) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      return () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-      };
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      setIsPanning(false);
     }
-  }, [isPanning, handlePointerMove, handlePointerUp]);
+  };
 
   // Zoom interaction
   const handleWheel = (e: React.WheelEvent) => {
@@ -125,14 +178,123 @@ export const StageViewport: React.FC<StageViewportProps> = ({
 
   const strokeAttr = getStrokeAttr();
 
+  // Dynamic cursor style
+  const cursorClass = isPanning 
+    ? 'cursor-grabbing' 
+    : (activeTool === 'hand' || isSpacePressed)
+    ? 'cursor-grab' 
+    : 'cursor-default';
+
   return (
     <main
       ref={containerRef}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onWheel={handleWheel}
       style={getBgStyle()}
-      className="flex-1 h-full relative overflow-hidden flex items-center justify-center cursor-crosshair select-none"
+      className={`flex-1 h-full relative overflow-hidden flex items-center justify-center select-none ${cursorClass}`}
     >
+      {/* Top Floating Viewport Control Deck (Tool, Zoom, Pan, Reset) */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-[#10131d]/90 backdrop-blur-md border border-[#23293a] rounded-lg shadow-2xl z-20 pointer-events-auto">
+        
+        {/* Navigation Mode: Select (V) vs Hand (H) */}
+        <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
+          <button
+            onClick={() => setActiveTool('select')}
+            title="Selection Pointer (V) - Logo stays anchored"
+            className={`p-1.5 rounded transition-all ${
+              activeTool === 'select'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <MousePointer size={12} />
+          </button>
+          <button
+            onClick={() => setActiveTool('hand')}
+            title="Hand / Pan Tool (H) - Click and drag to pan stage"
+            className={`p-1.5 rounded transition-all ${
+              activeTool === 'hand'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Hand size={12} />
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+        {/* Zoom In & Out */}
+        <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
+          <button
+            onClick={() => onScaleChange(Math.max(0.4, Number((scale - 0.15).toFixed(2))))}
+            title="Zoom Out"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
+          >
+            <ZoomOut size={12} />
+          </button>
+          <span className="text-[10px] font-mono px-1.5 text-slate-300 min-w-[42px] text-center font-bold">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            onClick={() => onScaleChange(Math.min(3.5, Number((scale + 0.15).toFixed(2))))}
+            title="Zoom In"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
+          >
+            <ZoomIn size={12} />
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+        {/* Reset Zoom & Pan to Center */}
+        <button
+          onClick={() => {
+            onScaleChange(1.0);
+            onPanChange({ x: 0, y: 0 });
+          }}
+          title="Reset Zoom & Pan (Cmd+0 / Alt+0)"
+          className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono transition-all ${
+            scale !== 1.0 || pan.x !== 0 || pan.y !== 0
+              ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] border border-[#ff4e2e]/30 font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <RotateCcw size={11} />
+          <span>Center</span>
+        </button>
+
+        {/* Pan Active Indicator */}
+        {(pan.x !== 0 || pan.y !== 0) && (
+          <span className="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded">
+            Pan ({Math.round(pan.x)}, {Math.round(pan.y)})
+          </span>
+        )}
+      </div>
+
+      {/* Top Left Spec Badge */}
+      <div className="absolute top-3 left-3 flex flex-col gap-1 pointer-events-none z-10">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#0f121a]/85 backdrop-blur border border-[#1e2433] text-[9.5px] font-mono text-slate-300">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e2e]" />
+          <span className="font-bold text-white">2D Vector Mark</span>
+          <span className="text-slate-500">•</span>
+          <span>25 × 26 px Sub-Pixel</span>
+        </div>
+      </div>
+
+      {/* Bottom Right Navigation Tip */}
+      <div className="absolute bottom-3 right-3 pointer-events-none z-10 flex items-center gap-3 px-3 py-1.5 rounded-md bg-[#0e1118]/85 backdrop-blur border border-white/5 text-[9px] font-mono text-slate-400">
+        <span>V: Select Tool</span>
+        <span>•</span>
+        <span>H: Hand Tool</span>
+        <span>•</span>
+        <span>Space + Drag: Pan</span>
+        <span>•</span>
+        <span>Scroll: Zoom</span>
+      </div>
+
       {/* Visual Bounding Spec Box */}
       <div
         id="stage-wrapper"
@@ -152,13 +314,6 @@ export const StageViewport: React.FC<StageViewportProps> = ({
           visibility: layerVisibility.master ? 'visible' : 'hidden'
         }}
       >
-        {/* Spec Label */}
-        <div className="absolute -top-6 left-0 flex items-center gap-2 pointer-events-none">
-          <span className="text-[8.5px] font-mono font-semibold text-[#ff4e2e] tracking-wider uppercase bg-[#0e1118]/80 border border-[#ff4e2e]/20 px-1.5 py-0.5 rounded">
-            25 × 26 px // SUB-PIXEL VECTOR MARK
-          </span>
-        </div>
-
         {/* Master Stage SVG (Unclipped Guaranteed) */}
         <svg
           id="main-stage-svg"
@@ -277,11 +432,11 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             />
           </g>
 
-          {/* Group: LIGATURE TALL D */}
+          {/* Group: Monolithic Ligature D */}
           <g id="group-ligature" style={{ visibility: layerVisibility.ligature ? 'visible' : 'hidden' }}>
             <path
               id="glyph-ligature-d"
-              data-glyph="TALL-D"
+              data-glyph="D"
               d={GLYPH_PATHS.ligatureD}
               fill={colors.ligature}
               stroke={strokeAttr.stroke}
@@ -290,10 +445,10 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             />
           </g>
 
-          {/* Group: MEDIA Sub-brand with Direct Integrated Volumetric Optical Glow */}
+          {/* Group: MEDIA (with Volumetric Glow) */}
           <g
             id="group-media"
-            filter={layerVisibility.glow && glowIntensity > 0 ? "url(#unclipped-media-glow)" : undefined}
+            filter={layerVisibility.glow && glowIntensity > 0 && glowRadius > 0 ? "url(#unclipped-media-glow)" : undefined}
             style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}
           >
             <path

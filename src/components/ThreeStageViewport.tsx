@@ -424,9 +424,17 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
         lastTime = now;
       }
 
-      // Smooth gyro cursor
-      mouseGyroRef.current.x += (mouseGyroRef.current.targetX - mouseGyroRef.current.x) * 0.06;
-      mouseGyroRef.current.y += (mouseGyroRef.current.targetY - mouseGyroRef.current.y) * 0.06;
+      // Smooth gyro cursor (only if gyro is explicitly enabled)
+      const hasGyro = config.gyroEnabled || (config.stackedEffects && config.stackedEffects.gyroTilt);
+      if (!hasGyro) {
+        mouseGyroRef.current.x = 0;
+        mouseGyroRef.current.y = 0;
+        mouseGyroRef.current.targetX = 0;
+        mouseGyroRef.current.targetY = 0;
+      } else {
+        mouseGyroRef.current.x += (mouseGyroRef.current.targetX - mouseGyroRef.current.x) * 0.06;
+        mouseGyroRef.current.y += (mouseGyroRef.current.targetY - mouseGyroRef.current.y) * 0.06;
+      }
 
       // Update Controls
       if (controlsRef.current) {
@@ -481,6 +489,12 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
   // Pointer move for Gyro Cursor Reaction
   const handlePointerMove = (e: React.PointerEvent) => {
+    const hasGyro = config.gyroEnabled || (config.stackedEffects && config.stackedEffects.gyroTilt);
+    if (!hasGyro) {
+      mouseGyroRef.current.targetX = 0;
+      mouseGyroRef.current.targetY = 0;
+      return;
+    }
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;

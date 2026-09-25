@@ -449,7 +449,7 @@ export function evaluate3DMotion(
     turntableSpin: false,
     harmonicWave: false,
     lightSweep: false,
-    gyroTilt: true,
+    gyroTilt: false,
     sync2dMotion: false
   };
 

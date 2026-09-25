@@ -176,7 +176,7 @@ export const App: React.FC = () => {
       turntableSpin: false,
       harmonicWave: false,
       lightSweep: false,
-      gyroTilt: true,
+      gyroTilt: false,
       sync2dMotion: false
     },
     isPlaying: true,
@@ -184,7 +184,7 @@ export const App: React.FC = () => {
     time: 0.0,
     duration: 5.0,
     speed: 1.0,
-    gyroEnabled: true,
+    gyroEnabled: false,
     active2dMotionId: 'typewriter',
     shadingMode: 'rendered',
     cameraPreset: 'front',
@@ -321,6 +321,12 @@ export const App: React.FC = () => {
   useEffect(() => {
     const saved = loadProjectFromStorage();
     if (saved) {
+      if (saved.threeConfig) {
+        saved.threeConfig.gyroEnabled = false;
+        if (saved.threeConfig.stackedEffects) {
+          saved.threeConfig.stackedEffects.gyroTilt = false;
+        }
+      }
       applySnapshot(saved);
       showToast('Loaded saved project state');
     }

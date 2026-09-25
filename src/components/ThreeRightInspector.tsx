@@ -101,7 +101,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
       turntableSpin: false,
       harmonicWave: false,
       lightSweep: false,
-      gyroTilt: true,
+      gyroTilt: false,
       sync2dMotion: false
     };
     onUpdateConfig({
