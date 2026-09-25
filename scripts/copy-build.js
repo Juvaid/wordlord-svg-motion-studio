@@ -6,7 +6,6 @@ if (fs.existsSync(distFile)) {
   const content = fs.readFileSync(distFile, 'utf8');
   
   const targets = [
-    path.resolve('index.html'),
     path.resolve('wordlord-svg-animation-studio.html'),
     '/Volumes/disk 2/wordlord-svg-animation-studio.html',
     '/Volumes/disk 2/Desktop/WORDLORD/wordlord-svg-animation-studio.html',
