@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -11,17 +12,25 @@ import {
   Sparkles, 
   Box, 
   Compass, 
-  Maximize2
+  Maximize2,
+  Crosshair,
+  Ratio,
+  Move,
+  Lightbulb,
+  Check,
+  Eye
 } from 'lucide-react';
 import { 
   ThreeStudioConfig, 
   ThreePart, 
-  CameraAnglePreset 
+  CameraAnglePreset,
+  SocialFramingAspect 
 } from '../types/threeStudio';
 import { 
-  generateFlutedTexture, 
+  generateProceduralTexture, 
   buildExtrudedParts, 
-  evaluate3DMotion 
+  evaluate3DMotion,
+  flashMeshHighlight 
 } from '../utils/threeEngine';
 
 interface ThreeStageViewportProps {
@@ -47,6 +56,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const transformControlsRef = useRef<TransformControls | null>(null);
   const composerRef = useRef<EffectComposer | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
 
@@ -59,16 +69,22 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     ambientLight: THREE.AmbientLight;
   } | null>(null);
   const floorRef = useRef<{ mesh: THREE.Mesh; grid: THREE.GridHelper } | null>(null);
-  const flutedTextureRef = useRef<THREE.Texture | null>(null);
+  const proceduralTextureRef = useRef<THREE.Texture | null>(null);
 
   const [polyCount, setPolyCount] = useState<number>(0);
   const [fps, setFps] = useState<number>(60);
+  const [selectedPartName, setSelectedPartName] = useState<string>('All Parts');
+  const [showAspectMenu, setShowAspectMenu] = useState(false);
+
   const mouseGyroRef = useRef<{ x: number; y: number; targetX: number; targetY: number }>({
     x: 0,
     y: 0,
     targetX: 0,
     targetY: 0
   });
+
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // 1. Initialize Scene & Renderer
   useEffect(() => {
@@ -110,6 +126,15 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     controls.maxDistance = 1400;
     controls.minDistance = 60;
     controlsRef.current = controls;
+
+    // TransformControls (Interactive 3D Gizmo from Prototypes)
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    transformControls.size = 0.75;
+    transformControls.addEventListener('dragging-changed', (event) => {
+      controls.enabled = !event.value;
+    });
+    scene.add(transformControls.getHelper());
+    transformControlsRef.current = transformControls;
 
     // Lighting Setup
     const ambientLight = new THREE.AmbientLight(0xffffff, config.ambientIntensity);
@@ -157,8 +182,8 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     // Logo Group
     scene.add(logoGroupRef.current);
 
-    // Procedural fluted bump texture
-    flutedTextureRef.current = generateFlutedTexture();
+    // Procedural texture
+    proceduralTextureRef.current = generateProceduralTexture(config.proceduralTexture || (config.flutingEnabled ? 'fluted' : 'none'));
 
     // Post Processing (UnrealBloom)
     const composer = new EffectComposer(renderer);
@@ -204,18 +229,23 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       renderer.dispose();
       composer.dispose();
       controls.dispose();
+      transformControls.dispose();
     };
   }, []);
 
-  // 2. Rebuild Meshes on Parts / Geometry config changes
+  // 2. Rebuild Meshes on Parts / Geometry / Procedural config changes
   useEffect(() => {
     if (!sceneRef.current) return;
+
+    proceduralTextureRef.current = generateProceduralTexture(
+      config.proceduralTexture || (config.flutingEnabled ? 'fluted' : 'none')
+    );
 
     const meshes = buildExtrudedParts(
       logoGroupRef.current,
       parts,
       config,
-      flutedTextureRef.current
+      proceduralTextureRef.current
     );
     meshesRef.current = meshes;
 
@@ -251,10 +281,33 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     config.clearcoat, 
     config.transmission, 
     config.flutingEnabled, 
-    config.fluteScale
+    config.fluteScale,
+    config.proceduralTexture
   ]);
 
-  // 3. Update Environment, Fog & Background
+  // 3. Update TransformControls Gizmo Mode
+  useEffect(() => {
+    const tc = transformControlsRef.current;
+    if (!tc) return;
+
+    if (config.gizmoMode === 'light' && lightsRef.current) {
+      tc.attach(lightsRef.current.keyLight);
+      tc.setMode('translate');
+      tc.getHelper().visible = true;
+      tc.enabled = true;
+    } else if (config.gizmoMode === 'model' && logoGroupRef.current) {
+      tc.attach(logoGroupRef.current);
+      tc.setMode('rotate');
+      tc.getHelper().visible = true;
+      tc.enabled = true;
+    } else {
+      tc.detach();
+      tc.getHelper().visible = false;
+      tc.enabled = false;
+    }
+  }, [config.gizmoMode]);
+
+  // 4. Update Environment, Fog & Background
   useEffect(() => {
     if (!sceneRef.current) return;
     const scene = sceneRef.current;
@@ -288,7 +341,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     }
   }, [config.envPreset]);
 
-  // 4. Update Lights & Bloom Settings
+  // 5. Update Lights & Bloom Settings
   useEffect(() => {
     if (!lightsRef.current) return;
     const { keyLight, rimLight, fillLight, ambientLight } = lightsRef.current;
@@ -338,7 +391,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     config.fov
   ]);
 
-  // 5. Update Viewport Shading Mode (Solid / Wireframe / PBR / Bloom)
+  // 6. Update Viewport Shading Mode (Solid / Wireframe / PBR / Bloom)
   useEffect(() => {
     meshesRef.current.forEach(mesh => {
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -349,7 +402,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     });
   }, [config.shadingMode]);
 
-  // 6. High-Performance Render Loop (zero deprecated THREE.Clock warnings)
+  // 7. High-Performance Render Loop
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -436,6 +489,38 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     mouseGyroRef.current.targetY = y;
   };
 
+  // Pointer Down for Raycasting & Drag distinction
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  // Interactive 3D Raycasting / Direct Mesh Picking (from Prototype 2 & 1)
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const dist = Math.hypot(
+      e.clientX - pointerDownPosRef.current.x,
+      e.clientY - pointerDownPosRef.current.y
+    );
+    // Ignore drags
+    if (dist > 5) return;
+    if (!containerRef.current || !cameraRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+
+    raycasterRef.current.setFromCamera(new THREE.Vector2(x, y), cameraRef.current);
+    const intersects = raycasterRef.current.intersectObjects(meshesRef.current, false);
+
+    if (intersects.length > 0) {
+      const hitMesh = intersects[0].object as THREE.Mesh;
+      flashMeshHighlight(hitMesh);
+      const partIdx = hitMesh.userData.index;
+      const partName = hitMesh.userData.name || `Part #${partIdx + 1}`;
+      setSelectedPartName(partName);
+      onSelectPart(partIdx);
+    }
+  };
+
   // Camera angle presets
   const handleSetCameraPreset = (preset: CameraAnglePreset) => {
     if (!cameraRef.current || !controlsRef.current) return;
@@ -459,10 +544,33 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     controlsRef.current.update();
   };
 
+  // Social Framing overlay dimensions
+  const getFramingStyles = () => {
+    if (config.framingAspect === 'free' || !config.showFramingMask) return null;
+    let aspectNum = 16 / 9;
+    let label = '16:9 Landscape (YouTube)';
+    if (config.framingAspect === '9:16') {
+      aspectNum = 9 / 16;
+      label = '9:16 Vertical (Reels / TikTok)';
+    } else if (config.framingAspect === '1:1') {
+      aspectNum = 1;
+      label = '1:1 Square (Feed)';
+    } else if (config.framingAspect === '21:9') {
+      aspectNum = 21 / 9;
+      label = '21:9 Cinema Master';
+    }
+
+    return { aspectNum, label };
+  };
+
+  const framingData = getFramingStyles();
+
   return (
     <div 
       ref={containerRef}
       onPointerMove={handlePointerMove}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       className="relative flex-1 w-full h-full bg-[#080a0f] overflow-hidden select-none"
     >
       {/* Three.js Canvas Element */}
@@ -472,8 +580,40 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
         className="w-full h-full block cursor-grab active:cursor-grabbing outline-none"
       />
 
+      {/* Social Media Framing Mask Overlay (from Prototypes) */}
+      {framingData && config.showFramingMask && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+          <div 
+            className="relative border-2 border-dashed border-[#ff4e2e]/60 shadow-[0_0_0_9999px_rgba(5,7,12,0.72)] max-w-[92%] max-h-[90%] transition-all duration-200"
+            style={{
+              aspectRatio: `${framingData.aspectNum}`,
+              width: config.framingAspect === '9:16' ? 'auto' : '82%',
+              height: config.framingAspect === '9:16' ? '86%' : 'auto'
+            }}
+          >
+            {/* Aspect Ratio Badge */}
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-[#ff4e2e]/40 text-[9px] font-mono text-white font-bold tracking-wider uppercase">
+              {framingData.label}
+            </span>
+
+            {/* Rule of Thirds Guides */}
+            <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20 pointer-events-none">
+              <div className="border-r border-b border-white" />
+              <div className="border-r border-b border-white" />
+              <div className="border-b border-white" />
+              <div className="border-r border-b border-white" />
+              <div className="border-r border-b border-white" />
+              <div className="border-b border-white" />
+              <div className="border-r border-white" />
+              <div className="border-r border-white" />
+              <div />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Floating Viewport Control Deck (Blender / Studio Style) */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-[#10131d]/90 backdrop-blur-md border border-[#23293a] rounded-lg shadow-2xl z-10">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-[#10131d]/90 backdrop-blur-md border border-[#23293a] rounded-lg shadow-2xl z-20">
         
         {/* Shading Mode Selector */}
         <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
@@ -523,6 +663,77 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
         <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
 
+        {/* 3D Gizmo Mode Switcher (TransformControls) */}
+        <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
+          <button
+            onClick={() => onUpdateConfig({ gizmoMode: config.gizmoMode === 'light' ? 'none' : 'light' })}
+            title="Key Light 3D Gizmo"
+            className={`p-1.5 rounded transition-all ${
+              config.gizmoMode === 'light'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Lightbulb size={12} />
+          </button>
+          <button
+            onClick={() => onUpdateConfig({ gizmoMode: config.gizmoMode === 'model' ? 'none' : 'model' })}
+            title="Model 3D Rotation Cage Gizmo"
+            className={`p-1.5 rounded transition-all ${
+              config.gizmoMode === 'model'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Move size={12} />
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+        {/* Social Framing Aspect Ratio Switcher */}
+        <div className="relative">
+          <button
+            onClick={() => setShowAspectMenu(!showAspectMenu)}
+            title="Social Framing Masks"
+            className={`p-1.5 rounded text-xs flex items-center gap-1 font-mono transition-all ${
+              config.showFramingMask && config.framingAspect !== 'free'
+                ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] border border-[#ff4e2e]/30'
+                : 'text-slate-400 hover:text-white bg-white/5'
+            }`}
+          >
+            <Ratio size={12} />
+            <span className="text-[9px] uppercase font-bold">{config.framingAspect}</span>
+          </button>
+
+          {showAspectMenu && (
+            <div className="absolute top-full mt-1.5 left-0 w-36 bg-[#0e1118] border border-[#23293a] rounded-lg shadow-2xl p-1 flex flex-col gap-0.5 z-50 animate-in fade-in">
+              {(['free', '16:9', '9:16', '1:1', '21:9'] as const).map(asp => (
+                <button
+                  key={asp}
+                  onClick={() => {
+                    onUpdateConfig({
+                      framingAspect: asp,
+                      showFramingMask: asp !== 'free'
+                    });
+                    setShowAspectMenu(false);
+                  }}
+                  className={`px-2 py-1 rounded text-[10px] font-mono flex items-center justify-between text-left transition-colors ${
+                    config.framingAspect === asp
+                      ? 'bg-[#ff4e2e] text-white font-bold'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  <span className="uppercase">{asp === 'free' ? 'Free View' : asp}</span>
+                  {config.framingAspect === asp && <Check size={10} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
         {/* Floor Grid Toggle */}
         <button
           onClick={() => onUpdateConfig({ showFloor: !config.showFloor })}
@@ -555,16 +766,18 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
           <span>{fps} FPS</span>
           <span className="text-slate-500">•</span>
           <span>{polyCount.toLocaleString()} Polys</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-cyan-400 truncate max-w-[120px]">{selectedPartName}</span>
         </div>
       </div>
 
       {/* Bottom Right Orbit Controls Tip */}
       <div className="absolute bottom-3 right-3 pointer-events-none z-10 flex items-center gap-3 px-3 py-1.5 rounded-md bg-[#0e1118]/85 backdrop-blur border border-white/5 text-[9px] font-mono text-slate-400">
+        <span>Click Letter: Select in 3D</span>
+        <span>•</span>
         <span>Left Drag: Orbit</span>
         <span>•</span>
         <span>Right Drag: Pan</span>
-        <span>•</span>
-        <span>Scroll: Zoom</span>
       </div>
     </div>
   );

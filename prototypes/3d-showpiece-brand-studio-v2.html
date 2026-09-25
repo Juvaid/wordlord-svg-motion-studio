@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Extruded SVG Showpiece & Multi-Part Brand Studio</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: {
+              950: '#06070a',
+              900: '#0b0d13',
+              850: '#11141d',
+              800: '#171b26',
+              700: '#232a3b',
+              600: '#343e56'
+            },
+            brand: {
+              red: '#ff263e',
+              crimson: '#dc143c',
+              gold: '#f59e0b',
+              cyan: '#06b6d4',
+              violet: '#8b5cf6'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Three.js Suite (r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/SVGLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+  <!-- Three.js Post-Processing Shaders & EffectComposer (Bloom) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      background-color: #06070a;
+      color: #f3f4f6;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(11, 13, 19, 0.7);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 38, 62, 0.45);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 38, 62, 0.85);
+    }
+
+    .studio-glass {
+      background: rgba(17, 20, 29, 0.88);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-surface {
+      background: rgba(23, 27, 38, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      height: 4px;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ff263e;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 38, 62, 0.9);
+      transition: transform 0.1s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .glow-brand {
+      box-shadow: 0 0 24px -2px rgba(255, 38, 62, 0.45);
+    }
+
+    .badge-tag {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .part-card.active-selected {
+      border-color: #ff263e !important;
+      background: rgba(255, 38, 62, 0.12) !important;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden">
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="canvas-container" class="absolute inset-0 z-0 cursor-grab active:cursor-grabbing"></div>
+
+  <!-- Social Media & Viewport Framing Mask -->
+  <div id="aspect-framing" class="absolute inset-0 pointer-events-none z-10 hidden flex items-center justify-center">
+    <div id="aspect-box" class="border border-dashed border-brand-red/60 shadow-[0_0_0_9999px_rgba(6,7,10,0.75)] transition-all duration-300 relative">
+      <span id="aspect-tag" class="absolute -top-6 left-0 text-[10px] font-mono text-brand-red font-bold uppercase tracking-wider bg-obsidian-900/90 px-2 py-0.5 rounded border border-brand-red/30">
+        16:9 Landscape
+      </span>
+    </div>
+  </div>
+
+  <header class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-3 pointer-events-none">
+    <!-- Brand / Studio Title -->
+    <div class="flex items-center space-x-3 pointer-events-auto">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-crimson via-brand-red to-orange-500 flex items-center justify-center glow-brand text-white shadow-lg">
+        <i data-lucide="layers" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm font-extrabold tracking-tight text-white uppercase flex items-center gap-1.5">
+            Vector3D <span class="text-brand-red">Studio Pro</span>
+          </h1>
+          <span class="badge-tag bg-brand-red/20 text-brand-red border border-brand-red/30">Multi-Part</span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Automatic Part Decomposition & Studio Showcase</p>
+      </div>
+    </div>
+
+    <!-- Diagnostic Status -->
+    <div class="hidden lg:flex items-center gap-4 studio-glass px-4 py-1.5 rounded-full pointer-events-auto text-xs font-mono text-slate-300">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="diag-fps" class="text-emerald-400 font-bold">60</span> FPS
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Parts:</span>
+        <span id="diag-parts-count" class="text-brand-red font-bold">5</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Polys:</span>
+        <span id="diag-polys" class="text-white font-bold">18,500</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Selected:</span>
+        <span id="diag-selected-part" class="text-amber-400 font-bold">All</span>
+      </div>
+    </div>
+
+    <!-- Quick Tools -->
+    <div class="flex items-center space-x-2 pointer-events-auto">
+      <button id="btn-open-code-modal" class="studio-glass hover:bg-obsidian-700 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition" title="Paste / Edit raw SVG markup">
+        <i data-lucide="code" class="w-3.5 h-3.5 text-brand-red"></i>
+        <span class="hidden sm:inline">SVG Code</span>
+      </button>
+
+      <button id="btn-snapshot-png" class="studio-glass hover:bg-obsidian-700 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition" title="Take 4K PNG snapshot">
+        <i data-lucide="camera" class="w-3.5 h-3.5 text-slate-300"></i>
+        <span class="hidden md:inline">Snapshot</span>
+      </button>
+
+      <button id="btn-quick-record" class="studio-glass text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border-brand-red/50 bg-brand-red/30 hover:bg-brand-red/50 glow-brand">
+        <span class="w-2 h-2 rounded-full bg-brand-red animate-ping"></span>
+        <span>Render Video</span>
+      </button>
+
+      <!-- Sidebar Toggles -->
+      <button id="btn-toggle-left-dock" class="studio-glass text-white p-2.5 rounded-xl text-xs hover:bg-obsidian-700 transition" title="Toggle Parts Inspector">
+        <i data-lucide="layout-list" class="w-4 h-4 text-brand-red"></i>
+      </button>
+
+      <button id="btn-toggle-right-dock" class="studio-glass text-white p-2.5 rounded-xl text-xs hover:bg-obsidian-700 transition" title="Toggle Studio Suite">
+        <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i>
+      </button>
+    </div>
+  </header>
+
+  <aside id="left-dock" class="absolute top-16 left-4 bottom-28 w-84 studio-glass rounded-2xl z-20 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden pointer-events-auto">
+    <!-- Header -->
+    <div class="p-3.5 border-b border-obsidian-700/80 bg-obsidian-900/60 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="box-select" class="w-4 h-4 text-brand-red"></i>
+        <h2 class="text-xs font-bold text-white uppercase tracking-wider">Parts Inspector</h2>
+      </div>
+      <span id="part-count-badge" class="badge-tag bg-brand-red/20 text-brand-red border border-brand-red/30">5 parts</span>
+    </div>
+
+    <!-- Quick Tools: Auto-clean, Drag & Drop, Batch Apply -->
+    <div class="p-3 border-b border-obsidian-700/60 space-y-2.5 bg-obsidian-950/40">
+      <!-- File dropzone -->
+      <div id="dropzone" class="border border-dashed border-obsidian-700 hover:border-brand-red/60 rounded-xl p-2.5 text-center cursor-pointer transition bg-obsidian-900/30 group">
+        <input type="file" id="file-input" accept=".svg" class="hidden">
+        <div class="flex items-center justify-center gap-2 text-slate-400 group-hover:text-brand-red transition">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+          <span class="text-[11px] font-medium">Drop ANY Brand SVG Here</span>
+        </div>
+      </div>
+
+      <!-- Presets & Auto Clean -->
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btn-auto-clean-bg" class="py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition" title="Removes bounding box or full-bleed artboard shapes">
+          <i data-lucide="wand-2" class="w-3 h-3"></i>
+          <span>Clean Artboard BG</span>
+        </button>
+
+        <button id="btn-batch-sync" class="py-1.5 px-2 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-700 text-slate-300 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition" title="Batch apply current material settings to all parts">
+          <i data-lucide="copy-check" class="w-3 h-3 text-cyan-400"></i>
+          <span>Sync All Parts</span>
+        </button>
+      </div>
+
+      <!-- Brand Presets -->
+      <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+        <span>Presets:</span>
+        <div class="flex items-center gap-1">
+          <button class="preset-btn px-2 py-0.5 rounded bg-brand-red/20 text-brand-red border border-brand-red/30 font-semibold" data-preset="media">MEDIA</button>
+          <button class="preset-btn px-2 py-0.5 rounded bg-obsidian-800 hover:text-white text-slate-300" data-preset="cyber">CYBER</button>
+          <button class="preset-btn px-2 py-0.5 rounded bg-obsidian-800 hover:text-white text-slate-300" data-preset="apex">APEX</button>
+          <button class="preset-btn px-2 py-0.5 rounded bg-obsidian-800 hover:text-white text-slate-300" data-preset="vortex">VORTEX</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable Parts List with individual controls -->
+    <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="parts-container">
+      <!-- Parts injected dynamically -->
+    </div>
+
+    <!-- Inspector Footer -->
+    <div class="p-3 border-t border-obsidian-700/80 bg-obsidian-900/80 flex items-center justify-between text-xs">
+      <button id="btn-select-all-parts" class="text-slate-400 hover:text-white flex items-center gap-1.5 transition">
+        <i data-lucide="check-square" class="w-3.5 h-3.5 text-cyan-400"></i> Show All
+      </button>
+      <button id="btn-restore-brand" class="text-slate-400 hover:text-brand-red flex items-center gap-1.5 transition">
+        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Restore MEDIA
+      </button>
+    </div>
+  </aside>
+
+  <aside id="right-dock" class="absolute top-16 right-4 bottom-28 w-84 sm:w-96 studio-glass rounded-2xl z-20 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden pointer-events-auto">
+    <!-- Tabs Header -->
+    <div class="flex border-b border-obsidian-700/80 bg-obsidian-900/80 p-1.5 gap-1 overflow-x-auto">
+      <button data-tab="tab-mesh" class="dock-tab active flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-white bg-brand-red/30 border border-brand-red/40 whitespace-nowrap">
+        <i data-lucide="box" class="w-3.5 h-3.5 text-brand-red"></i> 3D Mesh
+      </button>
+      <button data-tab="tab-material" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i> Texture
+      </button>
+      <button data-tab="tab-lighting" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i data-lucide="sun" class="w-3.5 h-3.5 text-cyan-400"></i> Lights & Bloom
+      </button>
+      <button data-tab="tab-motion" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i data-lucide="film" class="w-3.5 h-3.5 text-purple-400"></i> Motion
+      </button>
+      <button data-tab="tab-export" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i> Export
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-slate-300">
+      
+      <!-- TAB 1: 3D GEOMETRY -->
+      <div id="tab-mesh" class="dock-content space-y-4">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Global Extrusion Depth</span>
+            <span id="val-depth" class="font-mono text-brand-red font-bold">32</span>
+          </div>
+          <input type="range" id="sl-depth" min="2" max="100" value="32" class="w-full">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Bevel Depth</span>
+              <span id="val-bevel-thick" class="font-mono text-brand-red font-bold">3.5</span>
+            </div>
+            <input type="range" id="sl-bevel-thick" min="0" max="12" step="0.2" value="3.5" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Bevel Size</span>
+              <span id="val-bevel-size" class="font-mono text-brand-red font-bold">2.2</span>
+            </div>
+            <input type="range" id="sl-bevel-size" min="0" max="8" step="0.2" value="2.2" class="w-full">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Bevel Smoothness (Segments)</span>
+            <span id="val-segments" class="font-mono text-brand-red font-bold">5</span>
+          </div>
+          <input type="range" id="sl-segments" min="1" max="10" step="1" value="5" class="w-full">
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Overall Scale Factor</span>
+            <span id="val-scale" class="font-mono text-brand-red font-bold">1.0x</span>
+          </div>
+          <input type="range" id="sl-scale" min="0.4" max="2.4" step="0.05" value="1.0" class="w-full">
+        </div>
+
+        <div class="pt-2 border-t border-obsidian-700/80">
+          <div class="card-surface p-3 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-white">Center Pivot Automatically</span>
+              <p class="text-[10px] text-slate-400">Centers all letters at the world origin</p>
+            </div>
+            <input type="checkbox" id="chk-auto-center" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MATERIAL & FLUTED TEXTURES -->
+      <div id="tab-material" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Showpiece Material Presets</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="mat-preset-btn active p-2 rounded-xl border border-brand-red/60 bg-brand-red/20 text-white flex items-center gap-2 font-medium" data-mat="crimson">
+              <span class="w-3 h-3 rounded-full bg-[#ff263e] shadow-[0_0_8px_#ff263e]"></span> Crimson Gloss
+            </button>
+            <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="ribbed">
+              <span class="w-3 h-3 rounded-full bg-orange-600 shadow-[0_0_8px_#ea580c]"></span> Fluted Red Ribs
+            </button>
+            <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="gold">
+              <span class="w-3 h-3 rounded-full bg-[#f59e0b] shadow-[0_0_8px_#f59e0b]"></span> 24K Gold
+            </button>
+            <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="chrome">
+              <span class="w-3 h-3 rounded-full bg-[#e2e8f0] shadow-[0_0_8px_#e2e8f0]"></span> Obsidian Chrome
+            </button>
+            <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="glass">
+              <span class="w-3 h-3 rounded-full bg-[#38bdf8] shadow-[0_0_8px_#38bdf8]"></span> Cyber Glass
+            </button>
+            <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="neon">
+              <span class="w-3 h-3 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]"></span> Electric Neon
+            </button>
+          </div>
+        </div>
+
+        <!-- Fluted / Ribbed Face Texture (Matches Uploaded Brand Logo) -->
+        <div class="card-surface p-3 rounded-xl space-y-2 border-brand-red/30">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-white flex items-center gap-1.5">
+                <i data-lucide="align-justify" class="w-3.5 h-3.5 text-brand-red"></i> Ribbed / Fluted Scanlines
+              </span>
+              <p class="text-[10px] text-slate-400">Horizontal grooves matching uploaded brand logo</p>
+            </div>
+            <input type="checkbox" id="chk-fluting" class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+
+          <div id="fluting-controls" class="space-y-2 pt-2 border-t border-obsidian-700/60 hidden">
+            <div class="flex justify-between items-center text-[11px]">
+              <span class="text-slate-300">Flute Depth / Bump</span>
+              <span id="val-flute-scale" class="font-mono text-brand-red">0.45</span>
+            </div>
+            <input type="range" id="sl-flute-scale" min="0.05" max="1.5" step="0.05" value="0.45" class="w-full">
+          </div>
+        </div>
+
+        <!-- Global Material Shaders -->
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="card-surface p-2 rounded-xl flex items-center justify-between">
+              <span class="text-[11px] text-slate-300 font-medium">Face Color</span>
+              <input type="color" id="col-face" value="#ff263e" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+            <div class="card-surface p-2 rounded-xl flex items-center justify-between">
+              <span class="text-[11px] text-slate-300 font-medium">Side Extrusion</span>
+              <input type="color" id="col-sides" value="#660a15" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Roughness</span>
+              <span id="val-rough" class="font-mono text-brand-red">0.22</span>
+            </div>
+            <input type="range" id="sl-rough" min="0.0" max="1.0" step="0.02" value="0.22" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Metalness</span>
+              <span id="val-metal" class="font-mono text-brand-red">0.45</span>
+            </div>
+            <input type="range" id="sl-metal" min="0.0" max="1.0" step="0.02" value="0.45" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Clearcoat Varnish</span>
+              <span id="val-clearcoat" class="font-mono text-brand-red">0.75</span>
+            </div>
+            <input type="range" id="sl-clearcoat" min="0.0" max="1.0" step="0.05" value="0.75" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Glass Transmission</span>
+              <span id="val-trans" class="font-mono text-brand-red">0.00</span>
+            </div>
+            <input type="range" id="sl-trans" min="0.0" max="1.0" step="0.05" value="0.00" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: LIGHTS & BLOOM -->
+      <div id="tab-lighting" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Studio Lighting Rigs</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="rig-btn active p-2 rounded-xl border border-brand-red/60 bg-brand-red/20 text-white flex items-center gap-1.5 font-medium" data-rig="studio">
+              <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i> Crimson Softbox
+            </button>
+            <button class="rig-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-1.5 font-medium" data-rig="cyber">
+              <i data-lucide="zap" class="w-3.5 h-3.5 text-cyan-400"></i> Cyberpunk Duel
+            </button>
+            <button class="rig-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-1.5 font-medium" data-rig="luxury">
+              <i data-lucide="flame" class="w-3.5 h-3.5 text-orange-400"></i> Golden Hour
+            </button>
+            <button class="rig-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex items-center gap-1.5 font-medium" data-rig="noir">
+              <i data-lucide="moon" class="w-3.5 h-3.5 text-slate-400"></i> Obsidian Noir
+            </button>
+          </div>
+        </div>
+
+        <!-- 3-Point Light Customizers -->
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-3">
+          <div class="card-surface p-2.5 rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-white shadow-sm"></span> Key Spotlight
+              </span>
+              <input type="color" id="col-light-key" value="#ffffff" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0">
+            </div>
+            <div class="flex justify-between items-center text-[11px]">
+              <span class="text-slate-400">Intensity</span>
+              <span id="val-light-key" class="font-mono text-brand-red">2.2</span>
+            </div>
+            <input type="range" id="sl-light-key" min="0.2" max="5.0" step="0.1" value="2.2" class="w-full">
+          </div>
+
+          <div class="card-surface p-2.5 rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-sm"></span> Rim Backlight
+              </span>
+              <input type="color" id="col-light-rim" value="#ffffff" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0">
+            </div>
+            <div class="flex justify-between items-center text-[11px]">
+              <span class="text-slate-400">Intensity</span>
+              <span id="val-light-rim" class="font-mono text-brand-red">3.0</span>
+            </div>
+            <input type="range" id="sl-light-rim" min="0.2" max="6.0" step="0.2" value="3.0" class="w-full">
+          </div>
+        </div>
+
+        <!-- Unreal Bloom Post-Processing -->
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-slate-200">Unreal Bloom Pass</span>
+              <p class="text-[10px] text-slate-400">Specular glints on chamfered bevels</p>
+            </div>
+            <input type="checkbox" id="chk-bloom" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-slate-300">Bloom Strength</span>
+              <span id="val-bloom-strength" class="font-mono text-amber-400">0.85</span>
+            </div>
+            <input type="range" id="sl-bloom-strength" min="0.0" max="3.0" step="0.05" value="0.85" class="w-full">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-slate-300">Radius</span>
+                <span id="val-bloom-radius" class="font-mono text-amber-400">0.5</span>
+              </div>
+              <input type="range" id="sl-bloom-radius" min="0.0" max="1.5" step="0.05" value="0.5" class="w-full">
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-slate-300">Threshold</span>
+                <span id="val-bloom-thresh" class="font-mono text-amber-400">0.75</span>
+              </div>
+              <input type="range" id="sl-bloom-thresh" min="0.0" max="1.0" step="0.05" value="0.75" class="w-full">
+            </div>
+          </div>
+        </div>
+
+        <!-- Floor & Helpers -->
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-2">
+          <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+            <span class="text-slate-300 font-medium">Reflective Floor & Shadow Grid</span>
+            <input type="checkbox" id="chk-floor" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+
+          <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+            <span class="text-slate-300 font-medium">Show Studio Light Helpers</span>
+            <input type="checkbox" id="chk-light-helpers" class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: MOTION & ANIMATION PRESETS -->
+      <div id="tab-motion" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Cinematic Motion Presets</label>
+          <div class="space-y-1.5">
+            
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/60 border border-brand-red/50 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="reveal" checked class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-brand-red"></i> Kinetic Stagger Reveal
+                </p>
+                <p class="text-[10px] text-slate-400">Letters fly down with spring physics and phase delays</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/40 border border-obsidian-700 hover:border-obsidian-600 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="wave" class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="waves" class="w-3.5 h-3.5 text-cyan-400"></i> Harmonic Z-Wave Ripple
+                </p>
+                <p class="text-[10px] text-slate-400">Continuous sine ripple pulsing through individual letters</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/40 border border-obsidian-700 hover:border-obsidian-600 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="turntable" class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="rotate-3d" class="w-3.5 h-3.5 text-amber-400"></i> Seamless 360 Turntable Loop
+                </p>
+                <p class="text-[10px] text-slate-400">Broadcast-grade continuous turntable showcase with float</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/40 border border-obsidian-700 hover:border-obsidian-600 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="sweep" class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="sun-medium" class="w-3.5 h-3.5 text-yellow-400"></i> Anamorphic Light Beam Scan
+                </p>
+                <p class="text-[10px] text-slate-400">Spotlight beam glinting across chamfered bevels</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/40 border border-obsidian-700 hover:border-obsidian-600 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="explode" class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-purple-400"></i> Radial Burst & Magnetic Snap
+                </p>
+                <p class="text-[10px] text-slate-400">Letters explode outward radially and snap back in place</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-obsidian-900/40 border border-obsidian-700 hover:border-obsidian-600 cursor-pointer motion-card">
+              <input type="radio" name="motion-mode" value="camera" class="mt-0.5 text-brand-red focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i data-lucide="video" class="w-3.5 h-3.5 text-emerald-400"></i> Cinematic Orbital Drone
+                </p>
+                <p class="text-[10px] text-slate-400">Autonomous dynamic camera orbit tracking the brand mark</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Motion Amplitude</span>
+              <span id="val-amp" class="font-mono text-brand-red">1.0x</span>
+            </div>
+            <input type="range" id="sl-amp" min="0.2" max="2.5" step="0.1" value="1.0" class="w-full">
+          </div>
+
+          <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="text-slate-200 font-semibold">Mouse Gyro Response</span>
+              <p class="text-[10px] text-slate-400">Reactive tilt following cursor/touch</p>
+            </div>
+            <input type="checkbox" id="chk-gyro" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: EXPORT SUITE -->
+      <div id="tab-export" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Social Framing Mask</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="ratio-btn active p-2.5 rounded-xl border border-brand-red/60 bg-brand-red/20 text-white flex flex-col items-center justify-center gap-1" data-ratio="16:9">
+              <i data-lucide="tv" class="w-4 h-4 text-brand-red"></i>
+              <span class="font-bold">16:9 Web</span>
+              <span class="text-[9px] text-slate-400">YouTube / Banner</span>
+            </button>
+            <button class="ratio-btn p-2.5 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex flex-col items-center justify-center gap-1" data-ratio="9:16">
+              <i data-lucide="smartphone" class="w-4 h-4 text-cyan-400"></i>
+              <span class="font-bold">9:16 Vertical</span>
+              <span class="text-[9px] text-slate-400">Reels / Shorts</span>
+            </button>
+            <button class="ratio-btn p-2.5 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex flex-col items-center justify-center gap-1" data-ratio="1:1">
+              <i data-lucide="square" class="w-4 h-4 text-amber-400"></i>
+              <span class="font-bold">1:1 Square</span>
+              <span class="text-[9px] text-slate-400">Instagram Feed</span>
+            </button>
+            <button class="ratio-btn p-2.5 rounded-xl border border-obsidian-700 bg-obsidian-900/50 text-slate-300 flex flex-col items-center justify-center gap-1" data-ratio="21:9">
+              <i data-lucide="film" class="w-4 h-4 text-purple-400"></i>
+              <span class="font-bold">21:9 Ultra</span>
+              <span class="text-[9px] text-slate-400">Cinematic Wide</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-obsidian-700/80 space-y-3">
+          <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="text-slate-200 font-semibold">Transparent Background</span>
+              <p class="text-[10px] text-slate-400">Export video/snapshot with alpha channel</p>
+            </div>
+            <input type="checkbox" id="chk-transparent" class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+
+          <button id="btn-export-video-main" class="w-full py-3 rounded-xl bg-gradient-to-r from-brand-red to-orange-500 hover:from-brand-crimson hover:to-orange-600 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-red/30 transition transform active:scale-98">
+            <i data-lucide="video" class="w-4 h-4"></i>
+            <span>Export WebM Video Loop (60 FPS)</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Dock Footer: GLTF & Code Copy -->
+    <div class="p-3 border-t border-obsidian-700/80 bg-obsidian-900/90 flex items-center gap-2">
+      <button id="btn-export-gltf" class="flex-1 py-2 px-2 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-white font-semibold flex items-center justify-center gap-1.5 transition border border-obsidian-700 text-xs">
+        <i data-lucide="box" class="w-3.5 h-3.5 text-brand-red"></i>
+        <span>Export .GLTF (All Parts)</span>
+      </button>
+
+      <button id="btn-copy-embed" class="flex-1 py-2 px-2 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-white font-semibold flex items-center justify-center gap-1.5 transition border border-obsidian-700 text-xs">
+        <i data-lucide="copy" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span>Embed Code</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="absolute bottom-5 left-1/2 transform -translate-x-1/2 z-20 w-11/12 max-w-2xl studio-glass rounded-2xl p-2.5 flex flex-col gap-2 pointer-events-auto">
+    <!-- Timeline Scrubber Row -->
+    <div class="flex items-center gap-3 px-2">
+      <!-- Play/Pause -->
+      <button id="btn-play-pause" class="w-8 h-8 rounded-lg bg-brand-red hover:bg-brand-crimson text-white flex items-center justify-center transition shadow-md shadow-brand-red/30">
+        <i data-lucide="pause" id="icon-play-pause" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Timecode -->
+      <span id="label-timecode" class="font-mono text-xs font-bold text-brand-red w-16">0.00s</span>
+
+      <!-- Scrubber Track -->
+      <div class="flex-1 relative flex items-center">
+        <input type="range" id="timeline-scrubber" min="0" max="1000" value="0" class="w-full">
+      </div>
+
+      <!-- Duration Selector -->
+      <div class="flex items-center gap-1 text-[11px] font-mono">
+        <button class="dur-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-dur="3">3s</button>
+        <button class="dur-btn active px-1.5 py-0.5 rounded bg-brand-red/40 border border-brand-red/40 text-white" data-dur="5">5s</button>
+        <button class="dur-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-dur="8">8s</button>
+        <button class="dur-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-dur="10">10s</button>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="flex items-center gap-1 text-[11px] font-mono border-l border-obsidian-700 pl-2">
+        <button class="speed-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-speed="0.5">0.5x</button>
+        <button class="speed-btn active px-1.5 py-0.5 rounded bg-brand-red/40 border border-brand-red/40 text-white" data-speed="1.0">1.0x</button>
+        <button class="speed-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-speed="2.0">2.0x</button>
+      </div>
+    </div>
+
+    <!-- Quick Camera Angles -->
+    <div class="flex items-center justify-between border-t border-obsidian-700/60 pt-2 px-2 text-xs">
+      <div class="flex items-center space-x-1">
+        <span class="text-[10px] text-slate-400 uppercase font-bold mr-1">Camera:</span>
+        <button class="cam-btn px-2 py-0.5 rounded-lg text-slate-300 hover:text-white hover:bg-obsidian-700" data-cam="front">Front</button>
+        <button class="cam-btn active px-2 py-0.5 rounded-lg text-white bg-brand-red/30 border border-brand-red/40" data-cam="iso">Perspective</button>
+        <button class="cam-btn px-2 py-0.5 rounded-lg text-slate-300 hover:text-white hover:bg-obsidian-700" data-cam="top">Top</button>
+        <button class="cam-btn px-2 py-0.5 rounded-lg text-slate-300 hover:text-white hover:bg-obsidian-700" data-cam="side">Side</button>
+      </div>
+
+      <button id="btn-cam-reset" class="text-slate-400 hover:text-white flex items-center gap-1 text-[11px]">
+        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset View
+      </button>
+    </div>
+  </div>
+
+  <!-- Raw SVG Code Editor Modal -->
+  <div id="modal-svg-code" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="studio-glass w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh] border border-obsidian-700">
+      <div class="flex items-center justify-between p-4 border-b border-obsidian-700 bg-obsidian-900/60">
+        <div class="flex items-center gap-2">
+          <i data-lucide="code" class="w-4 h-4 text-brand-red"></i>
+          <h3 class="font-bold text-white text-sm">Paste or Edit SVG Vector Code</h3>
+        </div>
+        <button id="btn-close-code-modal" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto space-y-2">
+        <textarea id="raw-svg-textarea" class="w-full h-80 p-3 rounded-xl bg-obsidian-950 font-mono text-[11px] text-slate-200 border border-obsidian-700 focus:border-brand-red focus:outline-none resize-none leading-relaxed"></textarea>
+      </div>
+      <div class="p-3 border-t border-obsidian-700 bg-obsidian-900/60 flex justify-end gap-2">
+        <button id="btn-apply-svg-code" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-crimson shadow-lg shadow-brand-red/30 flex items-center gap-1.5">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Decompose & Extrude Parts</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Export Progress Dialog -->
+  <div id="modal-video-progress" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="studio-glass w-full max-w-md rounded-2xl p-6 flex flex-col items-center text-center border border-brand-red/40">
+      <div class="w-12 h-12 rounded-2xl bg-brand-red/20 border border-brand-red/40 flex items-center justify-center text-brand-red mb-3 animate-pulse">
+        <i data-lucide="film" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-white mb-1">Rendering WebM Video</h3>
+      <p id="video-progress-status" class="text-xs text-slate-400 mb-4">Capturing canvas frames at 60 FPS...</p>
+      
+      <div class="w-full bg-obsidian-800 h-2 rounded-full overflow-hidden mb-2">
+        <div id="video-progress-bar" class="h-full bg-gradient-to-r from-brand-red to-orange-500 rounded-full transition-all duration-75" style="width: 0%"></div>
+      </div>
+      <div class="flex justify-between w-full text-xs font-mono text-slate-400">
+        <span id="video-progress-pct">0%</span>
+        <span id="video-progress-frames">0 frames</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 studio-glass px-4 py-2.5 rounded-xl border border-brand-red/40 text-xs font-semibold text-white shadow-2xl flex items-center gap-2 opacity-0 -translate-y-4 pointer-events-none transition-all duration-300">
+    <i data-lucide="check-circle" id="toast-icon" class="w-4 h-4 text-brand-red"></i>
+    <span id="toast-msg">Ready</span>
+  </div>
+
+  <script>
+    const PRESETS = {
+      // MEDIA brand logo faithfully recreating user's upload with individual letter elements
+      media: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" width="540" height="120">
+        <path id="Letter-M" fill="#FF263E" d="M 15 110 L 15 10 L 42 10 L 62 72 L 82 10 L 109 10 L 109 110 L 89 110 L 89 44 L 70 96 L 54 96 L 35 44 L 35 110 Z" />
+        <path id="Letter-E" fill="#FF263E" d="M 124 110 L 124 10 L 188 10 L 188 32 L 150 32 L 150 51 L 182 51 L 182 72 L 150 72 L 150 88 L 188 88 L 188 110 Z" />
+        <path id="Letter-D" fill="#FF263E" d="M 204 110 L 204 10 L 246 10 C 274 10 288 28 288 60 C 288 92 274 110 246 110 Z M 228 32 L 228 88 L 244 88 C 259 88 264 78 264 60 C 264 42 259 32 244 32 Z" />
+        <path id="Letter-I" fill="#FF263E" d="M 304 110 L 304 10 L 330 10 L 330 110 Z" />
+        <path id="Letter-A" fill="#FF263E" d="M 346 110 L 376 10 L 404 10 L 434 110 L 408 110 L 402 88 L 378 88 L 372 110 Z M 390 38 L 382 70 L 398 70 Z" />
+      </svg>`,
+
+      cyber: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 120" width="380" height="120">
+        <path id="Letter-C" fill="#06B6D4" d="M 90 20 L 30 20 L 30 100 L 90 100 L 90 80 L 52 80 L 52 40 L 90 40 Z" />
+        <path id="Letter-Y" fill="#06B6D4" d="M 105 20 L 122 62 L 139 20 L 160 20 L 132 80 L 132 100 L 112 100 L 112 80 L 85 20 Z" />
+        <path id="Letter-B" fill="#06B6D4" d="M 175 100 L 175 20 L 215 20 C 230 20 240 28 240 45 C 240 54 234 60 225 63 C 238 67 245 76 245 88 C 245 96 235 100 215 100 Z M 197 38 L 197 52 L 212 52 C 218 52 222 48 222 45 C 222 42 218 38 212 38 Z M 197 68 L 197 82 L 214 82 C 220 82 224 78 224 75 C 224 72 220 68 214 68 Z" />
+      </svg>`,
+
+      apex: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+        <rect id="Artboard-Background-Box" width="300" height="300" fill="#111827" />
+        <path id="Shield-Outer" fill="#F59E0B" d="M 150 25 L 260 85 L 260 190 L 150 275 L 40 190 L 40 85 Z" />
+        <path id="Shield-Inner" fill="#EF4444" d="M 150 65 L 230 110 L 230 180 L 150 240 L 70 180 L 70 110 Z" />
+        <path id="Core-Star" fill="#FFFFFF" d="M 150 100 L 165 135 L 200 150 L 165 165 L 150 200 L 135 165 L 100 150 L 135 135 Z" />
+      </svg>`,
+
+      vortex: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+        <path id="Spiral-Arm-Alpha" fill="#8B5CF6" d="M 150 30 C 220 30 270 80 270 150 C 270 180 250 210 220 230 L 200 200 C 220 185 235 165 235 150 C 235 105 200 65 150 65 Z" />
+        <path id="Spiral-Arm-Beta" fill="#EC4899" d="M 270 150 C 270 220 220 270 150 270 C 120 270 90 250 70 220 L 100 200 C 115 220 135 235 150 235 C 195 235 235 200 235 150 Z" />
+        <path id="Spiral-Arm-Gamma" fill="#06B6D4" d="M 150 270 C 80 270 30 220 30 150 C 30 120 50 90 80 70 L 100 100 C 85 115 65 135 65 150 C 65 195 105 235 150 235 Z" />
+        <path id="Spiral-Arm-Delta" fill="#10B981" d="M 30 150 C 30 80 80 30 150 30 C 180 30 210 50 230 80 L 200 100 C 185 85 165 65 150 65 C 105 65 65 105 65 150 Z" />
+      </svg>`
+    };
+
+    const app = {
+      rawSvg: PRESETS.media,
+      depth: 32,
+      bevelThickness: 3.5,
+      bevelSize: 2.2,
+      bevelSegments: 5,
+      meshScale: 1.0,
+      autoCenter: true,
+
+      // Material defaults
+      faceColor: '#ff263e',
+      sideColor: '#660a15',
+      roughness: 0.22,
+      metalness: 0.45,
+      clearcoat: 0.75,
+      transmission: 0.0,
+      emissiveIntensity: 0.0,
+      flutingEnabled: false,
+      fluteScale: 0.45,
+
+      // Studio Lights
+      keyColor: '#ffffff',
+      keyIntensity: 2.2,
+      rimColor: '#ffffff',
+      rimIntensity: 3.0,
+      fillColor: '#ff6655',
+      fillIntensity: 0.8,
+      showFloor: true,
+      showLightHelpers: false,
+      transparentBg: false,
+
+      // Unreal Bloom
+      bloomEnabled: true,
+      bloomStrength: 0.85,
+      bloomRadius: 0.5,
+      bloomThreshold: 0.75,
+
+      // Motion & Timeline
+      motionMode: 'reveal',
+      isPlaying: true,
+      amplitude: 1.0,
+      time: 0.0,
+      duration: 5.0,
+      speed: 1.0,
+      gyroEnabled: true,
+      mouse: { x: 0, y: 0, targetX: 0, targetY: 0 },
+
+      aspectRatio: '16:9',
+      selectedPartIndex: -1,
+
+      // Parsed Parts list:
+      // { id, name, pathD, originalColor, faceColor, sideColor, depthOffset, bevelScale, offsetX, offsetY, offsetZ, phaseDelay, metalness, roughness, emissive, transmission, visible, isolated, isBackground }
+      parts: []
+    };
+
+    let scene, camera, renderer, composer, controls;
+    let bloomPass, renderPass;
+    let logoGroup, partMeshes = [];
+    let keyLight, rimLight, fillLight, ambientLight;
+    let keyHelper, rimHelper;
+    let floorMesh, floorGrid;
+    let flutedNormalTexture = null;
+    let clock = new THREE.Clock();
+    let raycaster = new THREE.Raycaster();
+    let mouseVec = new THREE.Vector2();
+
+    function generateFlutedTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      // Create ribbed horizontal scanlines
+      ctx.fillStyle = '#8080ff'; // Flat normal base
+      ctx.fillRect(0, 0, 128, 128);
+
+      for (let y = 0; y < 128; y += 8) {
+        // Gradient slope for normal map simulation
+        const grad = ctx.createLinearGradient(0, y, 0, y + 8);
+        grad.addColorStop(0.0, '#ff8080'); // Top slope
+        grad.addColorStop(0.5, '#8080ff'); // Flat center
+        grad.addColorStop(1.0, '#008080'); // Bottom slope
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, 128, 8);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 6);
+      return tex;
+    }
+
+    function initThreeEngine() {
+      const container = document.getElementById('canvas-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x06070a);
+      scene.fog = new THREE.FogExp2(0x06070a, 0.0014);
+
+      // 2. Camera
+      camera = new THREE.PerspectiveCamera(45, w / h, 1, 3000);
+      camera.position.set(0, 25, 420);
+
+      // 3. WebGL Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      container.appendChild(renderer.domElement);
+
+      // 4. OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 1600;
+      controls.minDistance = 60;
+      controls.target.set(0, 0, 0);
+
+      // 5. Procedural Textures
+      flutedNormalTexture = generateFlutedTexture();
+
+      // 6. Post-Processing (Bloom)
+      setupPostProcessing(w, h);
+
+      // 7. Lighting & Floor
+      setupLighting();
+      setupFloor();
+
+      // 8. Group for Multi-Part 3D SVG
+      logoGroup = new THREE.Group();
+      scene.add(logoGroup);
+
+      // 9. Parse initial SVG and construct 3D entities
+      parseSvgIntoParts(app.rawSvg);
+      buildExtrudedParts();
+
+      // 10. Listeners
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('touchmove', onTouchMove, { passive: true });
+      renderer.domElement.addEventListener('pointerdown', onCanvasPointerDown);
+    }
+
+    function setupPostProcessing(w, h) {
+      renderPass = new THREE.RenderPass(scene, camera);
+      bloomPass = new THREE.UnrealBloomPass(
+        new THREE.Vector2(w, h),
+        app.bloomStrength,
+        app.bloomRadius,
+        app.bloomThreshold
+      );
+
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(renderPass);
+      composer.addPass(bloomPass);
+    }
+
+    function setupLighting() {
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+      scene.add(ambientLight);
+
+      // Key Light
+      keyLight = new THREE.DirectionalLight(app.keyColor, app.keyIntensity);
+      keyLight.position.set(180, 240, 280);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.bias = -0.0003;
+      const d = 340;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      scene.add(keyLight);
+
+      // Fill Light
+      fillLight = new THREE.DirectionalLight(app.fillColor, app.fillIntensity);
+      fillLight.position.set(-240, 100, 200);
+      scene.add(fillLight);
+
+      // Rim Light
+      rimLight = new THREE.DirectionalLight(app.rimColor, app.rimIntensity);
+      rimLight.position.set(0, 260, -260);
+      scene.add(rimLight);
+
+      keyHelper = new THREE.DirectionalLightHelper(keyLight, 25, 0xffffff);
+      rimHelper = new THREE.DirectionalLightHelper(rimLight, 25, 0x06b6d4);
+      keyHelper.visible = false;
+      rimHelper.visible = false;
+      scene.add(keyHelper);
+      scene.add(rimHelper);
+    }
+
+    function setupFloor() {
+      const planeGeo = new THREE.PlaneGeometry(3000, 3000);
+      const planeMat = new THREE.ShadowMaterial({ opacity: 0.65 });
+      floorMesh = new THREE.Mesh(planeGeo, planeMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -85;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      floorGrid = new THREE.GridHelper(2000, 60, 0xff263e, 0x1f293d);
+      floorGrid.position.y = -84.9;
+      floorGrid.material.opacity = 0.35;
+      floorGrid.material.transparent = true;
+      scene.add(floorGrid);
+    }
+
+    function parseSvgIntoParts(svgString) {
+      app.parts = [];
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, 'image/svg+xml');
+      const svgRoot = doc.querySelector('svg');
+
+      if (!svgRoot) {
+        showToast('Invalid SVG markup', true);
+        return;
+      }
+
+      let vbWidth = 500, vbHeight = 150;
+      if (svgRoot.hasAttribute('viewBox')) {
+        const parts = svgRoot.getAttribute('viewBox').split(/[\s,]+/).filter(Boolean);
+        if (parts.length === 4) {
+          vbWidth = parseFloat(parts[2]);
+          vbHeight = parseFloat(parts[3]);
+        }
+      }
+
+      // Query vector paths & primitives
+      const elements = svgRoot.querySelectorAll('path, rect, circle, polygon, ellipse');
+      let index = 0;
+
+      elements.forEach(el => {
+        const tagName = el.tagName.toLowerCase();
+        let pathD = '';
+        let isBgCandidate = false;
+
+        if (tagName === 'path') {
+          pathD = el.getAttribute('d') || '';
+        } else if (tagName === 'rect') {
+          const w = parseFloat(el.getAttribute('width') || 0);
+          const h = parseFloat(el.getAttribute('height') || 0);
+          const x = parseFloat(el.getAttribute('x') || 0);
+          const y = parseFloat(el.getAttribute('y') || 0);
+          pathD = `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+
+          // Bounding box heuristic
+          if (w >= vbWidth * 0.85 && h >= vbHeight * 0.85) {
+            isBgCandidate = true;
+          }
+        } else if (tagName === 'circle') {
+          const cx = parseFloat(el.getAttribute('cx') || 0);
+          const cy = parseFloat(el.getAttribute('cy') || 0);
+          const r = parseFloat(el.getAttribute('r') || 0);
+          pathD = `M ${cx - r},${cy} a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`;
+        }
+
+        if (!pathD.trim()) return;
+
+        let name = el.getAttribute('id') || `Part #${index + 1} (${tagName})`;
+        name = name.replace(/[-_]/g, ' ');
+
+        let originalColor = el.getAttribute('fill') || app.faceColor;
+        if (originalColor === 'none') originalColor = app.faceColor;
+
+        app.parts.push({
+          id: `part_${Date.now()}_${index}`,
+          name: name,
+          pathD: pathD,
+          originalColor: originalColor,
+          faceColor: originalColor,
+          sideColor: app.sideColor,
+          depthOffset: 0,
+          bevelScale: 1.0,
+          offsetX: 0,
+          offsetY: 0,
+          offsetZ: 0,
+          phaseDelay: index * 0.12, // Stagger delay
+          metalness: app.metalness,
+          roughness: app.roughness,
+          emissive: '#000000',
+          transmission: 0.0,
+          visible: true,
+          isolated: false,
+          isBackground: isBgCandidate
+        });
+
+        index++;
+      });
+
+      renderPartsInspectorUI();
+    }
+
+    function renderPartsInspectorUI() {
+      const container = document.getElementById('parts-container');
+      const badge = document.getElementById('part-count-badge');
+      const diagBadge = document.getElementById('diag-parts-count');
+      container.innerHTML = '';
+
+      badge.textContent = `${app.parts.length} parts`;
+      diagBadge.textContent = app.parts.length;
+
+      if (app.parts.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-500 text-xs">
+            <i data-lucide="layers" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+            <p>No active parts in scene.</p>
+            <button id="btn-revert-empty" class="mt-3 px-3 py-1.5 rounded-lg bg-brand-red/20 text-brand-red border border-brand-red/30 text-xs font-semibold">
+              Restore MEDIA Logo
+            </button>
+          </div>
+        `;
+        document.getElementById('btn-revert-empty')?.addEventListener('click', () => {
+          app.rawSvg = PRESETS.media;
+          parseSvgIntoParts(app.rawSvg);
+          buildExtrudedParts();
+        });
+        lucide.createIcons();
+        return;
+      }
+
+      app.parts.forEach((part, idx) => {
+        const isSelected = (idx === app.selectedPartIndex);
+        const card = document.createElement('div');
+        card.className = `part-card p-3 rounded-xl border transition cursor-pointer ${
+          isSelected ? 'active-selected' : (part.visible ? 'bg-obsidian-900/60 border-obsidian-700/80 hover:border-obsidian-600' : 'bg-obsidian-950/40 border-dashed border-obsidian-800 opacity-60')
+        } ${part.isBackground ? 'border-amber-500/40' : ''}`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-sm border border-white/20" style="background-color: ${part.faceColor};"></span>
+              <div class="min-w-0">
+                <input type="text" class="part-name-input bg-transparent border-0 text-xs font-bold text-white truncate focus:outline-none focus:ring-1 focus:ring-brand-red rounded px-1 -ml-1 w-full" value="${part.name}" data-index="${idx}">
+                ${part.isBackground ? '<span class="text-[9px] text-amber-400 font-mono font-semibold">Artboard Box</span>' : ''}
+              </div>
+            </div>
+
+            <!-- Quick Action Icons -->
+            <div class="flex items-center gap-1">
+              <button class="btn-solo p-1 rounded hover:bg-obsidian-700 ${part.isolated ? 'text-amber-400 font-bold' : 'text-slate-400'}" title="Solo / Isolate Part" data-index="${idx}">
+                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <button class="btn-vis p-1 rounded hover:bg-obsidian-700 ${part.visible ? 'text-cyan-400' : 'text-slate-600'}" title="Toggle Visibility" data-index="${idx}">
+                <i data-lucide="${part.visible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <button class="btn-del p-1 rounded hover:bg-brand-red/20 text-slate-400 hover:text-brand-red" title="Delete Part" data-index="${idx}">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Per-Part Property Controls (Accordion / Expandable) -->
+          <div class="mt-2.5 pt-2 border-t border-obsidian-800/80 space-y-2 text-[11px] text-slate-300">
+            <!-- Colors & Depth -->
+            <div class="grid grid-cols-2 gap-2">
+              <div class="flex items-center justify-between bg-obsidian-950/60 p-1.5 rounded-lg border border-obsidian-800">
+                <span class="text-[10px] text-slate-400">Face:</span>
+                <input type="color" class="part-face-col w-5 h-5 rounded cursor-pointer bg-transparent border-0" value="${part.faceColor}" data-index="${idx}">
+              </div>
+              <div class="flex items-center justify-between bg-obsidian-950/60 p-1.5 rounded-lg border border-obsidian-800">
+                <span class="text-[10px] text-slate-400">Sides:</span>
+                <input type="color" class="part-side-col w-5 h-5 rounded cursor-pointer bg-transparent border-0" value="${part.sideColor}" data-index="${idx}">
+              </div>
+            </div>
+
+            <!-- Custom Extrusion & Phase Delay -->
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+              <div>
+                <div class="flex justify-between items-center mb-0.5 text-slate-400">
+                  <span>Extrude Offset:</span>
+                  <span class="font-mono text-brand-red part-depth-lbl">${part.depthOffset >= 0 ? '+' : ''}${part.depthOffset}</span>
+                </div>
+                <input type="range" class="part-depth-sl w-full" min="-25" max="60" value="${part.depthOffset}" data-index="${idx}">
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-0.5 text-slate-400">
+                  <span>Phase Delay:</span>
+                  <span class="font-mono text-cyan-400 part-phase-lbl">${part.phaseDelay.toFixed(2)}s</span>
+                </div>
+                <input type="range" class="part-phase-sl w-full" min="0" max="1.5" step="0.05" value="${part.phaseDelay}" data-index="${idx}">
+              </div>
+            </div>
+
+            <!-- Position Nudge (X / Y / Z) -->
+            <div class="flex items-center justify-between pt-1 border-t border-obsidian-800/60 text-[10px] text-slate-400">
+              <span>Nudge Offset (X / Z):</span>
+              <div class="flex items-center gap-1 font-mono">
+                <input type="number" class="part-pos-x w-10 bg-obsidian-950 border border-obsidian-800 rounded px-1 text-center text-white" value="${part.offsetX}" step="2" data-index="${idx}">
+                <input type="number" class="part-pos-z w-10 bg-obsidian-950 border border-obsidian-800 rounded px-1 text-center text-white" value="${part.offsetZ}" step="2" data-index="${idx}">
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Click on card selects part
+        card.addEventListener('click', e => {
+          if (['INPUT', 'BUTTON', 'I'].includes(e.target.tagName)) return;
+          selectPart(idx);
+        });
+
+        container.appendChild(card);
+      });
+
+      // Bind input events
+      bindPartCardEvents(container);
+      lucide.createIcons();
+    }
+
+    function bindPartCardEvents(container) {
+      // Visibility
+      container.querySelectorAll('.btn-vis').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = parseInt(btn.getAttribute('data-index'));
+          app.parts[i].visible = !app.parts[i].visible;
+          renderPartsInspectorUI();
+          buildExtrudedParts();
+        });
+      });
+
+      // Delete
+      container.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = parseInt(btn.getAttribute('data-index'));
+          const name = app.parts[i].name;
+          app.parts.splice(i, 1);
+          if (app.selectedPartIndex >= app.parts.length) app.selectedPartIndex = -1;
+          renderPartsInspectorUI();
+          buildExtrudedParts();
+          showToast(`Deleted "${name}"`);
+        });
+      });
+
+      // Solo
+      container.querySelectorAll('.btn-solo').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = parseInt(btn.getAttribute('data-index'));
+          const wasIsolated = app.parts[i].isolated;
+
+          app.parts.forEach((p, idx) => {
+            if (wasIsolated) {
+              p.isolated = false;
+              p.visible = true;
+            } else {
+              p.isolated = (idx === i);
+              p.visible = (idx === i);
+            }
+          });
+
+          renderPartsInspectorUI();
+          buildExtrudedParts();
+          showToast(wasIsolated ? 'Restored all parts' : `Isolated "${app.parts[i].name}"`);
+        });
+      });
+
+      // Name edit
+      container.querySelectorAll('.part-name-input').forEach(input => {
+        input.addEventListener('change', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].name = e.target.value;
+        });
+      });
+
+      // Colors
+      container.querySelectorAll('.part-face-col').forEach(input => {
+        input.addEventListener('input', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].faceColor = e.target.value;
+          updateMeshMaterials();
+        });
+      });
+
+      container.querySelectorAll('.part-side-col').forEach(input => {
+        input.addEventListener('input', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].sideColor = e.target.value;
+          updateMeshMaterials();
+        });
+      });
+
+      // Depth offset
+      container.querySelectorAll('.part-depth-sl').forEach(sl => {
+        sl.addEventListener('input', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          const v = parseFloat(e.target.value);
+          app.parts[i].depthOffset = v;
+          sl.closest('div').querySelector('.part-depth-lbl').textContent = (v >= 0 ? '+' : '') + v;
+          buildExtrudedParts();
+        });
+      });
+
+      // Phase delay
+      container.querySelectorAll('.part-phase-sl').forEach(sl => {
+        sl.addEventListener('input', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          const v = parseFloat(e.target.value);
+          app.parts[i].phaseDelay = v;
+          sl.closest('div').querySelector('.part-phase-lbl').textContent = v.toFixed(2) + 's';
+        });
+      });
+
+      // Position nudge
+      container.querySelectorAll('.part-pos-x').forEach(inp => {
+        inp.addEventListener('change', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].offsetX = parseFloat(e.target.value) || 0;
+          buildExtrudedParts();
+        });
+      });
+      container.querySelectorAll('.part-pos-z').forEach(inp => {
+        inp.addEventListener('change', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].offsetZ = parseFloat(e.target.value) || 0;
+          buildExtrudedParts();
+        });
+      });
+    }
+
+    function selectPart(idx) {
+      app.selectedPartIndex = idx;
+      document.getElementById('diag-selected-part').textContent = idx >= 0 ? app.parts[idx].name : 'All';
+      renderPartsInspectorUI();
+
+      // Brief flash highlight in 3D scene
+      if (idx >= 0 && partMeshes[idx]) {
+        const mesh = partMeshes[idx];
+        const origColor = mesh.material[0].color.clone();
+        mesh.material[0].color.set('#ffffff');
+        setTimeout(() => {
+          mesh.material[0].color.copy(origColor);
+        }, 180);
+      }
+    }
+
+    function buildExtrudedParts() {
+      while (logoGroup.children.length > 0) {
+        const obj = logoGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else if (obj.material) obj.material.dispose();
+        logoGroup.remove(obj);
+      }
+      partMeshes = [];
+
+      const activeParts = app.parts.filter(p => p.visible);
+      if (activeParts.length === 0) {
+        updatePolycountDiagnostics();
+        return;
+      }
+
+      // Build composite SVG markup so Three.js SVGLoader can compute outer perimeters and inner counter holes
+      let combinedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">`;
+      activeParts.forEach(p => {
+        combinedSvg += `<path d="${p.pathD}" fill="${p.faceColor}" />`;
+      });
+      combinedSvg += `</svg>`;
+
+      const loader = new THREE.SVGLoader();
+      const svgData = loader.parse(combinedSvg);
+      const tempGroup = new THREE.Group();
+
+      svgData.paths.forEach((path, pIdx) => {
+        const partRef = activeParts[pIdx];
+        const totalDepth = Math.max(2, app.depth + (partRef ? partRef.depthOffset : 0));
+
+        const extrudeSettings = {
+          depth: totalDepth,
+          bevelEnabled: app.bevelThickness > 0 || app.bevelSize > 0,
+          bevelThickness: app.bevelThickness * (partRef ? partRef.bevelScale : 1.0),
+          bevelSize: app.bevelSize * (partRef ? partRef.bevelScale : 1.0),
+          bevelSegments: app.bevelSegments,
+          curveSegments: 16
+        };
+
+        const shapes = THREE.SVGLoader.createShapes(path);
+        const faceColor = partRef ? partRef.faceColor : app.faceColor;
+        const sideColor = partRef ? partRef.sideColor : app.sideColor;
+
+        const faceMat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(faceColor),
+          roughness: partRef ? partRef.roughness : app.roughness,
+          metalness: partRef ? partRef.metalness : app.metalness,
+          clearcoat: app.clearcoat,
+          clearcoatRoughness: 0.15,
+          transmission: partRef ? partRef.transmission : app.transmission,
+          bumpMap: app.flutingEnabled ? flutedNormalTexture : null,
+          bumpScale: app.flutingEnabled ? app.fluteScale : 0.0,
+          ior: 1.5,
+          side: THREE.DoubleSide
+        });
+
+        const sideMat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(sideColor),
+          roughness: Math.min(1.0, (partRef ? partRef.roughness : app.roughness) + 0.1),
+          metalness: Math.min(1.0, (partRef ? partRef.metalness : app.metalness) + 0.15),
+          clearcoat: app.clearcoat * 0.5,
+          side: THREE.DoubleSide
+        });
+
+        shapes.forEach(shape => {
+          const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+          geom.scale(1, -1, 1);
+          geom.computeVertexNormals();
+
+          const mesh = new THREE.Mesh(geom, [faceMat, sideMat]);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = {
+            index: pIdx,
+            partId: partRef ? partRef.id : null,
+            name: partRef ? partRef.name : `Part ${pIdx}`,
+            baseX: (partRef ? partRef.offsetX : 0),
+            baseY: (partRef ? partRef.offsetY : 0),
+            baseZ: (partRef ? partRef.offsetZ : 0)
+          };
+
+          partMeshes.push(mesh);
+          tempGroup.add(mesh);
+        });
+      });
+
+      // Auto-Center geometry
+      if (app.autoCenter) {
+        const bbox = new THREE.Box3().setFromObject(tempGroup);
+        const center = new THREE.Vector3();
+        bbox.getCenter(center);
+
+        while (tempGroup.children.length > 0) {
+          const m = tempGroup.children[0];
+          m.position.x = m.position.x - center.x + m.userData.baseX;
+          m.position.y = m.position.y - center.y + m.userData.baseY;
+          m.position.z = m.position.z - center.z + m.userData.baseZ;
+          m.userData.baseX = m.position.x;
+          m.userData.baseY = m.position.y;
+          m.userData.baseZ = m.position.z;
+          logoGroup.add(m);
+        }
+      } else {
+        while (tempGroup.children.length > 0) {
+          const m = tempGroup.children[0];
+          m.position.x += m.userData.baseX;
+          m.position.y += m.userData.baseY;
+          m.position.z += m.userData.baseZ;
+          m.userData.baseX = m.position.x;
+          m.userData.baseY = m.position.y;
+          m.userData.baseZ = m.position.z;
+          logoGroup.add(m);
+        }
+      }
+
+      logoGroup.scale.set(app.meshScale, app.meshScale, app.meshScale);
+      updatePolycountDiagnostics();
+    }
+
+    function updateMeshMaterials() {
+      const activeParts = app.parts.filter(p => p.visible);
+
+      partMeshes.forEach(mesh => {
+        const partRef = activeParts[mesh.userData.index];
+        if (!partRef) return;
+
+        if (Array.isArray(mesh.material)) {
+          // Front face
+          mesh.material[0].color.set(partRef.faceColor);
+          mesh.material[0].roughness = partRef.roughness;
+          mesh.material[0].metalness = partRef.metalness;
+          mesh.material[0].clearcoat = app.clearcoat;
+          mesh.material[0].transmission = partRef.transmission;
+          mesh.material[0].bumpMap = app.flutingEnabled ? flutedNormalTexture : null;
+          mesh.material[0].bumpScale = app.flutingEnabled ? app.fluteScale : 0.0;
+          mesh.material[0].needsUpdate = true;
+
+          // Side bevels
+          mesh.material[1].color.set(partRef.sideColor);
+          mesh.material[1].roughness = Math.min(1.0, partRef.roughness + 0.1);
+          mesh.material[1].metalness = Math.min(1.0, partRef.metalness + 0.15);
+          mesh.material[1].clearcoat = app.clearcoat * 0.5;
+          mesh.material[1].needsUpdate = true;
+        }
+      });
+    }
+
+    function evaluateMotion(normalizedTime) {
+      if (!logoGroup) return;
+
+      const t = normalizedTime;
+      const amp = app.amplitude;
+
+      // Mouse gyro smoothing
+      app.mouse.x += (app.mouse.targetX - app.mouse.x) * 0.06;
+      app.mouse.y += (app.mouse.targetY - app.mouse.y) * 0.06;
+
+      const gyroX = app.gyroEnabled ? app.mouse.x * 0.45 * amp : 0;
+      const gyroY = app.gyroEnabled ? -app.mouse.y * 0.3 * amp : 0;
+
+      const activeParts = app.parts.filter(p => p.visible);
+
+      switch (app.motionMode) {
+        case 'reveal': {
+          logoGroup.rotation.y = gyroX;
+          logoGroup.rotation.x = gyroY;
+          logoGroup.position.set(0, 0, 0);
+
+          partMeshes.forEach((mesh, idx) => {
+            const partRef = activeParts[mesh.userData.index];
+            const delay = partRef ? partRef.phaseDelay : (idx * 0.12);
+            const partT = Math.max(0, Math.min(1, (t - delay) / 0.5));
+
+            // Spring overshoot curve
+            const bounce = 1 - Math.pow(Math.E, -6 * partT) * Math.cos(partT * Math.PI * 4);
+            const dropY = (1 - bounce) * 120 * amp;
+            const dropZ = (1 - bounce) * -100 * amp;
+            const spinX = (1 - bounce) * Math.PI * 0.5 * amp;
+
+            mesh.position.y = mesh.userData.baseY + dropY;
+            mesh.position.z = mesh.userData.baseZ + dropZ;
+            mesh.rotation.x = spinX;
+          });
+          break;
+        }
+
+        case 'wave': {
+          logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.2) + gyroX;
+          logoGroup.rotation.x = gyroY;
+          logoGroup.position.set(0, 0, 0);
+
+          partMeshes.forEach((mesh, idx) => {
+            const partRef = activeParts[mesh.userData.index];
+            const phase = partRef ? (partRef.phaseDelay * 10) : (idx * 0.6);
+            const wave = Math.sin(t * Math.PI * 4 - phase);
+
+            mesh.position.z = mesh.userData.baseZ + wave * 22 * amp;
+            mesh.position.y = mesh.userData.baseY + Math.cos(t * Math.PI * 4 - phase) * 6 * amp;
+            mesh.rotation.x = wave * 0.18 * amp;
+            mesh.rotation.y = 0;
+          });
+          break;
+        }
+
+        case 'turntable': {
+          resetMeshesToOrigin();
+          logoGroup.rotation.y = (t * Math.PI * 2) + gyroX;
+          logoGroup.rotation.x = (Math.sin(t * Math.PI * 4) * 0.08 * amp) + gyroY;
+          logoGroup.position.y = Math.sin(t * Math.PI * 2) * 8 * amp;
+          break;
+        }
+
+        case 'sweep': {
+          resetMeshesToOrigin();
+          logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.15) + gyroX;
+          logoGroup.rotation.x = gyroY;
+
+          const angle = t * Math.PI * 2;
+          rimLight.position.x = Math.cos(angle) * 360;
+          rimLight.position.z = Math.sin(angle) * 360;
+          keyLight.intensity = app.keyIntensity * (1 + Math.sin(angle * 2) * 0.35);
+          break;
+        }
+
+        case 'explode': {
+          logoGroup.rotation.y = gyroX;
+          logoGroup.rotation.x = gyroY;
+
+          const pulse = Math.sin(t * Math.PI * 2);
+          const factor = Math.max(0, pulse) * 45 * amp;
+
+          partMeshes.forEach((mesh, idx) => {
+            const dirX = mesh.userData.baseX >= 0 ? 1 : -1;
+            mesh.position.x = mesh.userData.baseX + dirX * factor;
+            mesh.position.z = mesh.userData.baseZ + Math.sin(idx + t * 4) * factor * 0.5;
+            mesh.rotation.z = dirX * factor * 0.005;
+          });
+          break;
+        }
+
+        case 'camera': {
+          resetMeshesToOrigin();
+          const camAngle = t * Math.PI * 2;
+          const radius = 420;
+          camera.position.x = Math.sin(camAngle) * radius;
+          camera.position.z = Math.cos(camAngle) * radius;
+          camera.position.y = 30 + Math.sin(t * Math.PI * 4) * 50;
+          camera.lookAt(0, 0, 0);
+          break;
+        }
+      }
+    }
+
+    function resetMeshesToOrigin() {
+      partMeshes.forEach(mesh => {
+        mesh.position.set(mesh.userData.baseX, mesh.userData.baseY, mesh.userData.baseZ);
+        mesh.rotation.set(0, 0, 0);
+        mesh.scale.set(1, 1, 1);
+      });
+    }
+
+    let fpsFrames = 0, lastFpsCheck = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      fpsFrames++;
+      if (now - lastFpsCheck >= 1000) {
+        document.getElementById('diag-fps').textContent = fpsFrames;
+        fpsFrames = 0;
+        lastFpsCheck = now;
+      }
+
+      const delta = clock.getDelta();
+
+      if (app.isPlaying) {
+        app.time += delta * app.speed;
+        if (app.time >= app.duration) {
+          app.time = app.time % app.duration;
+        }
+
+        const normalized = app.time / app.duration;
+        evaluateMotion(normalized);
+
+        const scrubber = document.getElementById('timeline-scrubber');
+        scrubber.value = Math.floor(normalized * 1000);
+        document.getElementById('label-timecode').textContent = app.time.toFixed(2) + 's';
+      }
+
+      controls.update();
+
+      if (app.bloomEnabled) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
+    }
+
+    function onCanvasPointerDown(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouseVec, camera);
+      const intersects = raycaster.intersectObjects(partMeshes);
+
+      if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        const partIdx = hit.userData.index;
+        selectPart(partIdx);
+      }
+    }
+
+    async function recordVideoWebM() {
+      const modal = document.getElementById('modal-video-progress');
+      const progressBar = document.getElementById('video-progress-bar');
+      const pctLabel = document.getElementById('video-progress-pct');
+      const framesLabel = document.getElementById('video-progress-frames');
+      const statusLabel = document.getElementById('video-progress-status');
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      progressBar.style.width = '0%';
+      pctLabel.textContent = '0%';
+
+      const wasPlaying = app.isPlaying;
+      app.isPlaying = false;
+
+      const fps = 60;
+      const totalFrames = Math.floor(app.duration * fps);
+      const recordedBlobs = [];
+
+      const stream = renderer.domElement.captureStream(fps);
+      let options = { mimeType: 'video/webm;codecs=vp9' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        showToast('MediaRecorder not supported on this browser', true);
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        app.isPlaying = wasPlaying;
+        return;
+      }
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) recordedBlobs.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `3D-brand-showcase-${app.motionMode}-${app.duration}s.webm`;
+        a.click();
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        app.isPlaying = wasPlaying;
+        showToast('WebM Video Loop downloaded successfully!');
+      };
+
+      mediaRecorder.start();
+      statusLabel.textContent = `Rendering ${totalFrames} frames @ 60 FPS (${app.motionMode})...`;
+
+      for (let i = 0; i <= totalFrames; i++) {
+        const normalized = i / totalFrames;
+        evaluateMotion(normalized);
+
+        if (app.bloomEnabled) composer.render();
+        else renderer.render(scene, camera);
+
+        const pct = Math.round((i / totalFrames) * 100);
+        progressBar.style.width = `${pct}%`;
+        pctLabel.textContent = `${pct}%`;
+        framesLabel.textContent = `${i} / ${totalFrames} frames`;
+
+        await new Promise(r => setTimeout(r, 1000 / fps));
+      }
+
+      mediaRecorder.stop();
+    }
+
+    function exportGltf() {
+      const exporter = new THREE.GLTFExporter();
+      exporter.parse(
+        logoGroup,
+        gltf => {
+          const blob = new Blob([JSON.stringify(gltf, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = '3D-brand-multi-part.gltf';
+          a.click();
+          showToast('.GLTF 3D model exported with all parts intact!');
+        },
+        { binary: false }
+      );
+    }
+
+    function takeSnapshotPng() {
+      if (app.bloomEnabled) composer.render();
+      else renderer.render(scene, camera);
+
+      const dataUrl = renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = '3D-brand-showpiece-4k.png';
+      a.click();
+      showToast('High-Res PNG Snapshot downloaded!');
+    }
+
+    function copyEmbedSnippet() {
+      const activeParts = app.parts.filter(p => p.visible);
+      let combinedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">`;
+      activeParts.forEach(p => { combinedSvg += `<path d="${p.pathD}" fill="${p.faceColor}" />`; });
+      combinedSvg += `</svg>`;
+
+      const code = `// 3D Extruded Multi-Part Brand Showpiece
+import * as THREE from 'three';
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
+
+const loader = new SVGLoader();
+const svgData = loader.parse(\`${combinedSvg.replace(/`/g, '\\`')}\`);
+const group = new THREE.Group();
+
+const extrudeSettings = {
+  depth: ${app.depth},
+  bevelEnabled: true,
+  bevelThickness: ${app.bevelThickness},
+  bevelSize: ${app.bevelSize},
+  bevelSegments: ${app.bevelSegments}
+};
+
+const material = new THREE.MeshPhysicalMaterial({
+  color: '${app.faceColor}',
+  metalness: ${app.metalness},
+  roughness: ${app.roughness},
+  clearcoat: ${app.clearcoat},
+  side: THREE.DoubleSide
+});
+
+svgData.paths.forEach(path => {
+  const shapes = SVGLoader.createShapes(path);
+  shapes.forEach(shape => {
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geom.scale(1, -1, 1);
+    geom.center();
+    group.add(new THREE.Mesh(geom, material));
+  });
+});
+scene.add(group);`;
+
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Three.js embed code copied to clipboard!');
+      } catch (e) {
+        showToast('Clipboard copy restricted in iframe', true);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function setupUIEvents() {
+      // Dock Tabs
+      document.querySelectorAll('.dock-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.dock-tab').forEach(t => {
+            t.classList.remove('active', 'text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+            t.classList.add('text-slate-400');
+          });
+          tab.classList.add('active', 'text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+          tab.classList.remove('text-slate-400');
+
+          const target = tab.getAttribute('data-tab');
+          document.querySelectorAll('.dock-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(target).classList.remove('hidden');
+        });
+      });
+
+      // Mesh Geometry Sliders
+      bindSlider('sl-depth', 'val-depth', '', v => { app.depth = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-bevel-thick', 'val-bevel-thick', '', v => { app.bevelThickness = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-bevel-size', 'val-bevel-size', '', v => { app.bevelSize = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-segments', 'val-segments', '', v => { app.bevelSegments = parseInt(v); buildExtrudedParts(); });
+      bindSlider('sl-scale', 'val-scale', 'x', v => {
+        app.meshScale = parseFloat(v);
+        if (logoGroup) logoGroup.scale.set(app.meshScale, app.meshScale, app.meshScale);
+      });
+      document.getElementById('chk-auto-center').addEventListener('change', e => {
+        app.autoCenter = e.target.checked;
+        buildExtrudedParts();
+      });
+
+      // Fluting / Ribbing
+      const chkFluting = document.getElementById('chk-fluting');
+      const flutingControls = document.getElementById('fluting-controls');
+      chkFluting.addEventListener('change', e => {
+        app.flutingEnabled = e.target.checked;
+        flutingControls.classList.toggle('hidden', !app.flutingEnabled);
+        updateMeshMaterials();
+        showToast(app.flutingEnabled ? 'Enabled ribbed fluting scanlines' : 'Disabled fluting');
+      });
+      bindSlider('sl-flute-scale', 'val-flute-scale', '', v => {
+        app.fluteScale = parseFloat(v);
+        updateMeshMaterials();
+      });
+
+      // Material Controls
+      bindSlider('sl-rough', 'val-rough', '', v => {
+        app.roughness = parseFloat(v);
+        app.parts.forEach(p => p.roughness = app.roughness);
+        updateMeshMaterials();
+      });
+      bindSlider('sl-metal', 'val-metal', '', v => {
+        app.metalness = parseFloat(v);
+        app.parts.forEach(p => p.metalness = app.metalness);
+        updateMeshMaterials();
+      });
+      bindSlider('sl-clearcoat', 'val-clearcoat', '', v => { app.clearcoat = parseFloat(v); updateMeshMaterials(); });
+      bindSlider('sl-trans', 'val-trans', '', v => {
+        app.transmission = parseFloat(v);
+        app.parts.forEach(p => p.transmission = app.transmission);
+        updateMeshMaterials();
+      });
+
+      document.getElementById('col-face').addEventListener('input', e => {
+        app.faceColor = e.target.value;
+        app.parts.forEach(p => p.faceColor = app.faceColor);
+        renderPartsInspectorUI();
+        updateMeshMaterials();
+      });
+      document.getElementById('col-sides').addEventListener('input', e => {
+        app.sideColor = e.target.value;
+        app.parts.forEach(p => p.sideColor = app.sideColor);
+        renderPartsInspectorUI();
+        updateMeshMaterials();
+      });
+
+      // Material Presets
+      document.querySelectorAll('.mat-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.mat-preset-btn').forEach(b => {
+            b.classList.remove('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+            b.classList.add('border-obsidian-700', 'bg-obsidian-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+          applyMaterialPreset(btn.getAttribute('data-mat'));
+        });
+      });
+
+      // Lights & Rigs
+      bindSlider('sl-light-key', 'val-light-key', '', v => {
+        app.keyIntensity = parseFloat(v);
+        keyLight.intensity = app.keyIntensity;
+      });
+      bindSlider('sl-light-rim', 'val-light-rim', '', v => {
+        app.rimIntensity = parseFloat(v);
+        rimLight.intensity = app.rimIntensity;
+      });
+      document.getElementById('col-light-key').addEventListener('input', e => {
+        app.keyColor = e.target.value;
+        keyLight.color.set(app.keyColor);
+      });
+      document.getElementById('col-light-rim').addEventListener('input', e => {
+        app.rimColor = e.target.value;
+        rimLight.color.set(app.rimColor);
+      });
+
+      document.querySelectorAll('.rig-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.rig-btn').forEach(b => {
+            b.classList.remove('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+            b.classList.add('border-obsidian-700', 'bg-obsidian-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+          applyLightingRig(btn.getAttribute('data-rig'));
+        });
+      });
+
+      // Bloom Post-Processing
+      document.getElementById('chk-bloom').addEventListener('change', e => {
+        app.bloomEnabled = e.target.checked;
+      });
+      bindSlider('sl-bloom-strength', 'val-bloom-strength', '', v => {
+        app.bloomStrength = parseFloat(v);
+        bloomPass.strength = app.bloomStrength;
+      });
+      bindSlider('sl-bloom-radius', 'val-bloom-radius', '', v => {
+        app.bloomRadius = parseFloat(v);
+        bloomPass.radius = app.bloomRadius;
+      });
+      bindSlider('sl-bloom-thresh', 'val-bloom-thresh', '', v => {
+        app.bloomThreshold = parseFloat(v);
+        bloomPass.threshold = app.bloomThreshold;
+      });
+
+      // Floor & Helpers
+      document.getElementById('chk-floor').addEventListener('change', e => {
+        app.showFloor = e.target.checked;
+        floorMesh.visible = app.showFloor;
+        floorGrid.visible = app.showFloor;
+      });
+      document.getElementById('chk-light-helpers').addEventListener('change', e => {
+        app.showLightHelpers = e.target.checked;
+        keyHelper.visible = app.showLightHelpers;
+        rimHelper.visible = app.showLightHelpers;
+      });
+      document.getElementById('chk-transparent').addEventListener('change', e => {
+        app.transparentBg = e.target.checked;
+        scene.background = app.transparentBg ? null : new THREE.Color(0x06070a);
+      });
+
+      // Motion Modes
+      document.querySelectorAll('input[name="motion-mode"]').forEach(r => {
+        r.addEventListener('change', e => {
+          app.motionMode = e.target.value;
+          document.querySelectorAll('.motion-card').forEach(c => {
+            c.classList.remove('border-brand-red/50', 'bg-obsidian-900/60');
+            c.classList.add('border-obsidian-700', 'bg-obsidian-900/40');
+          });
+          e.target.closest('.motion-card').classList.add('border-brand-red/50', 'bg-obsidian-900/60');
+        });
+      });
+      bindSlider('sl-amp', 'val-amp', 'x', v => { app.amplitude = parseFloat(v); });
+      document.getElementById('chk-gyro').addEventListener('change', e => { app.gyroEnabled = e.target.checked; });
+
+      // Aspect Framing
+      document.querySelectorAll('.ratio-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.ratio-btn').forEach(b => {
+            b.classList.remove('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+            b.classList.add('border-obsidian-700', 'bg-obsidian-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+          app.aspectRatio = btn.getAttribute('data-ratio');
+          updateAspectFraming();
+        });
+      });
+
+      // Timeline Scrubber & Transport
+      const btnPlayPause = document.getElementById('btn-play-pause');
+      const iconPlayPause = document.getElementById('icon-play-pause');
+      btnPlayPause.addEventListener('click', () => {
+        app.isPlaying = !app.isPlaying;
+        iconPlayPause.setAttribute('data-lucide', app.isPlaying ? 'pause' : 'play');
+        lucide.createIcons();
+      });
+
+      const scrubber = document.getElementById('timeline-scrubber');
+      scrubber.addEventListener('input', e => {
+        const norm = parseInt(e.target.value) / 1000;
+        app.time = norm * app.duration;
+        evaluateMotion(norm);
+        document.getElementById('label-timecode').textContent = app.time.toFixed(2) + 's';
+      });
+
+      document.querySelectorAll('.dur-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.dur-btn').forEach(b => {
+            b.classList.remove('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+            b.classList.add('bg-obsidian-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+          app.duration = parseFloat(btn.getAttribute('data-dur'));
+        });
+      });
+
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            b.classList.remove('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+            b.classList.add('bg-obsidian-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+          app.speed = parseFloat(btn.getAttribute('data-speed'));
+        });
+      });
+
+      // Camera Angles
+      document.querySelectorAll('.cam-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.cam-btn').forEach(b => {
+            b.classList.remove('text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+            b.classList.add('text-slate-300');
+          });
+          btn.classList.add('text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+          setCameraAngle(btn.getAttribute('data-cam'));
+        });
+      });
+      document.getElementById('btn-cam-reset').addEventListener('click', () => setCameraAngle('iso'));
+
+      // Presets
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.preset-btn').forEach(b => {
+            b.classList.remove('bg-brand-red/20', 'text-brand-red', 'border', 'border-brand-red/30');
+            b.classList.add('bg-obsidian-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-brand-red/20', 'text-brand-red', 'border', 'border-brand-red/30');
+          const key = btn.getAttribute('data-preset');
+          if (PRESETS[key]) {
+            app.rawSvg = PRESETS[key];
+            parseSvgIntoParts(app.rawSvg);
+            buildExtrudedParts();
+            showToast(`Loaded ${key.toUpperCase()} preset`);
+          }
+        });
+      });
+
+      // Auto Clean Artboard Background
+      document.getElementById('btn-auto-clean-bg').addEventListener('click', () => {
+        let removed = 0;
+        for (let i = app.parts.length - 1; i >= 0; i--) {
+          if (app.parts[i].isBackground) {
+            app.parts.splice(i, 1);
+            removed++;
+          }
+        }
+        if (removed > 0) {
+          renderPartsInspectorUI();
+          buildExtrudedParts();
+          showToast(`Cleaned ${removed} artboard background box!`);
+        } else if (app.parts.length > 1) {
+          const removedName = app.parts[0].name;
+          app.parts.splice(0, 1);
+          renderPartsInspectorUI();
+          buildExtrudedParts();
+          showToast(`Removed bottom part "${removedName}"`);
+        } else {
+          showToast('No background box detected');
+        }
+      });
+
+      // Batch Sync All Parts
+      document.getElementById('btn-batch-sync').addEventListener('click', () => {
+        app.parts.forEach(p => {
+          p.faceColor = app.faceColor;
+          p.sideColor = app.sideColor;
+          p.roughness = app.roughness;
+          p.metalness = app.metalness;
+          p.transmission = app.transmission;
+        });
+        renderPartsInspectorUI();
+        updateMeshMaterials();
+        showToast('Synchronized all parts with global material!');
+      });
+
+      // File Drag & Drop
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('border-brand-red'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-brand-red'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('border-brand-red');
+        if (e.dataTransfer.files.length) handleFileInput(e.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleFileInput(e.target.files[0]);
+      });
+
+      // Raw SVG Code Editor Modal
+      const modalCode = document.getElementById('modal-svg-code');
+      const rawText = document.getElementById('raw-svg-textarea');
+      rawText.value = app.rawSvg;
+
+      document.getElementById('btn-open-code-modal').addEventListener('click', () => {
+        rawText.value = app.rawSvg;
+        modalCode.classList.remove('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-close-code-modal').addEventListener('click', () => {
+        modalCode.classList.add('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-apply-svg-code').addEventListener('click', () => {
+        const val = rawText.value.trim();
+        if (val) {
+          app.rawSvg = val;
+          parseSvgIntoParts(val);
+          buildExtrudedParts();
+          modalCode.classList.add('opacity-0', 'pointer-events-none');
+          showToast('Decomposed SVG into constituent 3D parts!');
+        }
+      });
+
+      // Footer Actions
+      document.getElementById('btn-select-all-parts').addEventListener('click', () => {
+        app.parts.forEach(p => { p.visible = true; p.isolated = false; });
+        app.selectedPartIndex = -1;
+        document.getElementById('diag-selected-part').textContent = 'All';
+        renderPartsInspectorUI();
+        buildExtrudedParts();
+        showToast('Showing all parts');
+      });
+      document.getElementById('btn-restore-brand').addEventListener('click', () => {
+        app.rawSvg = PRESETS.media;
+        parseSvgIntoParts(app.rawSvg);
+        buildExtrudedParts();
+        showToast('Restored MEDIA Brand Showpiece');
+      });
+
+      // Toggle Docks
+      document.getElementById('btn-toggle-left-dock').addEventListener('click', () => {
+        document.getElementById('left-dock').classList.toggle('-translate-x-full');
+        document.getElementById('left-dock').classList.toggle('opacity-0');
+      });
+      document.getElementById('btn-toggle-right-dock').addEventListener('click', () => {
+        document.getElementById('right-dock').classList.toggle('translate-x-full');
+        document.getElementById('right-dock').classList.toggle('opacity-0');
+      });
+
+      // Exports
+      document.getElementById('btn-export-video-main').addEventListener('click', recordVideoWebM);
+      document.getElementById('btn-quick-record').addEventListener('click', recordVideoWebM);
+      document.getElementById('btn-snapshot-png').addEventListener('click', takeSnapshotPng);
+      document.getElementById('btn-export-gltf').addEventListener('click', exportGltf);
+      document.getElementById('btn-copy-embed').addEventListener('click', copyEmbedSnippet);
+    }
+
+    function applyMaterialPreset(type) {
+      const chkFlute = document.getElementById('chk-fluting');
+      const fluteControls = document.getElementById('fluting-controls');
+
+      switch (type) {
+        case 'crimson':
+          app.faceColor = '#ff263e'; app.sideColor = '#660a15';
+          app.roughness = 0.22; app.metalness = 0.45; app.clearcoat = 0.75; app.transmission = 0.0;
+          app.flutingEnabled = false;
+          break;
+        case 'ribbed':
+          // Recreates ribbed fluted scanlines matching the user logo upload
+          app.faceColor = '#ff263e'; app.sideColor = '#660a15';
+          app.roughness = 0.25; app.metalness = 0.35; app.clearcoat = 0.85; app.transmission = 0.0;
+          app.flutingEnabled = true; app.fluteScale = 0.55;
+          break;
+        case 'gold':
+          app.faceColor = '#f59e0b'; app.sideColor = '#78350f';
+          app.roughness = 0.15; app.metalness = 0.95; app.clearcoat = 0.9; app.transmission = 0.0;
+          app.flutingEnabled = false;
+          break;
+        case 'chrome':
+          app.faceColor = '#f8fafc'; app.sideColor = '#475569';
+          app.roughness = 0.05; app.metalness = 0.98; app.clearcoat = 1.0; app.transmission = 0.0;
+          app.flutingEnabled = false;
+          break;
+        case 'glass':
+          app.faceColor = '#38bdf8'; app.sideColor = '#0284c7';
+          app.roughness = 0.18; app.metalness = 0.05; app.clearcoat = 1.0; app.transmission = 0.85;
+          app.flutingEnabled = false;
+          break;
+        case 'neon':
+          app.faceColor = '#10b981'; app.sideColor = '#064e3b';
+          app.roughness = 0.12; app.metalness = 0.55; app.clearcoat = 0.85; app.transmission = 0.0;
+          app.flutingEnabled = false;
+          break;
+      }
+
+      chkFlute.checked = app.flutingEnabled;
+      fluteControls.classList.toggle('hidden', !app.flutingEnabled);
+
+      document.getElementById('col-face').value = app.faceColor;
+      document.getElementById('col-sides').value = app.sideColor;
+      document.getElementById('sl-rough').value = app.roughness;
+      document.getElementById('val-rough').textContent = app.roughness.toFixed(2);
+      document.getElementById('sl-metal').value = app.metalness;
+      document.getElementById('val-metal').textContent = app.metalness.toFixed(2);
+      document.getElementById('sl-clearcoat').value = app.clearcoat;
+      document.getElementById('val-clearcoat').textContent = app.clearcoat.toFixed(2);
+      document.getElementById('sl-trans').value = app.transmission;
+      document.getElementById('val-trans').textContent = app.transmission.toFixed(2);
+
+      app.parts.forEach(p => {
+        p.faceColor = app.faceColor;
+        p.sideColor = app.sideColor;
+        p.roughness = app.roughness;
+        p.metalness = app.metalness;
+        p.transmission = app.transmission;
+      });
+
+      renderPartsInspectorUI();
+      updateMeshMaterials();
+      showToast(`Applied "${type.toUpperCase()}" material preset`);
+    }
+
+    function applyLightingRig(rig) {
+      switch (rig) {
+        case 'studio':
+          keyLight.color.set('#ffffff'); keyLight.position.set(180, 240, 280);
+          rimLight.color.set('#ffffff'); rimLight.position.set(0, 260, -260);
+          fillLight.color.set('#ff6655');
+          break;
+        case 'cyber':
+          keyLight.color.set('#06b6d4'); keyLight.position.set(220, 180, 220);
+          rimLight.color.set('#ec4899'); rimLight.position.set(-200, 220, -220);
+          fillLight.color.set('#8b5cf6');
+          break;
+        case 'luxury':
+          keyLight.color.set('#f59e0b'); keyLight.position.set(200, 160, 240);
+          rimLight.color.set('#fbbf24'); rimLight.position.set(0, 220, -240);
+          fillLight.color.set('#b45309');
+          break;
+        case 'noir':
+          keyLight.color.set('#ffffff'); keyLight.position.set(280, 300, 200);
+          rimLight.color.set('#94a3b8'); rimLight.position.set(0, 300, -300);
+          fillLight.color.set('#1e293b');
+          break;
+      }
+      showToast(`Applied ${rig} lighting rig`);
+    }
+
+    function setCameraAngle(view) {
+      switch (view) {
+        case 'front':
+          camera.position.set(0, 0, 420);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'iso':
+          camera.position.set(130, 80, 400);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'top':
+          camera.position.set(0, 460, 5);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'side':
+          camera.position.set(440, 20, 0);
+          controls.target.set(0, 0, 0);
+          break;
+      }
+      controls.update();
+    }
+
+    function updateAspectFraming() {
+      const container = document.getElementById('aspect-framing');
+      const box = document.getElementById('aspect-box');
+      const tag = document.getElementById('aspect-tag');
+
+      container.classList.remove('hidden');
+      tag.textContent = `${app.aspectRatio} Guide`;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let targetW, targetH;
+
+      switch (app.aspectRatio) {
+        case '16:9':
+          targetW = Math.min(vw * 0.85, (vh * 0.75) * (16 / 9));
+          targetH = targetW / (16 / 9);
+          break;
+        case '9:16':
+          targetH = Math.min(vh * 0.8, (vw * 0.85) * (16 / 9));
+          targetW = targetH * (9 / 16);
+          break;
+        case '1:1':
+          targetW = Math.min(vw * 0.75, vh * 0.75);
+          targetH = targetW;
+          break;
+        case '21:9':
+          targetW = Math.min(vw * 0.9, (vh * 0.6) * (21 / 9));
+          targetH = targetW / (21 / 9);
+          break;
+      }
+
+      box.style.width = `${targetW}px`;
+      box.style.height = `${targetH}px`;
+    }
+
+    function updatePolycountDiagnostics() {
+      let triangles = 0;
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.geometry) {
+          if (obj.geometry.index) {
+            triangles += obj.geometry.index.count / 3;
+          } else if (obj.geometry.attributes.position) {
+            triangles += obj.geometry.attributes.position.count / 3;
+          }
+        }
+      });
+      document.getElementById('diag-polys').textContent = Math.round(triangles).toLocaleString();
+    }
+
+    function bindSlider(id, labelId, suffix, cb) {
+      const sl = document.getElementById(id);
+      const lbl = document.getElementById(labelId);
+      sl.addEventListener('input', e => {
+        lbl.textContent = e.target.value + suffix;
+        cb(e.target.value);
+      });
+    }
+
+    function handleFileInput(file) {
+      if (!file.name.toLowerCase().endsWith('.svg')) {
+        showToast('Please select a valid vector .svg file', true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        app.rawSvg = e.target.result;
+        document.getElementById('raw-svg-textarea').value = app.rawSvg;
+        parseSvgIntoParts(app.rawSvg);
+        buildExtrudedParts();
+        showToast(`Auto-detected parts from ${file.name}!`);
+      };
+      reader.readAsText(file);
+    }
+
+    function onPointerMove(e) {
+      app.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
+      app.mouse.targetY = (e.clientY / window.innerHeight) * 2 - 1;
+    }
+
+    function onTouchMove(e) {
+      if (e.touches.length > 0) {
+        app.mouse.targetX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+        app.mouse.targetY = (e.touches[0].clientY / window.innerHeight) * 2 - 1;
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      updateAspectFraming();
+    }
+
+    function showToast(msg, isErr = false) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-msg');
+      const icon = document.getElementById('toast-icon');
+
+      text.textContent = msg;
+      icon.setAttribute('data-lucide', isErr ? 'alert-triangle' : 'check-circle');
+      icon.className = isErr ? 'w-4 h-4 text-amber-400' : 'w-4 h-4 text-brand-red';
+      lucide.createIcons();
+
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+      }, 3200);
+    }
+
+    window.onload = function () {
+      initThreeEngine();
+      setupUIEvents();
+      lucide.createIcons();
+      animate(0);
+    };
+  </script>
+</body>
+</html>

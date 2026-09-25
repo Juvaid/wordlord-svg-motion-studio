@@ -152,6 +152,7 @@ export const App: React.FC = () => {
     emissiveIntensity: 0.0,
     flutingEnabled: false,
     fluteScale: 0.45,
+    proceduralTexture: 'none',
     keyColor: '#ffffff',
     keyIntensity: 2.2,
     rimColor: '#ffffff',
@@ -162,6 +163,9 @@ export const App: React.FC = () => {
     showFloor: true,
     showLightHelpers: false,
     transparentBg: false,
+    gizmoMode: 'none',
+    framingAspect: 'free',
+    showFramingMask: false,
     bloomEnabled: true,
     bloomStrength: 0.75,
     bloomRadius: 0.5,
@@ -392,6 +396,7 @@ export const App: React.FC = () => {
       transmission: pbr.transmission,
       flutingEnabled: pbr.flutingEnabled,
       fluteScale: pbr.fluteScale,
+      proceduralTexture: pbr.proceduralTexture,
       bloomEnabled: pbr.bloomEnabled,
       bloomStrength: pbr.bloomStrength
     }));

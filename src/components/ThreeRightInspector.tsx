@@ -20,17 +20,28 @@ import {
   Folder,
   Edit3,
   Check,
-  Scale
+  Scale,
+  Ratio,
+  Lightbulb,
+  Crosshair,
+  SlidersHorizontal,
+  Flame,
+  Activity,
+  Layers2
 } from 'lucide-react';
 import { 
   InspectorSection, 
   SliderField, 
-  ColorSwatchField 
+  ColorSwatchField,
+  ToggleField,
+  DropdownField
 } from './inspector';
 import { 
   ThreeStudioConfig, 
   ThreePart, 
-  EnvironmentScenePreset 
+  EnvironmentScenePreset,
+  ProceduralTextureType,
+  SocialFramingAspect 
 } from '../types/threeStudio';
 
 interface ThreeRightInspectorProps {
@@ -56,6 +67,8 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
   const [groupNameInput, setGroupNameInput] = useState<string>(config.groupName || 'Asset Group');
 
+  const isNarrow = width < 305;
+
   const envOptions: { id: EnvironmentScenePreset; label: string }[] = [
     { id: 'studio', label: 'Studio Dark' },
     { id: 'radial', label: 'Spotlight' },
@@ -63,6 +76,23 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
     { id: 'luxury', label: 'Sunset' },
     { id: 'obsidian', label: 'OLED Black' },
     { id: 'transparent', label: 'Alpha Trans' }
+  ];
+
+  const proceduralOptions: { value: ProceduralTextureType; label: string }[] = [
+    { value: 'none', label: 'Smooth Polished' },
+    { value: 'fluted', label: 'Fluted Architectural Ribs' },
+    { value: 'brushed', label: 'Anisotropic Brushed Metal' },
+    { value: 'carbon', label: 'Carbon Fiber Weave' },
+    { value: 'diamond', label: 'Diamond Knurl Grid' },
+    { value: 'noise', label: 'Per-Pixel Bump Noise' }
+  ];
+
+  const framingOptions: { value: SocialFramingAspect; label: string }[] = [
+    { value: 'free', label: 'Free Viewport' },
+    { value: '16:9', label: '16:9 Landscape (YouTube)' },
+    { value: '9:16', label: '9:16 Vertical (Reels/TikTok)' },
+    { value: '1:1', label: '1:1 Square (Feed)' },
+    { value: '21:9', label: '21:9 Cinema Master' }
   ];
 
   const handleToggleStackEffect = (key: keyof typeof config.stackedEffects) => {
@@ -108,7 +138,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
       <div className="h-10 border-b border-[#1f2430] flex items-center justify-between px-3 bg-[#090b10] flex-shrink-0">
         <div className="flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-wider text-slate-200">
           <Box size={13} className="text-[#ff4e2e]" />
-          <span>3D Properties & PBR</span>
+          <span>{isNarrow ? '3D Props' : '3D Properties & PBR'}</span>
         </div>
         <button
           onClick={onResetTransforms}
@@ -116,7 +146,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono"
         >
           <RotateCcw size={11} />
-          <span>Reset</span>
+          {!isNarrow && <span>Reset</span>}
         </button>
       </div>
 
@@ -135,7 +165,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                     value={groupNameInput}
                     onChange={(e) => setGroupNameInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveGroupName()}
-                    className="bg-black/60 border border-[#ff4e2e] rounded px-1.5 py-0.5 text-xs font-mono text-white outline-none w-32"
+                    className="bg-black/60 border border-[#ff4e2e] rounded px-1.5 py-0.5 text-xs font-mono text-white outline-none w-28"
                     autoFocus
                   />
                   <button
@@ -147,7 +177,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-mono font-bold text-slate-100 truncate">
+                  <span className="text-xs font-mono font-bold text-slate-100 truncate max-w-[130px]">
                     {config.groupName || 'Asset Group'}
                   </span>
                   <button
@@ -198,13 +228,13 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
               <span>Collective Unit</span>
             </span>
             <span className="text-slate-400 font-semibold">
-              {parts.length} Glyphs Contained
+              {parts.length} Glyphs
             </span>
           </div>
         </div>
 
         {/* SECTION 1: COLLECTIVE OBJECT TRANSFORMS (Blender N-Panel) */}
-        <InspectorSection id="3d-transforms" title="Collective Transforms (N-Panel)" icon={<Move size={12} className="text-[#ff4e2e]" />}>
+        <InspectorSection id="3d-transforms" title={isNarrow ? "Transforms" : "Collective Transforms (N-Panel)"} icon={<Move size={12} className="text-[#ff4e2e]" />}>
           {config.isGroupLocked && (
             <div className="flex items-center gap-1.5 p-2 bg-amber-950/40 border border-amber-500/30 rounded-lg text-[10px] font-mono text-amber-300">
               <Lock size={11} className="flex-shrink-0" />
@@ -215,7 +245,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           {/* Uniform Scale Slider */}
           <div className={`flex flex-col gap-1 pb-1.5 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <SliderField
-              label="Uniform Scale (All Axes)"
+              label={isNarrow ? "Uniform Scale" : "Uniform Scale (All Axes)"}
               value={uniformScaleValue}
               min={0.2}
               max={3.0}
@@ -229,7 +259,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           <div className={`flex flex-col gap-1.5 pb-1 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-                Location / Position (X, Y, Z)
+                {isNarrow ? "Location" : "Location / Position (X, Y, Z)"}
               </span>
               <button
                 onClick={() => onUpdateConfig({ posX: 0, posY: 0, posZ: 0 })}
@@ -239,9 +269,9 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 Alt+G
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>
               <SliderField
-                label="Pos X"
+                label={isNarrow ? "Position X" : "Pos X"}
                 value={config.posX || 0}
                 min={-200}
                 max={200}
@@ -250,7 +280,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 onChange={(val) => onUpdateConfig({ posX: val })}
               />
               <SliderField
-                label="Pos Y"
+                label={isNarrow ? "Position Y" : "Pos Y"}
                 value={config.posY || 0}
                 min={-200}
                 max={200}
@@ -259,7 +289,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 onChange={(val) => onUpdateConfig({ posY: val })}
               />
               <SliderField
-                label="Pos Z"
+                label={isNarrow ? "Position Z" : "Pos Z"}
                 value={config.posZ || 0}
                 min={-200}
                 max={200}
@@ -274,7 +304,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           <div className={`flex flex-col gap-1.5 pb-1 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-                Rotation / Angle (X, Y, Z)
+                {isNarrow ? "Rotation" : "Rotation / Angle (X, Y, Z)"}
               </span>
               <button
                 onClick={() => onUpdateConfig({ rotX: 0, rotY: 0, rotZ: 0 })}
@@ -284,9 +314,9 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 Alt+R
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>
               <SliderField
-                label="Rot X"
+                label={isNarrow ? "Rotate X" : "Rot X"}
                 value={config.rotX || 0}
                 min={-180}
                 max={180}
@@ -295,7 +325,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 onChange={(val) => onUpdateConfig({ rotX: val })}
               />
               <SliderField
-                label="Rot Y"
+                label={isNarrow ? "Rotate Y" : "Rot Y"}
                 value={config.rotY || 0}
                 min={-180}
                 max={180}
@@ -304,7 +334,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                 onChange={(val) => onUpdateConfig({ rotY: val })}
               />
               <SliderField
-                label="Rot Z"
+                label={isNarrow ? "Rotate Z" : "Rot Z"}
                 value={config.rotZ || 0}
                 min={-180}
                 max={180}
@@ -318,9 +348,9 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           {/* Discrete Scale Axes */}
           <div className={`flex flex-col gap-1.5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-              Individual Scale Dimensions
+              {isNarrow ? "Scale Dimensions" : "Individual Scale Dimensions"}
             </span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>
               <SliderField
                 label="Scale X"
                 value={config.scaleX || 1.0}
@@ -349,16 +379,34 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
         </InspectorSection>
 
-        {/* SECTION 2: EFFECT STACKING & 2D MOTION SYNCHRONIZER */}
-        <InspectorSection id="3d-effect-stack" title="Effect Stacking & 2D Keyframe Sync" icon={<Zap size={12} className="text-[#ff4e2e]" />}>
+        {/* SECTION 2: SOCIAL FRAMING & VIEWPORT MASKS */}
+        <InspectorSection id="3d-framing" title={isNarrow ? "Social Framing" : "Social Video Framing & Guides"} icon={<Ratio size={12} className="text-[#ff4e2e]" />}>
+          <DropdownField<SocialFramingAspect>
+            label="Aspect Ratio"
+            value={config.framingAspect || 'free'}
+            options={framingOptions}
+            onChange={(val) => onUpdateConfig({ 
+              framingAspect: val, 
+              showFramingMask: val !== 'free' 
+            })}
+          />
+          <ToggleField
+            label="Show Framing Overlay Mask"
+            checked={config.showFramingMask || false}
+            onChange={(checked) => onUpdateConfig({ showFramingMask: checked })}
+          />
+        </InspectorSection>
+
+        {/* SECTION 3: EFFECT STACKING & 2D MOTION SYNCHRONIZER */}
+        <InspectorSection id="3d-effect-stack" title={isNarrow ? "Effect Stack" : "Effect Stacking & 2D Sync"} icon={<Zap size={12} className="text-[#ff4e2e]" />}>
           <div className="flex flex-col gap-1.5">
             {[
-              { key: 'sync2dMotion' as const, label: 'Sync 2D Motion Keyframes', desc: 'Applies active 2D motion preset timing & ease' },
-              { key: 'turntableSpin' as const, label: 'Turntable 360° Luxury Spin', desc: 'Continuous smooth orbital turntable rotation' },
-              { key: 'harmonicWave' as const, label: 'Harmonic Sinusoidal Wave', desc: 'Phase-offset undulating wave across glyphs' },
+              { key: 'sync2dMotion' as const, label: 'Sync 2D Motion', desc: `Follows 2D timing (${config.active2dMotionId || 'Typewriter'})` },
+              { key: 'turntableSpin' as const, label: 'Turntable 360° Spin', desc: 'Smooth continuous luxury turntable rotation' },
+              { key: 'harmonicWave' as const, label: 'Harmonic Z-Wave', desc: 'Phase-offset undulating wave across glyphs' },
               { key: 'hoverFloat' as const, label: 'Organic Hover Float', desc: 'Natural vertical breathing buoyancy' },
               { key: 'lightSweep' as const, label: 'Orbiting Light Sweep', desc: 'Dynamic rotating key & rim specular glints' },
-              { key: 'gyroTilt' as const, label: 'Cursor Gyro Tilt Tracking', desc: 'Perspective tilts towards mouse cursor' }
+              { key: 'gyroTilt' as const, label: 'Cursor Gyro Tracking', desc: 'Perspective tilts towards mouse cursor' }
             ].map(eff => {
               const active = config.stackedEffects ? config.stackedEffects[eff.key] : false;
               return (
@@ -369,7 +417,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                   className={`flex flex-col p-2 rounded-lg border text-left transition-all ${
                     active
                       ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] shadow-sm'
-                      : 'bg-[#121520] border-[#222736] hover:border-slate-500'
+                      : 'bg-[#121520] border-[#22283a] hover:border-slate-500'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
@@ -380,22 +428,24 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                       {active ? 'ON' : 'OFF'}
                     </span>
                   </div>
-                  <span className="text-[8.5px] text-slate-400 mt-0.5">
-                    {eff.desc}
-                  </span>
+                  {!isNarrow && (
+                    <span className="text-[8.5px] text-slate-400 mt-0.5">
+                      {eff.desc}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
         </InspectorSection>
 
-        {/* SECTION 3: ENVIRONMENT & BACKGROUND (Blender World) */}
-        <InspectorSection id="3d-environment" title="Environment & Scene Backdrop" icon={<Globe size={12} className="text-[#ff4e2e]" />}>
+        {/* SECTION 4: ENVIRONMENT & BACKGROUND (Blender World) */}
+        <InspectorSection id="3d-environment" title="Environment & Scene" icon={<Globe size={12} className="text-[#ff4e2e]" />}>
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
               Atmospheric Preset
             </span>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className={`grid ${isNarrow ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5`}>
               {envOptions.map(opt => (
                 <button
                   key={opt.id}
@@ -412,7 +462,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2 pt-1`}>
             <SliderField
               label="Floor Roughness"
               value={config.floorRoughness || 0.65}
@@ -432,8 +482,8 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
         </InspectorSection>
 
-        {/* SECTION 4: CAMERA OPTICS (FOV & Distance) */}
-        <InspectorSection id="3d-camera" title="Camera Optics (Blender Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />}>
+        {/* SECTION 5: CAMERA OPTICS */}
+        <InspectorSection id="3d-camera" title="Camera Optics (Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />}>
           <SliderField
             label="Field of View (FOV)"
             value={config.fov || 45}
@@ -454,8 +504,8 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           />
         </InspectorSection>
 
-        {/* SECTION 5: EXTRUSION & BEVEL */}
-        <InspectorSection id="3d-geometry" title="Extrusion & Bevel Geometry" icon={<Box size={12} className="text-[#ff4e2e]" />}>
+        {/* SECTION 6: EXTRUSION & BEVEL */}
+        <InspectorSection id="3d-geometry" title="Extrusion & Bevel" icon={<Box size={12} className="text-[#ff4e2e]" />}>
           <SliderField
             label="Extrude Depth"
             value={config.depth}
@@ -484,7 +534,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ bevelSize: val })}
           />
           <SliderField
-            label="Bevel Smooth Segments"
+            label="Bevel Segments"
             value={config.bevelSegments}
             min={1}
             max={8}
@@ -492,7 +542,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ bevelSegments: val })}
           />
           <SliderField
-            label="Master Mesh Scale"
+            label="Master Scale"
             value={config.meshScale}
             min={0.5}
             max={2.0}
@@ -501,9 +551,9 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           />
         </InspectorSection>
 
-        {/* SECTION 6: PBR SURFACE MATERIALS */}
-        <InspectorSection id="3d-pbr" title="PBR Surface & Fluting" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
-          <div className="grid grid-cols-2 gap-2">
+        {/* SECTION 7: PBR SURFACE & PROCEDURAL TEXTURES */}
+        <InspectorSection id="3d-pbr" title="PBR Surface & Textures" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
+          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
             <ColorSwatchField
               label="Face Color"
               value={config.faceColor}
@@ -517,7 +567,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
 
           <SliderField
-            label="Metallic Reflection"
+            label="Metallic Factor"
             value={config.metalness}
             min={0}
             max={1}
@@ -525,7 +575,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ metalness: val })}
           />
           <SliderField
-            label="Roughness / Diffusion"
+            label="Roughness"
             value={config.roughness}
             min={0.02}
             max={1}
@@ -533,7 +583,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ roughness: val })}
           />
           <SliderField
-            label="Specular Clearcoat"
+            label="Clearcoat Glaze"
             value={config.clearcoat}
             min={0}
             max={1}
@@ -549,35 +599,34 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ transmission: val })}
           />
 
-          {/* Fluting Toggle */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[10.5px] font-mono text-slate-300">Fluted Ribbed Texture</span>
-            <button
-              onClick={() => onUpdateConfig({ flutingEnabled: !config.flutingEnabled })}
-              className={`px-2 py-0.5 rounded text-[9.5px] font-mono border transition-colors ${
-                config.flutingEnabled
-                  ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
-                  : 'bg-white/5 border-white/10 text-slate-400'
-              }`}
-            >
-              {config.flutingEnabled ? 'Enabled' : 'Disabled'}
-            </button>
-          </div>
-          {config.flutingEnabled && (
-            <SliderField
-              label="Flute Groove Depth"
-              value={config.fluteScale}
-              min={0.1}
-              max={1.5}
-              step={0.05}
-              onChange={(val) => onUpdateConfig({ fluteScale: val })}
+          {/* Procedural Surface Texture Generator */}
+          <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+            <DropdownField<ProceduralTextureType>
+              label="Procedural Bump Texture"
+              value={config.proceduralTexture || (config.flutingEnabled ? 'fluted' : 'none')}
+              options={proceduralOptions}
+              onChange={(val) => onUpdateConfig({ 
+                proceduralTexture: val,
+                flutingEnabled: val === 'fluted'
+              })}
             />
-          )}
+
+            {(config.proceduralTexture && config.proceduralTexture !== 'none' || config.flutingEnabled) && (
+              <SliderField
+                label="Texture Relief / Bump"
+                value={config.fluteScale || 0.45}
+                min={0.05}
+                max={1.5}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ fluteScale: val })}
+              />
+            )}
+          </div>
         </InspectorSection>
 
-        {/* SECTION 7: STUDIO LIGHTING */}
+        {/* SECTION 8: STUDIO LIGHTING */}
         <InspectorSection id="3d-lighting" title="Studio Lighting Rig" icon={<Sun size={12} className="text-[#ff4e2e]" />}>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
             <ColorSwatchField
               label="Key Light"
               value={config.keyColor}
@@ -591,7 +640,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
 
           <SliderField
-            label="Key Light Intensity"
+            label="Key Light Power"
             value={config.keyIntensity}
             min={0}
             max={6}
@@ -600,7 +649,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           />
 
           <SliderField
-            label="Rim Light Intensity"
+            label="Rim Light Power"
             value={config.rimIntensity}
             min={0}
             max={8}
@@ -609,7 +658,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           />
 
           <SliderField
-            label="Fill Light Intensity"
+            label="Fill Light Power"
             value={config.fillIntensity}
             min={0}
             max={4}
@@ -617,7 +666,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ fillIntensity: val })}
           />
           <SliderField
-            label="Ambient Light Level"
+            label="Ambient Light"
             value={config.ambientIntensity}
             min={0}
             max={1.5}
@@ -625,41 +674,25 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             onChange={(val) => onUpdateConfig({ ambientIntensity: val })}
           />
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[10.5px] font-mono text-slate-300">Studio Floor & Grid</span>
-            <button
-              onClick={() => onUpdateConfig({ showFloor: !config.showFloor })}
-              className={`px-2 py-0.5 rounded text-[9.5px] font-mono border transition-colors ${
-                config.showFloor
-                  ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-bold'
-                  : 'bg-white/5 border-white/10 text-slate-400'
-              }`}
-            >
-              {config.showFloor ? 'Visible' : 'Hidden'}
-            </button>
-          </div>
+          <ToggleField
+            label="Studio Floor & Grid"
+            checked={config.showFloor}
+            onChange={(checked) => onUpdateConfig({ showFloor: checked })}
+          />
         </InspectorSection>
 
-        {/* SECTION 8: UNREAL BLOOM OPTICS */}
+        {/* SECTION 9: UNREAL BLOOM OPTICS */}
         <InspectorSection id="3d-bloom" title="Unreal Bloom Post-Processing" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10.5px] font-mono text-slate-300">Glow Bloom Engine</span>
-            <button
-              onClick={() => onUpdateConfig({ bloomEnabled: !config.bloomEnabled })}
-              className={`px-2 py-0.5 rounded text-[9.5px] font-mono border transition-colors ${
-                config.bloomEnabled
-                  ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
-                  : 'bg-white/5 border-white/10 text-slate-400'
-              }`}
-            >
-              {config.bloomEnabled ? 'Active' : 'Bypassed'}
-            </button>
-          </div>
+          <ToggleField
+            label="Glow Bloom Engine"
+            checked={config.bloomEnabled}
+            onChange={(checked) => onUpdateConfig({ bloomEnabled: checked })}
+          />
 
           {config.bloomEnabled && (
             <>
               <SliderField
-                label="Bloom Strength / Intensity"
+                label="Bloom Strength"
                 value={config.bloomStrength}
                 min={0.1}
                 max={3.0}
@@ -686,7 +719,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           )}
         </InspectorSection>
 
-        {/* SECTION 9: MULTI-PART / LETTERS INSPECTOR */}
+        {/* SECTION 10: MULTI-PART / LETTERS BREAKDOWN */}
         <InspectorSection id="3d-parts" title={`Parts Breakdown (${parts.length} Glyphs)`} icon={<Layers size={12} className="text-[#ff4e2e]" />}>
           <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
             {parts.map((part, pIdx) => {

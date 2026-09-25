@@ -1,5 +1,5 @@
 import { GLYPH_PATHS } from './vectorPaths';
-import { PbrPresetId, LightingRigId } from '../types/threeStudio';
+import { PbrPresetId, LightingRigId, ProceduralTextureType } from '../types/threeStudio';
 
 export interface SvgAssetPreset {
   id: string;
@@ -108,6 +108,7 @@ export interface PbrMaterialPreset {
   transmission: number;
   flutingEnabled: boolean;
   fluteScale: number;
+  proceduralTexture: ProceduralTextureType;
   bloomEnabled: boolean;
   bloomStrength: number;
 }
@@ -125,6 +126,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: false,
     fluteScale: 0.45,
+    proceduralTexture: 'none',
     bloomEnabled: true,
     bloomStrength: 0.75
   },
@@ -140,6 +142,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: true,
     fluteScale: 0.65,
+    proceduralTexture: 'fluted',
     bloomEnabled: true,
     bloomStrength: 0.9
   },
@@ -155,6 +158,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: false,
     fluteScale: 0.3,
+    proceduralTexture: 'brushed',
     bloomEnabled: true,
     bloomStrength: 0.8
   },
@@ -170,6 +174,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: false,
     fluteScale: 0.3,
+    proceduralTexture: 'diamond',
     bloomEnabled: true,
     bloomStrength: 0.85
   },
@@ -185,6 +190,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.82,
     flutingEnabled: false,
     fluteScale: 0.3,
+    proceduralTexture: 'noise',
     bloomEnabled: true,
     bloomStrength: 0.7
   },
@@ -200,6 +206,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: false,
     fluteScale: 0.3,
+    proceduralTexture: 'none',
     bloomEnabled: true,
     bloomStrength: 1.45
   },
@@ -215,6 +222,7 @@ export const PBR_PRESETS: PbrMaterialPreset[] = [
     transmission: 0.0,
     flutingEnabled: false,
     fluteScale: 0.0,
+    proceduralTexture: 'none',
     bloomEnabled: false,
     bloomStrength: 0.0
   }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload, Code2, Check, AlertCircle, Sparkles } from 'lucide-react';
+import { cleanSvgArtboardBackground } from '../utils/threeEngine';
 
 interface CustomSvgModalProps {
   isOpen: boolean;
@@ -87,16 +88,33 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
               Paste raw SVG code or upload a file:
             </span>
 
-            <label className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs font-mono text-slate-200 transition-colors">
-              <Upload size={12} />
-              <span>Choose .svg File</span>
-              <input 
-                type="file" 
-                accept=".svg" 
-                onChange={handleFileUpload} 
-                className="hidden" 
-              />
-            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (svgCode) {
+                    const cleaned = cleanSvgArtboardBackground(svgCode);
+                    setSvgCode(cleaned);
+                  }
+                }}
+                title="Detect and remove full-bleed bounding background rectangles"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded text-xs font-mono text-cyan-300 transition-colors"
+              >
+                <Sparkles size={11} />
+                <span>Clean Artboard BG</span>
+              </button>
+
+              <label className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs font-mono text-slate-200 transition-colors">
+                <Upload size={12} />
+                <span>Choose .svg File</span>
+                <input 
+                  type="file" 
+                  accept=".svg" 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
           </div>
 
           <textarea

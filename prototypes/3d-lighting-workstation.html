@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Extruded SVG Animation & Lighting Workstation</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e15',
+              850: '#121520',
+              800: '#181d2a',
+              750: '#1f2537',
+              700: '#272f45',
+              600: '#384360'
+            },
+            brand: {
+              red: '#ff263e',
+              crimson: '#dc143c',
+              gold: '#f59e0b',
+              cyan: '#06b6d4',
+              violet: '#8b5cf6'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Three.js Suite (r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/SVGLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+  <!-- Post-Processing Shaders & Unreal Bloom -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      background-color: #07080c;
+      color: #f3f4f6;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(12, 14, 21, 0.7);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 38, 62, 0.45);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 38, 62, 0.85);
+    }
+
+    .studio-panel {
+      background: rgba(18, 21, 32, 0.92);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-surface {
+      background: rgba(24, 29, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      height: 4px;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ff263e;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 38, 62, 0.8);
+      transition: transform 0.1s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    .glow-brand {
+      box-shadow: 0 0 24px -2px rgba(255, 38, 62, 0.45);
+    }
+
+    .kf-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      width: 12px;
+      height: 12px;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      z-index: 25;
+    }
+    .kf-marker:hover {
+      transform: translate(-50%, -50%) rotate(45deg) scale(1.35);
+    }
+    .kf-marker.selected {
+      background-color: #f59e0b !important;
+      box-shadow: 0 0 12px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.7);
+      border: 1.5px solid #ffffff;
+      transform: translate(-50%, -50%) rotate(45deg) scale(1.25);
+    }
+
+    .playhead-needle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ff263e;
+      box-shadow: 0 0 8px #ff263e;
+      pointer-events: none;
+      z-index: 30;
+    }
+    .playhead-needle::after {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: -5px;
+      width: 12px;
+      height: 8px;
+      background: #ff263e;
+      clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+    }
+
+    .badge-tag {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .part-item.active {
+      border-color: #ff263e !important;
+      background: rgba(255, 38, 62, 0.12) !important;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden flex flex-col">
+
+  <header class="h-13 bg-obsidian-950 border-b border-obsidian-750 px-4 flex items-center justify-between z-30 select-none">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-crimson via-brand-red to-orange-500 flex items-center justify-center glow-brand text-white shadow-md">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xs font-black tracking-wider text-white uppercase flex items-center gap-1.5">
+            Vector3D <span class="text-brand-red">Workstation</span>
+          </h1>
+          <span class="badge-tag bg-brand-red/20 text-brand-red border border-brand-red/30">Keyframe Suite</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Diagnostics & State Display -->
+    <div class="hidden lg:flex items-center gap-3 bg-obsidian-900 border border-obsidian-750 px-3.5 py-1 rounded-full text-xs font-mono text-slate-300">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="diag-fps" class="text-emerald-400 font-bold">60</span> FPS
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Parts:</span>
+        <span id="diag-parts-count" class="text-brand-red font-bold">5</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Keyframes:</span>
+        <span id="diag-kf-count" class="text-amber-400 font-bold">3</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Gizmo:</span>
+        <span id="diag-gizmo-mode" class="text-cyan-400 font-bold">Light Pivot</span>
+      </div>
+    </div>
+
+    <!-- Quick Tool Actions -->
+    <div class="flex items-center space-x-2">
+      <!-- 3D Gizmo Mode Select -->
+      <div class="flex items-center bg-obsidian-900 border border-obsidian-750 rounded-lg p-0.5 text-xs font-medium">
+        <button id="btn-gizmo-light" class="gizmo-mode-btn px-2.5 py-1 rounded text-white bg-brand-red/30 border border-brand-red/40 flex items-center gap-1.5 transition" title="Interactive 3D Light Pivot Gizmo">
+          <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Light Gizmo</span>
+        </button>
+        <button id="btn-gizmo-model" class="gizmo-mode-btn px-2.5 py-1 rounded text-slate-400 hover:text-white flex items-center gap-1.5 transition" title="Interactive Model Transform Gizmo">
+          <i data-lucide="move" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>Model Gizmo</span>
+        </button>
+        <button id="btn-gizmo-none" class="gizmo-mode-btn px-2.5 py-1 rounded text-slate-400 hover:text-white flex items-center gap-1.5 transition" title="Hide 3D Viewport Gizmos">
+          <i data-lucide="eye-off" class="w-3.5 h-3.5"></i>
+          <span>None</span>
+        </button>
+      </div>
+
+      <button id="btn-open-code-modal" class="studio-panel hover:bg-obsidian-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+        <i data-lucide="code" class="w-3.5 h-3.5 text-brand-red"></i>
+        <span class="hidden md:inline">Raw SVG</span>
+      </button>
+
+      <button id="btn-snapshot-png" class="studio-panel hover:bg-obsidian-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+        <i data-lucide="camera" class="w-3.5 h-3.5 text-slate-300"></i>
+        <span class="hidden md:inline">4K Snapshot</span>
+      </button>
+
+      <button id="btn-quick-record" class="studio-panel text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition border-brand-red/50 bg-brand-red/30 hover:bg-brand-red/50 glow-brand">
+        <span class="w-2 h-2 rounded-full bg-brand-red animate-ping"></span>
+        <span>Render Video Loop</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 relative flex overflow-hidden">
+
+    <!-- LEFT PANEL: Scene Hierarchy / Parts Decomposition & Deletion -->
+    <aside id="left-dock" class="w-80 bg-obsidian-900 border-r border-obsidian-750 flex flex-col z-20 transition-all select-none">
+      <div class="p-3 border-b border-obsidian-750 bg-obsidian-950/70 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-brand-red"></i>
+          <h2 class="text-xs font-bold text-white uppercase tracking-wider">Scene Hierarchy</h2>
+        </div>
+        <span id="badge-parts-count" class="badge-tag bg-brand-red/20 text-brand-red border border-brand-red/30">5 parts</span>
+      </div>
+
+      <!-- Quick Cleaner & File Dropzone -->
+      <div class="p-3 border-b border-obsidian-750 space-y-2 bg-obsidian-950/30">
+        <div id="dropzone" class="border border-dashed border-obsidian-700 hover:border-brand-red/60 rounded-xl p-2.5 text-center cursor-pointer transition bg-obsidian-900/40 group">
+          <input type="file" id="file-input" accept=".svg" class="hidden">
+          <div class="flex items-center justify-center gap-2 text-slate-400 group-hover:text-brand-red transition">
+            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+            <span class="text-[11px] font-medium">Upload Any Brand SVG</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-auto-clean-bg" class="py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center justify-center gap-1.5 transition" title="Automatically finds and removes full-bleed artboard rectangles">
+            <i data-lucide="wand-2" class="w-3 h-3"></i>
+            <span>Clean Artboard BG</span>
+          </button>
+          <button id="btn-restore-media" class="py-1.5 px-2 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-700 text-slate-300 text-[10px] font-semibold flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="rotate-ccw" class="w-3 h-3 text-cyan-400"></i>
+            <span>Reset "MEDIA"</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Parts List -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-2" id="parts-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Left Dock Footer -->
+      <div class="p-2.5 border-t border-obsidian-750 bg-obsidian-950/80 flex items-center justify-between text-[11px]">
+        <button id="btn-show-all-parts" class="text-slate-400 hover:text-white flex items-center gap-1">
+          <i data-lucide="check-square" class="w-3 h-3 text-emerald-400"></i> Show All
+        </button>
+        <span class="text-slate-500 text-[10px]">Click letter to select</span>
+      </div>
+    </aside>
+
+    <!-- CENTER: 3D Viewport with Three.js WebGL & TransformControls -->
+    <div class="flex-1 relative flex flex-col overflow-hidden bg-black">
+      <div id="canvas-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+      <!-- Viewport Overlay HUD -->
+      <div class="absolute top-3 left-3 pointer-events-none flex items-center gap-2">
+        <span id="hud-gizmo-badge" class="bg-obsidian-900/85 backdrop-blur border border-amber-500/40 text-amber-300 font-mono text-[10px] px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span>Key Light Gizmo Active (Drag in 3D)</span>
+        </span>
+      </div>
+
+      <!-- Quick Camera Angles floating bar -->
+      <div class="absolute top-3 right-3 flex items-center gap-1 bg-obsidian-900/85 backdrop-blur border border-obsidian-750 p-1 rounded-lg text-[10px] font-mono text-slate-300 shadow-xl">
+        <span class="text-slate-500 px-1 uppercase font-bold">View:</span>
+        <button class="cam-btn px-2 py-0.5 rounded hover:text-white hover:bg-obsidian-750" data-cam="front">Front</button>
+        <button class="cam-btn px-2 py-0.5 rounded text-brand-red font-bold bg-brand-red/20" data-cam="iso">Hero</button>
+        <button class="cam-btn px-2 py-0.5 rounded hover:text-white hover:bg-obsidian-750" data-cam="top">Top</button>
+        <button class="cam-btn px-2 py-0.5 rounded hover:text-white hover:bg-obsidian-750" data-cam="side">Side</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Inspector Tabs (Keyframes, Lighting, Materials, Post-Processing) -->
+    <aside id="right-dock" class="w-88 bg-obsidian-900 border-l border-obsidian-750 flex flex-col z-20 select-none">
+      <!-- Tabs Bar -->
+      <div class="flex border-b border-obsidian-750 bg-obsidian-950/70 p-1 gap-1">
+        <button data-tab="tab-keyframes" class="inspector-tab active flex-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-white bg-brand-red/30 border border-brand-red/40">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-amber-400"></i> Keyframe
+        </button>
+        <button data-tab="tab-lighting" class="inspector-tab flex-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+          <i data-lucide="sun" class="w-3.5 h-3.5 text-cyan-400"></i> Lights
+        </button>
+        <button data-tab="tab-material" class="inspector-tab flex-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i> Surface
+        </button>
+        <button data-tab="tab-geometry" class="inspector-tab flex-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+          <i data-lucide="box" class="w-3.5 h-3.5 text-brand-red"></i> Extrude
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-slate-300">
+
+        <!-- TAB 1: KEYFRAME INSPECTOR -->
+        <div id="tab-keyframes" class="inspector-content space-y-4">
+          <div class="card-surface p-3 rounded-xl border-amber-500/30 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white flex items-center gap-1.5">
+                <i data-lucide="disc" class="w-4 h-4 text-amber-400"></i> Active Keyframe
+              </span>
+              <span id="badge-active-kf" class="badge-tag bg-amber-500/20 text-amber-400 border border-amber-500/30">None selected</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button id="btn-snapshot-current-kf" class="py-2 px-2.5 rounded-lg bg-brand-red hover:bg-brand-crimson text-white font-bold flex items-center justify-center gap-1.5 shadow-md shadow-brand-red/30 transition">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                <span>Snapshot Keyframe</span>
+              </button>
+              <button id="btn-delete-active-kf" class="py-2 px-2.5 rounded-lg bg-obsidian-800 hover:bg-brand-red/20 text-slate-300 hover:text-brand-red border border-obsidian-700 font-semibold flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span>Delete Keyframe</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Keyframe Interpolation & Easing -->
+          <div class="space-y-2">
+            <label class="block font-semibold text-slate-200">Keyframe Easing Curve</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button class="easing-btn active py-1.5 rounded-lg bg-brand-red/30 border border-brand-red/40 text-white font-mono text-[11px]" data-easing="easeInOut">EaseInOut</button>
+              <button class="easing-btn py-1.5 rounded-lg bg-obsidian-800 text-slate-400 hover:text-white font-mono text-[11px]" data-easing="linear">Linear</button>
+              <button class="easing-btn py-1.5 rounded-lg bg-obsidian-800 text-slate-400 hover:text-white font-mono text-[11px]" data-easing="bounce">Bounce</button>
+            </div>
+          </div>
+
+          <!-- Motion Presets -->
+          <div class="pt-2 border-t border-obsidian-750 space-y-2">
+            <label class="block font-semibold text-slate-200">Production Keyframe Presets</label>
+            <div class="space-y-1.5">
+              <button class="kf-preset-btn w-full p-2.5 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-750 hover:border-brand-red/50 text-left transition" data-preset="sting">
+                <p class="font-bold text-white flex items-center justify-between">
+                  <span>Cinematic Sting & Light Arc</span>
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-brand-red"></i>
+                </p>
+                <p class="text-[10px] text-slate-400">Sweeps directional light arc across bevels with camera zoom</p>
+              </button>
+
+              <button class="kf-preset-btn w-full p-2.5 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-750 hover:border-amber-500/50 text-left transition" data-preset="turntable">
+                <p class="font-bold text-white flex items-center justify-between">
+                  <span>360° Turntable Bevel Flare</span>
+                  <i data-lucide="rotate-3d" class="w-3.5 h-3.5 text-amber-400"></i>
+                </p>
+                <p class="text-[10px] text-slate-400">Seamless 360° rotation loop with dynamic backlighting</p>
+              </button>
+
+              <button class="kf-preset-btn w-full p-2.5 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-750 hover:border-cyan-500/50 text-left transition" data-preset="snap">
+                <p class="font-bold text-white flex items-center justify-between">
+                  <span>Dramatic Snap & Drop</span>
+                  <i data-lucide="arrow-down" class="w-3.5 h-3.5 text-cyan-400"></i>
+                </p>
+                <p class="text-[10px] text-slate-400">Letters slam onto floor plane with spring bounce settle</p>
+              </button>
+
+              <button class="kf-preset-btn w-full p-2.5 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-750 hover:border-purple-500/50 text-left transition" data-preset="pulse">
+                <p class="font-bold text-white flex items-center justify-between">
+                  <span>Breathing Depth & Pulse</span>
+                  <i data-lucide="activity" class="w-3.5 h-3.5 text-purple-400"></i>
+                </p>
+                <p class="text-[10px] text-slate-400">Extrusion thickness flexes dynamically along with rim light</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: ADVANCED 3D LIGHTING & DIRECTION CONTROLS -->
+        <div id="tab-lighting" class="inspector-content hidden space-y-4">
+          <!-- Key Light Polar Direction -->
+          <div class="card-surface p-3 rounded-xl space-y-3 border-amber-500/30">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-md"></span> Key Spotlight (Directional)
+              </span>
+              <input type="color" id="col-key-light" value="#ffffff" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+
+            <!-- Azimuth (0 - 360) -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-slate-300">Azimuth Angle (Orbit)</span>
+                <span id="val-light-azimuth" class="font-mono text-amber-400 font-bold">45°</span>
+              </div>
+              <input type="range" id="sl-light-azimuth" min="0" max="360" value="45" class="w-full">
+            </div>
+
+            <!-- Elevation (-80 to 80) -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-slate-300">Elevation Angle (Height)</span>
+                <span id="val-light-elevation" class="font-mono text-amber-400 font-bold">50°</span>
+              </div>
+              <input type="range" id="sl-light-elevation" min="-80" max="80" value="50" class="w-full">
+            </div>
+
+            <!-- Distance & Intensity -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="flex justify-between items-center mb-1 text-[11px]">
+                  <span class="text-slate-400">Distance</span>
+                  <span id="val-light-distance" class="font-mono text-slate-200">350</span>
+                </div>
+                <input type="range" id="sl-light-distance" min="100" max="800" value="350" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-1 text-[11px]">
+                  <span class="text-slate-400">Intensity</span>
+                  <span id="val-light-intensity" class="font-mono text-amber-400 font-bold">2.4</span>
+                </div>
+                <input type="range" id="sl-light-intensity" min="0.2" max="6.0" step="0.1" value="2.4" class="w-full">
+              </div>
+            </div>
+          </div>
+
+          <!-- Rim Backlight -->
+          <div class="card-surface p-3 rounded-xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-md"></span> Rim Edge Backlight
+              </span>
+              <input type="color" id="col-rim-light" value="#ffffff" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1 text-[11px]">
+                <span class="text-slate-400">Backlight Intensity</span>
+                <span id="val-rim-intensity" class="font-mono text-cyan-400 font-bold">2.8</span>
+              </div>
+              <input type="range" id="sl-rim-intensity" min="0.0" max="6.0" step="0.2" value="2.8" class="w-full">
+            </div>
+          </div>
+
+          <!-- Unreal Bloom Post-Processing Pass -->
+          <div class="pt-2 border-t border-obsidian-750 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-semibold text-white">Unreal Bloom Pass</span>
+                <p class="text-[10px] text-slate-400">Produces cinematic flares on chamfers</p>
+              </div>
+              <input type="checkbox" id="chk-bloom" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-slate-300">Bloom Glow Strength</span>
+                <span id="val-bloom-strength" class="font-mono text-brand-red font-bold">0.85</span>
+              </div>
+              <input type="range" id="sl-bloom-strength" min="0.0" max="3.0" step="0.05" value="0.85" class="w-full">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="flex justify-between items-center mb-1 text-[11px]">
+                  <span class="text-slate-400">Threshold</span>
+                  <span id="val-bloom-thresh" class="font-mono text-slate-200">0.75</span>
+                </div>
+                <input type="range" id="sl-bloom-thresh" min="0.1" max="1.0" step="0.05" value="0.75" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-1 text-[11px]">
+                  <span class="text-slate-400">Radius</span>
+                  <span id="val-bloom-radius" class="font-mono text-slate-200">0.5</span>
+                </div>
+                <input type="range" id="sl-bloom-radius" min="0.1" max="1.5" step="0.05" value="0.5" class="w-full">
+              </div>
+            </div>
+          </div>
+
+          <!-- Floor & Shadows -->
+          <div class="pt-2 border-t border-obsidian-750 space-y-2">
+            <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+              <span class="text-slate-300 font-medium">Contact Shadow Floor</span>
+              <input type="checkbox" id="chk-floor" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+            </div>
+            <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+              <span class="text-slate-300 font-medium">Show 3D Light Rays Helper</span>
+              <input type="checkbox" id="chk-light-helper" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SURFACE & FLUTED TEXTURES -->
+        <div id="tab-material" class="inspector-content hidden space-y-4">
+          <div>
+            <label class="block font-semibold text-slate-200 mb-2">Material Presets</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="mat-preset-btn active p-2 rounded-xl border border-brand-red/60 bg-brand-red/20 text-white flex items-center gap-2 font-medium" data-mat="ribbed">
+                <span class="w-3 h-3 rounded-full bg-brand-red shadow-[0_0_8px_#ff263e]"></span> Fluted Red Ribs
+              </button>
+              <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-850 text-slate-300 flex items-center gap-2 font-medium" data-mat="gold">
+                <span class="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span> 24K Gold
+              </button>
+              <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-850 text-slate-300 flex items-center gap-2 font-medium" data-mat="chrome">
+                <span class="w-3 h-3 rounded-full bg-slate-200 shadow-[0_0_8px_#e2e8f0]"></span> Mirror Chrome
+              </button>
+              <button class="mat-preset-btn p-2 rounded-xl border border-obsidian-700 bg-obsidian-850 text-slate-300 flex items-center gap-2 font-medium" data-mat="glass">
+                <span class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]"></span> Obsidian Glass
+              </button>
+            </div>
+          </div>
+
+          <!-- Fluted Scanlines (Faithfully matching user's logo reference) -->
+          <div class="card-surface p-3 rounded-xl space-y-2 border-brand-red/40">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-semibold text-white flex items-center gap-1.5">
+                  <i data-lucide="align-justify" class="w-3.5 h-3.5 text-brand-red"></i> Fluted Scanline Ribs
+                </span>
+                <p class="text-[10px] text-slate-400">Horizontal grooves matching brand upload</p>
+              </div>
+              <input type="checkbox" id="chk-fluting" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+            </div>
+
+            <div id="fluting-controls" class="space-y-2 pt-2 border-t border-obsidian-750">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-slate-300">Flute Depth / Bump Scale</span>
+                <span id="val-flute-scale" class="font-mono text-brand-red">0.45</span>
+              </div>
+              <input type="range" id="sl-flute-scale" min="0.05" max="1.5" step="0.05" value="0.45" class="w-full">
+            </div>
+          </div>
+
+          <!-- PBR Controls -->
+          <div class="pt-2 border-t border-obsidian-750 space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div class="card-surface p-2 rounded-xl flex items-center justify-between">
+                <span class="text-[11px] text-slate-300 font-medium">Face Color</span>
+                <input type="color" id="col-face" value="#ff263e" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+              </div>
+              <div class="card-surface p-2 rounded-xl flex items-center justify-between">
+                <span class="text-[11px] text-slate-300 font-medium">Bevel Sides</span>
+                <input type="color" id="col-sides" value="#660a15" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-slate-200">Roughness</span>
+                <span id="val-rough" class="font-mono text-brand-red">0.22</span>
+              </div>
+              <input type="range" id="sl-rough" min="0.0" max="1.0" step="0.02" value="0.22" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-slate-200">Metalness</span>
+                <span id="val-metal" class="font-mono text-brand-red">0.45</span>
+              </div>
+              <input type="range" id="sl-metal" min="0.0" max="1.0" step="0.02" value="0.45" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-slate-200">Clearcoat Varnish</span>
+                <span id="val-clearcoat" class="font-mono text-brand-red">0.75</span>
+              </div>
+              <input type="range" id="sl-clearcoat" min="0.0" max="1.0" step="0.05" value="0.75" class="w-full">
+            </div>
+
+            <div class="card-surface p-2.5 rounded-xl flex items-center justify-between">
+              <span class="text-slate-300 font-medium">Wireframe Mode</span>
+              <input type="checkbox" id="chk-wireframe" class="w-4 h-4 accent-brand-red cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: GEOMETRY & EXTRUSION -->
+        <div id="tab-geometry" class="inspector-content hidden space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Extrusion Depth</span>
+              <span id="val-depth" class="font-mono text-brand-red font-bold">32</span>
+            </div>
+            <input type="range" id="sl-depth" min="4" max="120" value="32" class="w-full">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-slate-200">Bevel Depth</span>
+                <span id="val-bevel-thick" class="font-mono text-brand-red font-bold">3.5</span>
+              </div>
+              <input type="range" id="sl-bevel-thick" min="0" max="12" step="0.2" value="3.5" class="w-full">
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-slate-200">Bevel Size</span>
+                <span id="val-bevel-size" class="font-mono text-brand-red font-bold">2.2</span>
+              </div>
+              <input type="range" id="sl-bevel-size" min="0" max="8" step="0.2" value="2.2" class="w-full">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Bevel Segments</span>
+              <span id="val-segments" class="font-mono text-brand-red font-bold">5</span>
+            </div>
+            <input type="range" id="sl-segments" min="1" max="10" step="1" value="5" class="w-full">
+          </div>
+
+          <div class="card-surface p-3 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-white">Auto Center Pivot</span>
+              <p class="text-[10px] text-slate-400">Centers all letters at the world origin</p>
+            </div>
+            <input type="checkbox" id="chk-auto-center" checked class="w-4 h-4 accent-brand-red cursor-pointer">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Dock Footer: GLTF Export -->
+      <div class="p-3 border-t border-obsidian-750 bg-obsidian-950/80">
+        <button id="btn-export-gltf" class="w-full py-2 px-3 rounded-xl bg-obsidian-800 hover:bg-obsidian-750 text-white font-semibold flex items-center justify-center gap-2 transition border border-obsidian-700 text-xs">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-brand-red"></i>
+          <span>Export 3D Model (.GLTF)</span>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="h-44 bg-obsidian-950 border-t border-obsidian-750 flex flex-col z-30 select-none">
+    <!-- Timeline Transport Controls Bar -->
+    <div class="h-10 border-b border-obsidian-750/80 px-4 flex items-center justify-between bg-obsidian-900/60">
+      <div class="flex items-center gap-3">
+        <!-- Play / Pause -->
+        <button id="btn-transport-play" class="w-7 h-7 rounded-lg bg-brand-red hover:bg-brand-crimson text-white flex items-center justify-center transition shadow-md shadow-brand-red/30">
+          <i data-lucide="play" id="icon-transport-play" class="w-4 h-4"></i>
+        </button>
+
+        <!-- Rewind to 0 -->
+        <button id="btn-transport-rewind" class="w-7 h-7 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-obsidian-700" title="Rewind to 0s">
+          <i data-lucide="skip-back" class="w-3.5 h-3.5"></i>
+        </button>
+
+        <!-- Timecode Display -->
+        <div class="font-mono text-xs font-bold text-brand-red bg-obsidian-950 px-2 py-1 rounded border border-obsidian-750">
+          <span id="lbl-timecode">0.00</span>s / <span id="lbl-total-dur">5.0</span>s
+        </div>
+
+        <!-- Add Keyframe Button -->
+        <button id="btn-add-kf-timeline" class="py-1 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition">
+          <i data-lucide="key" class="w-3 h-3 text-amber-400"></i>
+          <span>+ Add Keyframe</span>
+        </button>
+      </div>
+
+      <!-- Loop & Playback Controls -->
+      <div class="flex items-center gap-3">
+        <!-- Duration Selector -->
+        <div class="flex items-center gap-1 text-[11px] font-mono">
+          <span class="text-slate-500 mr-1">Loop:</span>
+          <button class="dur-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-dur="3">3s</button>
+          <button class="dur-btn active px-1.5 py-0.5 rounded bg-brand-red/40 border border-brand-red/40 text-white" data-dur="5">5s</button>
+          <button class="dur-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-dur="8">8s</button>
+        </div>
+
+        <div class="h-4 w-px bg-obsidian-750"></div>
+
+        <!-- Speed Selector -->
+        <div class="flex items-center gap-1 text-[11px] font-mono">
+          <span class="text-slate-500 mr-1">Speed:</span>
+          <button class="speed-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-speed="0.5">0.5x</button>
+          <button class="speed-btn active px-1.5 py-0.5 rounded bg-brand-red/40 border border-brand-red/40 text-white" data-speed="1.0">1.0x</button>
+          <button class="speed-btn px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-300 hover:text-white" data-speed="2.0">2.0x</button>
+        </div>
+
+        <!-- Loop Toggle -->
+        <button id="btn-toggle-loop" class="p-1 rounded bg-brand-red/20 text-brand-red border border-brand-red/30 transition" title="Toggle Looping">
+          <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Timeline Scrubber & Visual Diamond Markers Area -->
+    <div class="flex-1 relative flex flex-col justify-center px-6 bg-obsidian-950/90 select-none">
+      <!-- Time Ruler Labels -->
+      <div id="ruler-labels" class="h-4 w-full relative text-[9px] font-mono text-slate-500 select-none pointer-events-none mb-1">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Scrubber Track -->
+      <div id="timeline-track-area" class="h-9 w-full relative bg-obsidian-900 border border-obsidian-750 rounded-lg cursor-pointer flex items-center overflow-visible">
+        <!-- Progress fill bar -->
+        <div id="timeline-progress-fill" class="absolute top-0 bottom-0 left-0 bg-brand-red/15 rounded-l-lg pointer-events-none" style="width: 0%;"></div>
+
+        <!-- Visual Playhead Needle -->
+        <div id="playhead" class="playhead-needle" style="left: 0%;"></div>
+
+        <!-- Diamond Keyframe Markers Container -->
+        <div id="keyframes-container" class="absolute inset-0 pointer-events-auto">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1 font-mono">
+        <span>Click anywhere on track to scrub playhead</span>
+        <span>Click diamond (◆) to edit or delete keyframe</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Raw SVG Code Editor Modal -->
+  <div id="modal-svg-code" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="studio-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh] border border-obsidian-700">
+      <div class="flex items-center justify-between p-4 border-b border-obsidian-750 bg-obsidian-900/60">
+        <div class="flex items-center gap-2">
+          <i data-lucide="code" class="w-4 h-4 text-brand-red"></i>
+          <h3 class="font-bold text-white text-sm">Paste or Edit SVG Vector Code</h3>
+        </div>
+        <button id="btn-close-code-modal" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto space-y-2">
+        <textarea id="raw-svg-textarea" class="w-full h-80 p-3 rounded-xl bg-obsidian-950 font-mono text-[11px] text-slate-200 border border-obsidian-750 focus:border-brand-red focus:outline-none resize-none leading-relaxed"></textarea>
+      </div>
+      <div class="p-3 border-t border-obsidian-750 bg-obsidian-900/60 flex justify-end gap-2">
+        <button id="btn-apply-svg-code" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-crimson shadow-lg shadow-brand-red/30 flex items-center gap-1.5">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Decompose & Extrude Parts</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Export Progress Dialog -->
+  <div id="modal-video-progress" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="studio-panel w-full max-w-md rounded-2xl p-6 flex flex-col items-center text-center border border-brand-red/40">
+      <div class="w-12 h-12 rounded-2xl bg-brand-red/20 border border-brand-red/40 flex items-center justify-center text-brand-red mb-3 animate-pulse">
+        <i data-lucide="film" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-white mb-1">Rendering Timeline Video Loop</h3>
+      <p id="video-progress-status" class="text-xs text-slate-400 mb-4">Capturing timeline frames at 60 FPS...</p>
+      
+      <div class="w-full bg-obsidian-800 h-2 rounded-full overflow-hidden mb-2">
+        <div id="video-progress-bar" class="h-full bg-gradient-to-r from-brand-red to-orange-500 rounded-full transition-all duration-75" style="width: 0%"></div>
+      </div>
+      <div class="flex justify-between w-full text-xs font-mono text-slate-400">
+        <span id="video-progress-pct">0%</span>
+        <span id="video-progress-frames">0 frames</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 studio-panel px-4 py-2.5 rounded-xl border border-brand-red/40 text-xs font-semibold text-white shadow-2xl flex items-center gap-2 opacity-0 -translate-y-4 pointer-events-none transition-all duration-300">
+    <i data-lucide="check-circle" id="toast-icon" class="w-4 h-4 text-brand-red"></i>
+    <span id="toast-msg">Ready</span>
+  </div>
+
+  <script>
+    const DEFAULT_MEDIA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" width="540" height="120">
+      <path id="Letter-M" fill="#FF263E" d="M 15 110 L 15 10 L 42 10 L 62 72 L 82 10 L 109 10 L 109 110 L 89 110 L 89 44 L 70 96 L 54 96 L 35 44 L 35 110 Z" />
+      <path id="Letter-E" fill="#FF263E" d="M 124 110 L 124 10 L 188 10 L 188 32 L 150 32 L 150 51 L 182 51 L 182 72 L 150 72 L 150 88 L 188 88 L 188 110 Z" />
+      <path id="Letter-D" fill="#FF263E" d="M 204 110 L 204 10 L 246 10 C 274 10 288 28 288 60 C 288 92 274 110 246 110 Z M 228 32 L 228 88 L 244 88 C 259 88 264 78 264 60 C 264 42 259 32 244 32 Z" />
+      <path id="Letter-I" fill="#FF263E" d="M 304 110 L 304 10 L 330 10 L 330 110 Z" />
+      <path id="Letter-A" fill="#FF263E" d="M 346 110 L 376 10 L 404 10 L 434 110 L 408 110 L 402 88 L 378 88 L 372 110 Z M 390 38 L 382 70 L 398 70 Z" />
+    </svg>`;
+
+    const app = {
+      rawSvg: DEFAULT_MEDIA_SVG,
+      depth: 32,
+      bevelThickness: 3.5,
+      bevelSize: 2.2,
+      bevelSegments: 5,
+      autoCenter: true,
+
+      // PBR Materials
+      faceColor: '#ff263e',
+      sideColor: '#660a15',
+      roughness: 0.22,
+      metalness: 0.45,
+      clearcoat: 0.75,
+      wireframe: false,
+      flutingEnabled: true,
+      fluteScale: 0.45,
+
+      // Advanced Lighting State
+      lightAzimuth: 45,       // degrees
+      lightElevation: 50,     // degrees
+      lightDistance: 350,
+      lightIntensity: 2.4,
+      lightColor: '#ffffff',
+      rimIntensity: 2.8,
+      rimColor: '#ffffff',
+      showFloor: true,
+      showLightHelper: true,
+      gizmoMode: 'light', // 'light', 'model', 'none'
+
+      // Bloom Post-Processing
+      bloomEnabled: true,
+      bloomStrength: 0.85,
+      bloomRadius: 0.5,
+      bloomThreshold: 0.75,
+
+      // Timeline & Keyframe State
+      currentTime: 0.0,
+      duration: 5.0,
+      isPlaying: true,
+      speed: 1.0,
+      isLooping: true,
+      selectedKeyframeId: null,
+
+      // Keyframe collection
+      keyframes: [],
+
+      // SVG parts decomposed
+      parts: []
+    };
+
+    let scene, camera, renderer, composer, controls, transformControls;
+    let bloomPass, renderPass;
+    let logoGroup, partMeshes = [];
+    let keyLight, rimLight, ambientLight;
+    let keyLightPivot, lightRayHelper;
+    let floorMesh, floorGrid;
+    let flutedNormalTexture = null;
+    let clock = new THREE.Clock();
+
+    function createFlutedTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#8080ff';
+      ctx.fillRect(0, 0, 128, 128);
+
+      for (let y = 0; y < 128; y += 8) {
+        const grad = ctx.createLinearGradient(0, y, 0, y + 8);
+        grad.addColorStop(0.0, '#ff8080');
+        grad.addColorStop(0.5, '#8080ff');
+        grad.addColorStop(1.0, '#008080');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, 128, 8);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 6);
+      return tex;
+    }
+
+    function initThreeEngine() {
+      const container = document.getElementById('canvas-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x07080c);
+      scene.fog = new THREE.FogExp2(0x07080c, 0.0014);
+
+      // 2. Camera
+      camera = new THREE.PerspectiveCamera(45, w / h, 1, 3000);
+      camera.position.set(0, 25, 420);
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      container.appendChild(renderer.domElement);
+
+      // 4. OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 1600;
+      controls.minDistance = 60;
+      controls.target.set(0, 0, 0);
+
+      // 5. TransformControls (Interactive 3D Gizmo)
+      transformControls = new THREE.TransformControls(camera, renderer.domElement);
+      transformControls.size = 0.85;
+      transformControls.addEventListener('dragging-changed', event => {
+        // Disable OrbitControls while dragging the light gizmo
+        controls.enabled = !event.value;
+      });
+      scene.add(transformControls);
+
+      // 6. Textures & Shaders
+      flutedNormalTexture = createFlutedTexture();
+
+      // 7. Post-processing Bloom
+      setupPostProcessing(w, h);
+
+      // 8. Lighting & Helpers
+      setupLightsAndGizmo();
+      setupFloor();
+
+      // 9. Multi-Part 3D SVG Group
+      logoGroup = new THREE.Group();
+      scene.add(logoGroup);
+
+      // 10. Load initial SVG & Keyframes
+      parseSvgIntoParts(app.rawSvg);
+      buildExtrudedParts();
+      initDefaultKeyframes();
+
+      // 11. Listeners
+      window.addEventListener('resize', onWindowResize);
+      setupGizmoEvents();
+    }
+
+    function setupLightsAndGizmo() {
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+      scene.add(ambientLight);
+
+      // Key Light
+      keyLight = new THREE.DirectionalLight(app.lightColor, app.lightIntensity);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.bias = -0.0003;
+      const d = 340;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      scene.add(keyLight);
+
+      // 3D Pivot sphere for the Key Light that TransformControls can attach to
+      const pivotGeo = new THREE.SphereGeometry(7, 16, 16);
+      const pivotMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true });
+      keyLightPivot = new THREE.Mesh(pivotGeo, pivotMat);
+      scene.add(keyLightPivot);
+
+      // Light targeting ray (visual line from light to origin)
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
+      const lineMat = new THREE.LineDashedMaterial({ color: 0xf59e0b, dashSize: 6, gapSize: 4, opacity: 0.6, transparent: true });
+      lightRayHelper = new THREE.Line(lineGeo, lineMat);
+      lightRayHelper.computeLineDistances();
+      scene.add(lightRayHelper);
+
+      // Rim Backlight
+      rimLight = new THREE.DirectionalLight(app.rimColor, app.rimIntensity);
+      rimLight.position.set(0, 240, -260);
+      scene.add(rimLight);
+
+      updateLightFromPolar();
+      setGizmoMode(app.gizmoMode);
+    }
+
+    function updateLightFromPolar() {
+      const azimRad = THREE.MathUtils.degToRad(app.lightAzimuth);
+      const elevRad = THREE.MathUtils.degToRad(app.lightElevation);
+      const dist = app.lightDistance;
+
+      const x = dist * Math.cos(elevRad) * Math.sin(azimRad);
+      const y = dist * Math.sin(elevRad);
+      const z = dist * Math.cos(elevRad) * Math.cos(azimRad);
+
+      keyLight.position.set(x, y, z);
+      keyLightPivot.position.set(x, y, z);
+
+      // Update targeting ray line
+      const positions = lightRayHelper.geometry.attributes.position.array;
+      positions[0] = x; positions[1] = y; positions[2] = z;
+      positions[3] = 0; positions[4] = 0; positions[5] = 0;
+      lightRayHelper.geometry.attributes.position.needsUpdate = true;
+      lightRayHelper.computeLineDistances();
+    }
+
+    function setupGizmoEvents() {
+      transformControls.addEventListener('change', () => {
+        if (app.gizmoMode === 'light') {
+          // Sync light with gizmo dragged position
+          keyLight.position.copy(keyLightPivot.position);
+
+          // Update polar coordinate sliders
+          const pos = keyLightPivot.position;
+          const dist = pos.length();
+          const elev = Math.asin(Math.max(-1, Math.min(1, pos.y / dist))) * (180 / Math.PI);
+          let azim = Math.atan2(pos.x, pos.z) * (180 / Math.PI);
+          if (azim < 0) azim += 360;
+
+          app.lightDistance = Math.round(dist);
+          app.lightElevation = Math.round(elev);
+          app.lightAzimuth = Math.round(azim);
+
+          document.getElementById('sl-light-azimuth').value = app.lightAzimuth;
+          document.getElementById('val-light-azimuth').textContent = `${app.lightAzimuth}°`;
+          document.getElementById('sl-light-elevation').value = app.lightElevation;
+          document.getElementById('val-light-elevation').textContent = `${app.lightElevation}°`;
+          document.getElementById('sl-light-distance').value = app.lightDistance;
+          document.getElementById('val-light-distance').textContent = `${app.lightDistance}`;
+
+          // Update targeting ray
+          const positions = lightRayHelper.geometry.attributes.position.array;
+          positions[0] = pos.x; positions[1] = pos.y; positions[2] = pos.z;
+          positions[3] = 0; positions[4] = 0; positions[5] = 0;
+          lightRayHelper.geometry.attributes.position.needsUpdate = true;
+        }
+      });
+    }
+
+    function setGizmoMode(mode) {
+      app.gizmoMode = mode;
+      document.getElementById('diag-gizmo-mode').textContent = mode === 'light' ? 'Light Pivot' : (mode === 'model' ? 'Model Box' : 'Disabled');
+      const badge = document.getElementById('hud-gizmo-badge');
+
+      transformControls.detach();
+
+      if (mode === 'light') {
+        transformControls.attach(keyLightPivot);
+        transformControls.setMode('translate');
+        keyLightPivot.visible = true;
+        lightRayHelper.visible = app.showLightHelper;
+        badge.classList.remove('hidden');
+        badge.querySelector('span:last-child').textContent = 'Key Light Gizmo Active (Drag in 3D)';
+      } else if (mode === 'model') {
+        transformControls.attach(logoGroup);
+        transformControls.setMode('rotate');
+        keyLightPivot.visible = false;
+        lightRayHelper.visible = false;
+        badge.classList.remove('hidden');
+        badge.querySelector('span:last-child').textContent = 'Model Rotation Gizmo Active (Drag in 3D)';
+      } else {
+        keyLightPivot.visible = false;
+        lightRayHelper.visible = false;
+        badge.classList.add('hidden');
+      }
+    }
+
+    function setupFloor() {
+      const planeGeo = new THREE.PlaneGeometry(3000, 3000);
+      const planeMat = new THREE.ShadowMaterial({ opacity: 0.65 });
+      floorMesh = new THREE.Mesh(planeGeo, planeMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -85;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      floorGrid = new THREE.GridHelper(2000, 60, 0xff263e, 0x1f2537);
+      floorGrid.position.y = -84.9;
+      floorGrid.material.opacity = 0.35;
+      floorGrid.material.transparent = true;
+      scene.add(floorGrid);
+    }
+
+    function setupPostProcessing(w, h) {
+      renderPass = new THREE.RenderPass(scene, camera);
+      bloomPass = new THREE.UnrealBloomPass(
+        new THREE.Vector2(w, h),
+        app.bloomStrength,
+        app.bloomRadius,
+        app.bloomThreshold
+      );
+
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(renderPass);
+      composer.addPass(bloomPass);
+    }
+
+    function parseSvgIntoParts(svgString) {
+      app.parts = [];
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, 'image/svg+xml');
+      const svgRoot = doc.querySelector('svg');
+
+      if (!svgRoot) {
+        showToast('Invalid SVG markup', true);
+        return;
+      }
+
+      let vbWidth = 500, vbHeight = 150;
+      if (svgRoot.hasAttribute('viewBox')) {
+        const p = svgRoot.getAttribute('viewBox').split(/[\s,]+/).filter(Boolean);
+        if (p.length === 4) {
+          vbWidth = parseFloat(p[2]);
+          vbHeight = parseFloat(p[3]);
+        }
+      }
+
+      const elements = svgRoot.querySelectorAll('path, rect, circle, polygon');
+      let index = 0;
+
+      elements.forEach(el => {
+        const tagName = el.tagName.toLowerCase();
+        let pathD = '';
+        let isBg = false;
+
+        if (tagName === 'path') {
+          pathD = el.getAttribute('d') || '';
+        } else if (tagName === 'rect') {
+          const w = parseFloat(el.getAttribute('width') || 0);
+          const h = parseFloat(el.getAttribute('height') || 0);
+          const x = parseFloat(el.getAttribute('x') || 0);
+          const y = parseFloat(el.getAttribute('y') || 0);
+          pathD = `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+          if (w >= vbWidth * 0.85 && h >= vbHeight * 0.85) isBg = true;
+        }
+
+        if (!pathD.trim()) return;
+
+        let name = el.getAttribute('id') || `Part #${index + 1} (${tagName})`;
+        name = name.replace(/[-_]/g, ' ');
+
+        let origColor = el.getAttribute('fill') || app.faceColor;
+        if (origColor === 'none') origColor = app.faceColor;
+
+        app.parts.push({
+          id: `part_${Date.now()}_${index}`,
+          name: name,
+          pathD: pathD,
+          faceColor: origColor,
+          sideColor: app.sideColor,
+          depthOffset: 0,
+          visible: true,
+          isolated: false,
+          isBackground: isBg
+        });
+
+        index++;
+      });
+
+      renderPartsListUI();
+    }
+
+    function renderPartsListUI() {
+      const container = document.getElementById('parts-container');
+      const badge = document.getElementById('badge-parts-count');
+      const diagBadge = document.getElementById('diag-parts-count');
+      container.innerHTML = '';
+
+      badge.textContent = `${app.parts.length} parts`;
+      diagBadge.textContent = app.parts.length;
+
+      if (app.parts.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-500 text-xs">
+            <i data-lucide="layers" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+            <p>No active parts in scene.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      app.parts.forEach((part, idx) => {
+        const item = document.createElement('div');
+        item.className = `part-item p-2.5 rounded-xl border border-obsidian-750 bg-obsidian-850/60 hover:border-obsidian-600 transition flex flex-col gap-2 ${part.visible ? '' : 'opacity-50 border-dashed'}`;
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${part.faceColor};"></span>
+              <span class="text-xs font-bold text-white truncate">${part.name}</span>
+              ${part.isBackground ? '<span class="text-[9px] text-amber-400 font-mono font-semibold">Artboard Box</span>' : ''}
+            </div>
+
+            <!-- Action buttons: Solo, Hide, Delete -->
+            <div class="flex items-center gap-1">
+              <button class="btn-solo p-1 rounded hover:bg-obsidian-700 ${part.isolated ? 'text-amber-400 font-bold' : 'text-slate-400'}" title="Solo / Isolate Part" data-index="${idx}">
+                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+              </button>
+              <button class="btn-vis p-1 rounded hover:bg-obsidian-700 ${part.visible ? 'text-cyan-400' : 'text-slate-600'}" title="Toggle Visibility" data-index="${idx}">
+                <i data-lucide="${part.visible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>
+              </button>
+              <button class="btn-del p-1 rounded hover:bg-brand-red/20 text-slate-400 hover:text-brand-red" title="Delete Part" data-index="${idx}">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Color & Depth Multiplier -->
+          <div class="flex items-center justify-between pt-1 border-t border-obsidian-750/60 text-[10px] text-slate-400">
+            <div class="flex items-center gap-1.5">
+              <span>Color:</span>
+              <input type="color" class="part-col w-5 h-5 rounded cursor-pointer bg-transparent border-0" value="${part.faceColor}" data-index="${idx}">
+            </div>
+            <div class="flex items-center gap-1">
+              <span>Depth Offset:</span>
+              <input type="number" class="part-depth-num w-12 bg-obsidian-950 border border-obsidian-750 rounded px-1 text-center text-brand-red font-mono" value="${part.depthOffset}" step="2" data-index="${idx}">
+            </div>
+          </div>
+        `;
+
+        container.appendChild(item);
+      });
+
+      bindPartsUIEvents(container);
+      lucide.createIcons();
+    }
+
+    function bindPartsUIEvents(container) {
+      // Visibility
+      container.querySelectorAll('.btn-vis').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.getAttribute('data-index'));
+          app.parts[i].visible = !app.parts[i].visible;
+          renderPartsListUI();
+          buildExtrudedParts();
+        });
+      });
+
+      // Delete
+      container.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.getAttribute('data-index'));
+          const name = app.parts[i].name;
+          app.parts.splice(i, 1);
+          renderPartsListUI();
+          buildExtrudedParts();
+          showToast(`Deleted "${name}"`);
+        });
+      });
+
+      // Solo
+      container.querySelectorAll('.btn-solo').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.getAttribute('data-index'));
+          const wasIsolated = app.parts[i].isolated;
+
+          app.parts.forEach((p, idx) => {
+            if (wasIsolated) {
+              p.isolated = false;
+              p.visible = true;
+            } else {
+              p.isolated = (idx === i);
+              p.visible = (idx === i);
+            }
+          });
+
+          renderPartsListUI();
+          buildExtrudedParts();
+          showToast(wasIsolated ? 'Restored all parts' : `Isolated "${app.parts[i].name}"`);
+        });
+      });
+
+      // Color change
+      container.querySelectorAll('.part-col').forEach(inp => {
+        inp.addEventListener('input', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].faceColor = e.target.value;
+          updateMeshMaterials();
+        });
+      });
+
+      // Depth offset change
+      container.querySelectorAll('.part-depth-num').forEach(inp => {
+        inp.addEventListener('change', e => {
+          const i = parseInt(e.target.getAttribute('data-index'));
+          app.parts[i].depthOffset = parseFloat(e.target.value) || 0;
+          buildExtrudedParts();
+        });
+      });
+    }
+
+    function buildExtrudedParts() {
+      while (logoGroup.children.length > 0) {
+        const obj = logoGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        logoGroup.remove(obj);
+      }
+      partMeshes = [];
+
+      const activeParts = app.parts.filter(p => p.visible);
+      if (activeParts.length === 0) return;
+
+      let compositeSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">`;
+      activeParts.forEach(p => {
+        compositeSvg += `<path d="${p.pathD}" fill="${p.faceColor}" />`;
+      });
+      compositeSvg += `</svg>`;
+
+      const loader = new THREE.SVGLoader();
+      const svgData = loader.parse(compositeSvg);
+      const tempGroup = new THREE.Group();
+
+      svgData.paths.forEach((path, pIdx) => {
+        const partRef = activeParts[pIdx];
+        const totalDepth = Math.max(2, app.depth + (partRef ? partRef.depthOffset : 0));
+
+        const extrudeSettings = {
+          depth: totalDepth,
+          bevelEnabled: app.bevelThickness > 0 || app.bevelSize > 0,
+          bevelThickness: app.bevelThickness,
+          bevelSize: app.bevelSize,
+          bevelSegments: app.bevelSegments,
+          curveSegments: 16
+        };
+
+        const shapes = THREE.SVGLoader.createShapes(path);
+        const faceColor = partRef ? partRef.faceColor : app.faceColor;
+        const sideColor = partRef ? partRef.sideColor : app.sideColor;
+
+        const faceMat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(faceColor),
+          roughness: app.roughness,
+          metalness: app.metalness,
+          clearcoat: app.clearcoat,
+          clearcoatRoughness: 0.15,
+          wireframe: app.wireframe,
+          bumpMap: app.flutingEnabled ? flutedNormalTexture : null,
+          bumpScale: app.flutingEnabled ? app.fluteScale : 0.0,
+          side: THREE.DoubleSide
+        });
+
+        const sideMat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(sideColor),
+          roughness: Math.min(1.0, app.roughness + 0.1),
+          metalness: Math.min(1.0, app.metalness + 0.15),
+          clearcoat: app.clearcoat * 0.5,
+          wireframe: app.wireframe,
+          side: THREE.DoubleSide
+        });
+
+        shapes.forEach(shape => {
+          const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+          geom.scale(1, -1, 1);
+          geom.computeVertexNormals();
+
+          const mesh = new THREE.Mesh(geom, [faceMat, sideMat]);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = { index: pIdx };
+
+          partMeshes.push(mesh);
+          tempGroup.add(mesh);
+        });
+      });
+
+      if (app.autoCenter) {
+        const bbox = new THREE.Box3().setFromObject(tempGroup);
+        const center = new THREE.Vector3();
+        bbox.getCenter(center);
+
+        while (tempGroup.children.length > 0) {
+          const m = tempGroup.children[0];
+          m.position.x -= center.x;
+          m.position.y -= center.y;
+          m.position.z -= center.z;
+          logoGroup.add(m);
+        }
+      } else {
+        while (tempGroup.children.length > 0) {
+          logoGroup.add(tempGroup.children[0]);
+        }
+      }
+    }
+
+    function updateMeshMaterials() {
+      const activeParts = app.parts.filter(p => p.visible);
+      partMeshes.forEach(mesh => {
+        const partRef = activeParts[mesh.userData.index];
+        if (!partRef) return;
+
+        if (Array.isArray(mesh.material)) {
+          mesh.material[0].color.set(partRef.faceColor);
+          mesh.material[0].roughness = app.roughness;
+          mesh.material[0].metalness = app.metalness;
+          mesh.material[0].clearcoat = app.clearcoat;
+          mesh.material[0].wireframe = app.wireframe;
+          mesh.material[0].bumpMap = app.flutingEnabled ? flutedNormalTexture : null;
+          mesh.material[0].bumpScale = app.flutingEnabled ? app.fluteScale : 0.0;
+          mesh.material[0].needsUpdate = true;
+
+          mesh.material[1].color.set(partRef.sideColor);
+          mesh.material[1].roughness = Math.min(1.0, app.roughness + 0.1);
+          mesh.material[1].metalness = Math.min(1.0, app.metalness + 0.15);
+          mesh.material[1].wireframe = app.wireframe;
+          mesh.material[1].needsUpdate = true;
+        }
+      });
+    }
+
+    function initDefaultKeyframes() {
+      // Initialize with 3 pre-seeded keyframes creating an immediate dynamic sequence
+      app.keyframes = [
+        {
+          id: 'kf_0',
+          time: 0.0,
+          easing: 'easeInOut',
+          rotX: 0.1, rotY: -0.4, rotZ: 0,
+          lightAzimuth: 30, lightElevation: 40, lightDistance: 350, lightIntensity: 2.2,
+          depth: 32
+        },
+        {
+          id: 'kf_1',
+          time: 2.5,
+          easing: 'easeInOut',
+          rotX: -0.15, rotY: 0.6, rotZ: 0.05,
+          lightAzimuth: 210, lightElevation: 65, lightDistance: 320, lightIntensity: 3.2,
+          depth: 48
+        },
+        {
+          id: 'kf_2',
+          time: 5.0,
+          easing: 'easeInOut',
+          rotX: 0.1, rotY: -0.4 + (Math.PI * 2), rotZ: 0,
+          lightAzimuth: 390, lightElevation: 40, lightDistance: 350, lightIntensity: 2.2,
+          depth: 32
+        }
+      ];
+
+      renderKeyframeDiamondsUI();
+      renderRulerLabels();
+    }
+
+    function renderRulerLabels() {
+      const ruler = document.getElementById('ruler-labels');
+      ruler.innerHTML = '';
+      const dur = app.duration;
+      for (let sec = 0; sec <= dur; sec += 1) {
+        const span = document.createElement('span');
+        span.className = 'absolute top-0 transform -translate-x-1/2';
+        span.style.left = `${(sec / dur) * 100}%`;
+        span.textContent = `${sec}s`;
+        ruler.appendChild(span);
+      }
+    }
+
+    function renderKeyframeDiamondsUI() {
+      const container = document.getElementById('keyframes-container');
+      const badgeCount = document.getElementById('diag-kf-count');
+      container.innerHTML = '';
+
+      badgeCount.textContent = app.keyframes.length;
+
+      app.keyframes.forEach(kf => {
+        const pct = (kf.time / app.duration) * 100;
+        const marker = document.createElement('div');
+        marker.className = `kf-marker bg-brand-red rounded-sm border border-white/60 shadow-md ${kf.id === app.selectedKeyframeId ? 'selected' : ''}`;
+        marker.style.left = `${pct}%`;
+        marker.title = `Keyframe at ${kf.time.toFixed(2)}s (${kf.easing})`;
+
+        marker.addEventListener('click', e => {
+          e.stopPropagation();
+          selectKeyframe(kf.id);
+        });
+
+        container.appendChild(marker);
+      });
+    }
+
+    function selectKeyframe(id) {
+      app.selectedKeyframeId = id;
+      const kf = app.keyframes.find(k => k.id === id);
+      const badge = document.getElementById('badge-active-kf');
+
+      if (kf) {
+        badge.textContent = `At ${kf.time.toFixed(2)}s`;
+        badge.className = 'badge-tag bg-amber-500/20 text-amber-400 border border-amber-500/30';
+
+        // Set playhead to this keyframe
+        app.currentTime = kf.time;
+        evaluateTimelineAt(app.currentTime);
+
+        // Highlight selected easing
+        document.querySelectorAll('.easing-btn').forEach(b => {
+          const isMatch = b.getAttribute('data-easing') === kf.easing;
+          b.className = `easing-btn py-1.5 rounded-lg font-mono text-[11px] ${isMatch ? 'active bg-brand-red/30 border border-brand-red/40 text-white' : 'bg-obsidian-800 text-slate-400 hover:text-white'}`;
+        });
+      } else {
+        badge.textContent = 'None selected';
+        badge.className = 'badge-tag bg-slate-700/20 text-slate-400 border border-slate-700/30';
+      }
+
+      renderKeyframeDiamondsUI();
+    }
+
+    function snapshotCurrentStateAsKeyframe() {
+      const t = parseFloat(app.currentTime.toFixed(2));
+      // Look for existing keyframe close to current time (< 0.08s)
+      let kf = app.keyframes.find(k => Math.abs(k.time - t) < 0.08);
+
+      if (!kf) {
+        kf = {
+          id: `kf_${Date.now()}`,
+          time: t,
+          easing: 'easeInOut'
+        };
+        app.keyframes.push(kf);
+      }
+
+      // Snapshot model transform & lighting
+      kf.rotX = logoGroup.rotation.x;
+      kf.rotY = logoGroup.rotation.y;
+      kf.rotZ = logoGroup.rotation.z;
+      kf.lightAzimuth = app.lightAzimuth;
+      kf.lightElevation = app.lightElevation;
+      kf.lightDistance = app.lightDistance;
+      kf.lightIntensity = app.lightIntensity;
+      kf.depth = app.depth;
+
+      // Sort chronological
+      app.keyframes.sort((a, b) => a.time - b.time);
+      selectKeyframe(kf.id);
+      showToast(`Snapshot keyframe saved at ${t.toFixed(2)}s!`);
+    }
+
+    function deleteActiveKeyframe() {
+      if (!app.selectedKeyframeId) {
+        showToast('No keyframe selected to delete', true);
+        return;
+      }
+      const idx = app.keyframes.findIndex(k => k.id === app.selectedKeyframeId);
+      if (idx !== -1) {
+        app.keyframes.splice(idx, 1);
+        app.selectedKeyframeId = null;
+        renderKeyframeDiamondsUI();
+        selectKeyframe(null);
+        showToast('Keyframe removed');
+      }
+    }
+
+    // Easing mathematical functions
+    function evaluateEasing(t, type) {
+      if (type === 'linear') return t;
+      if (type === 'bounce') {
+        const n1 = 7.5625, d1 = 2.75;
+        if (t < 1 / d1) return n1 * t * t;
+        else if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+        else if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+        else return n1 * (t -= 2.625 / d1) * t + 0.984375;
+      }
+      // Default: EaseInOutCubic
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function evaluateTimelineAt(t) {
+      if (app.keyframes.length === 0) return;
+
+      let kA, kB;
+      // If only 1 keyframe, snap to it
+      if (app.keyframes.length === 1) {
+        kA = app.keyframes[0];
+        applyKeyframeState(kA);
+        return;
+      }
+
+      // Find enclosing keyframe interval
+      for (let i = 0; i < app.keyframes.length - 1; i++) {
+        if (t >= app.keyframes[i].time && t <= app.keyframes[i + 1].time) {
+          kA = app.keyframes[i];
+          kB = app.keyframes[i + 1];
+          break;
+        }
+      }
+
+      if (!kA) {
+        if (t < app.keyframes[0].time) {
+          applyKeyframeState(app.keyframes[0]);
+          return;
+        } else {
+          applyKeyframeState(app.keyframes[app.keyframes.length - 1]);
+          return;
+        }
+      }
+
+      // Local progress alpha
+      const segmentDuration = kB.time - kA.time;
+      const rawAlpha = segmentDuration === 0 ? 0 : (t - kA.time) / segmentDuration;
+      const alpha = evaluateEasing(rawAlpha, kB.easing || 'easeInOut');
+
+      // Interpolate model rotation
+      logoGroup.rotation.x = THREE.MathUtils.lerp(kA.rotX, kB.rotX, alpha);
+      logoGroup.rotation.y = THREE.MathUtils.lerp(kA.rotY, kB.rotY, alpha);
+      logoGroup.rotation.z = THREE.MathUtils.lerp(kA.rotZ, kB.rotZ, alpha);
+
+      // Interpolate lighting
+      app.lightAzimuth = THREE.MathUtils.lerp(kA.lightAzimuth, kB.lightAzimuth, alpha);
+      app.lightElevation = THREE.MathUtils.lerp(kA.lightElevation, kB.lightElevation, alpha);
+      app.lightDistance = THREE.MathUtils.lerp(kA.lightDistance, kB.lightDistance, alpha);
+      app.lightIntensity = THREE.MathUtils.lerp(kA.lightIntensity, kB.lightIntensity, alpha);
+
+      keyLight.intensity = app.lightIntensity;
+      updateLightFromPolar();
+    }
+
+    function applyKeyframeState(kf) {
+      logoGroup.rotation.x = kf.rotX;
+      logoGroup.rotation.y = kf.rotY;
+      logoGroup.rotation.z = kf.rotZ;
+      app.lightAzimuth = kf.lightAzimuth;
+      app.lightElevation = kf.lightElevation;
+      app.lightDistance = kf.lightDistance;
+      app.lightIntensity = kf.lightIntensity;
+      keyLight.intensity = app.lightIntensity;
+      updateLightFromPolar();
+    }
+
+    let fpsFrames = 0, lastFpsCheck = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      fpsFrames++;
+      if (now - lastFpsCheck >= 1000) {
+        document.getElementById('diag-fps').textContent = fpsFrames;
+        fpsFrames = 0;
+        lastFpsCheck = now;
+      }
+
+      const delta = clock.getDelta();
+
+      if (app.isPlaying) {
+        app.currentTime += delta * app.speed;
+
+        if (app.currentTime >= app.duration) {
+          if (app.isLooping) {
+            app.currentTime = app.currentTime % app.duration;
+          } else {
+            app.currentTime = app.duration;
+            app.isPlaying = false;
+            document.getElementById('icon-transport-play').setAttribute('data-lucide', 'play');
+            lucide.createIcons();
+          }
+        }
+
+        evaluateTimelineAt(app.currentTime);
+
+        // Update UI playhead needle
+        const pct = (app.currentTime / app.duration) * 100;
+        document.getElementById('playhead').style.left = `${pct}%`;
+        document.getElementById('timeline-progress-fill').style.width = `${pct}%`;
+        document.getElementById('lbl-timecode').textContent = app.currentTime.toFixed(2);
+      }
+
+      controls.update();
+
+      if (app.bloomEnabled) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
+    }
+
+    async function recordTimelineVideo() {
+      const modal = document.getElementById('modal-video-progress');
+      const progressBar = document.getElementById('video-progress-bar');
+      const pctLabel = document.getElementById('video-progress-pct');
+      const framesLabel = document.getElementById('video-progress-frames');
+      const statusLabel = document.getElementById('video-progress-status');
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      progressBar.style.width = '0%';
+      pctLabel.textContent = '0%';
+
+      const wasPlaying = app.isPlaying;
+      app.isPlaying = false;
+
+      // Temporarily hide gizmos during video capture
+      const prevGizmoMode = app.gizmoMode;
+      setGizmoMode('none');
+
+      const fps = 60;
+      const totalFrames = Math.floor(app.duration * fps);
+      const recordedBlobs = [];
+
+      const stream = renderer.domElement.captureStream(fps);
+      let options = { mimeType: 'video/webm;codecs=vp9' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        showToast('MediaRecorder unsupported', true);
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        app.isPlaying = wasPlaying;
+        setGizmoMode(prevGizmoMode);
+        return;
+      }
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) recordedBlobs.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `3D-extruded-animation-${app.duration}s.webm`;
+        a.click();
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        app.isPlaying = wasPlaying;
+        setGizmoMode(prevGizmoMode);
+        showToast('WebM Video Loop rendered and downloaded!');
+      };
+
+      mediaRecorder.start();
+      statusLabel.textContent = `Rendering ${totalFrames} keyframed frames at 60 FPS...`;
+
+      for (let i = 0; i <= totalFrames; i++) {
+        const t = (i / totalFrames) * app.duration;
+        evaluateTimelineAt(t);
+
+        if (app.bloomEnabled) composer.render();
+        else renderer.render(scene, camera);
+
+        const pct = Math.round((i / totalFrames) * 100);
+        progressBar.style.width = `${pct}%`;
+        pctLabel.textContent = `${pct}%`;
+        framesLabel.textContent = `${i} / ${totalFrames} frames`;
+
+        await new Promise(r => setTimeout(r, 1000 / fps));
+      }
+
+      mediaRecorder.stop();
+    }
+
+    function exportGltf() {
+      const exporter = new THREE.GLTFExporter();
+      exporter.parse(
+        logoGroup,
+        gltf => {
+          const blob = new Blob([JSON.stringify(gltf, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = '3D-extruded-model.gltf';
+          a.click();
+          showToast('.GLTF 3D model exported successfully!');
+        },
+        { binary: false }
+      );
+    }
+
+    function takeSnapshotPng() {
+      const prevMode = app.gizmoMode;
+      setGizmoMode('none');
+
+      if (app.bloomEnabled) composer.render();
+      else renderer.render(scene, camera);
+
+      const dataUrl = renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = '3D-brand-snapshot-4k.png';
+      a.click();
+
+      setGizmoMode(prevMode);
+      showToast('4K PNG Snapshot downloaded!');
+    }
+
+    function setupUIEventListeners() {
+      // Gizmo Selector Buttons
+      document.getElementById('btn-gizmo-light').addEventListener('click', () => setGizmoMode('light'));
+      document.getElementById('btn-gizmo-model').addEventListener('click', () => setGizmoMode('model'));
+      document.getElementById('btn-gizmo-none').addEventListener('click', () => setGizmoMode('none'));
+
+      // Inspector Tabs
+      document.querySelectorAll('.inspector-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.inspector-tab').forEach(t => {
+            t.classList.remove('active', 'text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+            t.classList.add('text-slate-400');
+          });
+          tab.classList.add('active', 'text-white', 'bg-brand-red/30', 'border', 'border-brand-red/40');
+          tab.classList.remove('text-slate-400');
+
+          const target = tab.getAttribute('data-tab');
+          document.querySelectorAll('.inspector-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(target).classList.remove('hidden');
+        });
+      });
+
+      // Keyframe Presets
+      document.querySelectorAll('.kf-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const type = btn.getAttribute('data-preset');
+          applyKeyframePreset(type);
+        });
+      });
+
+      // Easing selector buttons
+      document.querySelectorAll('.easing-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.easing-btn').forEach(b => {
+            b.className = 'easing-btn py-1.5 rounded-lg bg-obsidian-800 text-slate-400 hover:text-white font-mono text-[11px]';
+          });
+          btn.className = 'easing-btn active py-1.5 rounded-lg bg-brand-red/30 border border-brand-red/40 text-white font-mono text-[11px]';
+
+          if (app.selectedKeyframeId) {
+            const kf = app.keyframes.find(k => k.id === app.selectedKeyframeId);
+            if (kf) {
+              kf.easing = btn.getAttribute('data-easing');
+              showToast(`Updated easing curve to ${kf.easing}`);
+            }
+          }
+        });
+      });
+
+      // Keyframe Snapshot & Delete
+      document.getElementById('btn-snapshot-current-kf').addEventListener('click', snapshotCurrentStateAsKeyframe);
+      document.getElementById('btn-add-kf-timeline').addEventListener('click', snapshotCurrentStateAsKeyframe);
+      document.getElementById('btn-delete-active-kf').addEventListener('click', deleteActiveKeyframe);
+
+      // Timeline Transport Play / Pause
+      const btnPlay = document.getElementById('btn-transport-play');
+      const iconPlay = document.getElementById('icon-transport-play');
+      btnPlay.addEventListener('click', () => {
+        app.isPlaying = !app.isPlaying;
+        iconPlay.setAttribute('data-lucide', app.isPlaying ? 'pause' : 'play');
+        lucide.createIcons();
+      });
+
+      // Rewind to 0s
+      document.getElementById('btn-transport-rewind').addEventListener('click', () => {
+        app.currentTime = 0;
+        evaluateTimelineAt(0);
+        document.getElementById('lbl-timecode').textContent = '0.00';
+        document.getElementById('playhead').style.left = '0%';
+        document.getElementById('timeline-progress-fill').style.width = '0%';
+      });
+
+      // Timeline Scrubber Click & Drag
+      const trackArea = document.getElementById('timeline-track-area');
+      trackArea.addEventListener('click', e => {
+        if (e.target.classList.contains('kf-marker')) return;
+        const rect = trackArea.getBoundingClientRect();
+        const norm = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        app.currentTime = norm * app.duration;
+        evaluateTimelineAt(app.currentTime);
+        document.getElementById('lbl-timecode').textContent = app.currentTime.toFixed(2);
+        document.getElementById('playhead').style.left = `${norm * 100}%`;
+        document.getElementById('timeline-progress-fill').style.width = `${norm * 100}%`;
+      });
+
+      // Duration selector
+      document.querySelectorAll('.dur-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.dur-btn').forEach(b => {
+            b.classList.remove('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+            b.classList.add('bg-obsidian-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+          app.duration = parseFloat(btn.getAttribute('data-dur'));
+          document.getElementById('lbl-total-dur').textContent = `${app.duration}.0`;
+          renderRulerLabels();
+          renderKeyframeDiamondsUI();
+        });
+      });
+
+      // Playback speed selector
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            b.classList.remove('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+            b.classList.add('bg-obsidian-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-brand-red/40', 'border', 'border-brand-red/40', 'text-white');
+          app.speed = parseFloat(btn.getAttribute('data-speed'));
+        });
+      });
+
+      // Looping toggle
+      document.getElementById('btn-toggle-loop').addEventListener('click', e => {
+        app.isLooping = !app.isLooping;
+        e.currentTarget.classList.toggle('bg-brand-red/20', app.isLooping);
+        e.currentTarget.classList.toggle('text-brand-red', app.isLooping);
+        showToast(app.isLooping ? 'Timeline looping enabled' : 'Timeline looping disabled');
+      });
+
+      // Light Controls & Direction Sliders
+      bindSlider('sl-light-azimuth', 'val-light-azimuth', '°', v => {
+        app.lightAzimuth = parseFloat(v);
+        updateLightFromPolar();
+      });
+      bindSlider('sl-light-elevation', 'val-light-elevation', '°', v => {
+        app.lightElevation = parseFloat(v);
+        updateLightFromPolar();
+      });
+      bindSlider('sl-light-distance', 'val-light-distance', '', v => {
+        app.lightDistance = parseFloat(v);
+        updateLightFromPolar();
+      });
+      bindSlider('sl-light-intensity', 'val-light-intensity', '', v => {
+        app.lightIntensity = parseFloat(v);
+        keyLight.intensity = app.lightIntensity;
+      });
+      bindSlider('sl-rim-intensity', 'val-rim-intensity', '', v => {
+        app.rimIntensity = parseFloat(v);
+        rimLight.intensity = app.rimIntensity;
+      });
+
+      document.getElementById('col-key-light').addEventListener('input', e => {
+        app.lightColor = e.target.value;
+        keyLight.color.set(app.lightColor);
+      });
+      document.getElementById('col-rim-light').addEventListener('input', e => {
+        app.rimColor = e.target.value;
+        rimLight.color.set(app.rimColor);
+      });
+
+      // Post-Processing Bloom
+      document.getElementById('chk-bloom').addEventListener('change', e => { app.bloomEnabled = e.target.checked; });
+      bindSlider('sl-bloom-strength', 'val-bloom-strength', '', v => {
+        app.bloomStrength = parseFloat(v);
+        bloomPass.strength = app.bloomStrength;
+      });
+      bindSlider('sl-bloom-thresh', 'val-bloom-thresh', '', v => {
+        app.bloomThreshold = parseFloat(v);
+        bloomPass.threshold = app.bloomThreshold;
+      });
+      bindSlider('sl-bloom-radius', 'val-bloom-radius', '', v => {
+        app.bloomRadius = parseFloat(v);
+        bloomPass.radius = app.bloomRadius;
+      });
+
+      // Floor & Helper toggles
+      document.getElementById('chk-floor').addEventListener('change', e => {
+        app.showFloor = e.target.checked;
+        floorMesh.visible = app.showFloor;
+        floorGrid.visible = app.showFloor;
+      });
+      document.getElementById('chk-light-helper').addEventListener('change', e => {
+        app.showLightHelper = e.target.checked;
+        lightRayHelper.visible = app.showLightHelper && (app.gizmoMode === 'light');
+      });
+
+      // Material Sliders & Fluting
+      const chkFlute = document.getElementById('chk-fluting');
+      const fluteControls = document.getElementById('fluting-controls');
+      chkFlute.addEventListener('change', e => {
+        app.flutingEnabled = e.target.checked;
+        fluteControls.classList.toggle('hidden', !app.flutingEnabled);
+        updateMeshMaterials();
+      });
+      bindSlider('sl-flute-scale', 'val-flute-scale', '', v => {
+        app.fluteScale = parseFloat(v);
+        updateMeshMaterials();
+      });
+
+      bindSlider('sl-rough', 'val-rough', '', v => { app.roughness = parseFloat(v); updateMeshMaterials(); });
+      bindSlider('sl-metal', 'val-metal', '', v => { app.metalness = parseFloat(v); updateMeshMaterials(); });
+      bindSlider('sl-clearcoat', 'val-clearcoat', '', v => { app.clearcoat = parseFloat(v); updateMeshMaterials(); });
+
+      document.getElementById('chk-wireframe').addEventListener('change', e => {
+        app.wireframe = e.target.checked;
+        updateMeshMaterials();
+      });
+
+      document.getElementById('col-face').addEventListener('input', e => {
+        app.faceColor = e.target.value;
+        app.parts.forEach(p => p.faceColor = app.faceColor);
+        renderPartsListUI();
+        updateMeshMaterials();
+      });
+      document.getElementById('col-sides').addEventListener('input', e => {
+        app.sideColor = e.target.value;
+        app.parts.forEach(p => p.sideColor = app.sideColor);
+        updateMeshMaterials();
+      });
+
+      // Geometry & Extrusion Sliders
+      bindSlider('sl-depth', 'val-depth', '', v => { app.depth = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-bevel-thick', 'val-bevel-thick', '', v => { app.bevelThickness = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-bevel-size', 'val-bevel-size', '', v => { app.bevelSize = parseFloat(v); buildExtrudedParts(); });
+      bindSlider('sl-segments', 'val-segments', '', v => { app.bevelSegments = parseInt(v); buildExtrudedParts(); });
+      document.getElementById('chk-auto-center').addEventListener('change', e => {
+        app.autoCenter = e.target.checked;
+        buildExtrudedParts();
+      });
+
+      // Auto Clean Artboard Background
+      document.getElementById('btn-auto-clean-bg').addEventListener('click', () => {
+        let removed = 0;
+        for (let i = app.parts.length - 1; i >= 0; i--) {
+          if (app.parts[i].isBackground) {
+            app.parts.splice(i, 1);
+            removed++;
+          }
+        }
+        if (removed > 0) {
+          renderPartsListUI();
+          buildExtrudedParts();
+          showToast(`Cleaned ${removed} artboard background box!`);
+        } else if (app.parts.length > 1) {
+          const removedName = app.parts[0].name;
+          app.parts.splice(0, 1);
+          renderPartsListUI();
+          buildExtrudedParts();
+          showToast(`Removed bottom part "${removedName}"`);
+        } else {
+          showToast('No background box detected');
+        }
+      });
+
+      // Reset to MEDIA
+      document.getElementById('btn-restore-media').addEventListener('click', () => {
+        app.rawSvg = DEFAULT_MEDIA_SVG;
+        parseSvgIntoParts(app.rawSvg);
+        buildExtrudedParts();
+        showToast('Restored MEDIA Brand vector');
+      });
+
+      document.getElementById('btn-show-all-parts').addEventListener('click', () => {
+        app.parts.forEach(p => { p.visible = true; p.isolated = false; });
+        renderPartsListUI();
+        buildExtrudedParts();
+        showToast('All parts set to visible');
+      });
+
+      // File upload & Dropzone
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('border-brand-red'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-brand-red'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('border-brand-red');
+        if (e.dataTransfer.files.length) handleFileInput(e.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleFileInput(e.target.files[0]);
+      });
+
+      // Raw SVG Code Modal
+      const modalCode = document.getElementById('modal-svg-code');
+      const rawText = document.getElementById('raw-svg-textarea');
+      rawText.value = app.rawSvg;
+
+      document.getElementById('btn-open-code-modal').addEventListener('click', () => {
+        rawText.value = app.rawSvg;
+        modalCode.classList.remove('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-close-code-modal').addEventListener('click', () => {
+        modalCode.classList.add('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-apply-svg-code').addEventListener('click', () => {
+        const val = rawText.value.trim();
+        if (val) {
+          app.rawSvg = val;
+          parseSvgIntoParts(val);
+          buildExtrudedParts();
+          modalCode.classList.add('opacity-0', 'pointer-events-none');
+          showToast('Decomposed SVG into constituent parts!');
+        }
+      });
+
+      // Camera views
+      document.querySelectorAll('.cam-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setCameraView(btn.getAttribute('data-cam'));
+        });
+      });
+
+      // Material presets
+      document.querySelectorAll('.mat-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.mat-preset-btn').forEach(b => {
+            b.classList.remove('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+            b.classList.add('border-obsidian-700', 'bg-obsidian-850', 'text-slate-300');
+          });
+          btn.classList.add('border-brand-red/60', 'bg-brand-red/20', 'text-white');
+          applyMaterialPreset(btn.getAttribute('data-mat'));
+        });
+      });
+
+      // Action buttons
+      document.getElementById('btn-quick-record').addEventListener('click', recordTimelineVideo);
+      document.getElementById('btn-snapshot-png').addEventListener('click', takeSnapshotPng);
+      document.getElementById('btn-export-gltf').addEventListener('click', exportGltf);
+    }
+
+    function applyKeyframePreset(type) {
+      if (type === 'sting') {
+        app.keyframes = [
+          { id: 'kf_0', time: 0.0, easing: 'easeInOut', rotX: 0.2, rotY: -0.6, rotZ: 0, lightAzimuth: 15, lightElevation: 30, lightDistance: 380, lightIntensity: 1.5, depth: 32 },
+          { id: 'kf_1', time: 2.2, easing: 'easeInOut', rotX: -0.1, rotY: 0.3, rotZ: 0.05, lightAzimuth: 190, lightElevation: 70, lightDistance: 300, lightIntensity: 3.5, depth: 40 },
+          { id: 'kf_2', time: 5.0, easing: 'easeInOut', rotX: 0.0, rotY: 0.0, rotZ: 0, lightAzimuth: 50, lightElevation: 45, lightDistance: 340, lightIntensity: 2.4, depth: 32 }
+        ];
+      } else if (type === 'turntable') {
+        app.keyframes = [
+          { id: 'kf_0', time: 0.0, easing: 'linear', rotX: 0.05, rotY: 0, rotZ: 0, lightAzimuth: 45, lightElevation: 50, lightDistance: 350, lightIntensity: 2.4, depth: 32 },
+          { id: 'kf_1', time: 2.5, easing: 'linear', rotX: -0.05, rotY: Math.PI, rotZ: 0, lightAzimuth: 225, lightElevation: 50, lightDistance: 350, lightIntensity: 2.8, depth: 32 },
+          { id: 'kf_2', time: 5.0, easing: 'linear', rotX: 0.05, rotY: Math.PI * 2, rotZ: 0, lightAzimuth: 405, lightElevation: 50, lightDistance: 350, lightIntensity: 2.4, depth: 32 }
+        ];
+      } else if (type === 'snap') {
+        app.keyframes = [
+          { id: 'kf_0', time: 0.0, easing: 'bounce', rotX: 0.8, rotY: -0.5, rotZ: 0.2, lightAzimuth: 10, lightElevation: 20, lightDistance: 450, lightIntensity: 1.8, depth: 60 },
+          { id: 'kf_1', time: 2.0, easing: 'bounce', rotX: 0.0, rotY: 0.0, rotZ: 0, lightAzimuth: 60, lightElevation: 55, lightDistance: 330, lightIntensity: 3.0, depth: 32 },
+          { id: 'kf_2', time: 5.0, easing: 'easeInOut', rotX: 0.0, rotY: 0.0, rotZ: 0, lightAzimuth: 60, lightElevation: 55, lightDistance: 330, lightIntensity: 2.4, depth: 32 }
+        ];
+      } else if (type === 'pulse') {
+        app.keyframes = [
+          { id: 'kf_0', time: 0.0, easing: 'easeInOut', rotX: 0.0, rotY: -0.2, rotZ: 0, lightAzimuth: 40, lightElevation: 45, lightDistance: 340, lightIntensity: 2.0, depth: 16 },
+          { id: 'kf_1', time: 2.5, easing: 'easeInOut', rotX: 0.0, rotY: 0.2, rotZ: 0, lightAzimuth: 120, lightElevation: 60, lightDistance: 310, lightIntensity: 3.6, depth: 64 },
+          { id: 'kf_2', time: 5.0, easing: 'easeInOut', rotX: 0.0, rotY: -0.2, rotZ: 0, lightAzimuth: 40, lightElevation: 45, lightDistance: 340, lightIntensity: 2.0, depth: 16 }
+        ];
+      }
+
+      renderKeyframeDiamondsUI();
+      selectKeyframe(app.keyframes[0].id);
+      showToast(`Loaded "${type.toUpperCase()}" keyframe preset`);
+    }
+
+    function applyMaterialPreset(type) {
+      if (type === 'ribbed') {
+        app.faceColor = '#ff263e'; app.sideColor = '#660a15';
+        app.roughness = 0.22; app.metalness = 0.45; app.clearcoat = 0.75;
+        app.flutingEnabled = true; app.fluteScale = 0.45;
+      } else if (type === 'gold') {
+        app.faceColor = '#f59e0b'; app.sideColor = '#78350f';
+        app.roughness = 0.15; app.metalness = 0.95; app.clearcoat = 0.9;
+        app.flutingEnabled = false;
+      } else if (type === 'chrome') {
+        app.faceColor = '#f8fafc'; app.sideColor = '#475569';
+        app.roughness = 0.04; app.metalness = 0.98; app.clearcoat = 1.0;
+        app.flutingEnabled = false;
+      } else if (type === 'glass') {
+        app.faceColor = '#38bdf8'; app.sideColor = '#0284c7';
+        app.roughness = 0.18; app.metalness = 0.05; app.clearcoat = 1.0;
+        app.flutingEnabled = false;
+      }
+
+      document.getElementById('chk-fluting').checked = app.flutingEnabled;
+      document.getElementById('fluting-controls').classList.toggle('hidden', !app.flutingEnabled);
+      document.getElementById('col-face').value = app.faceColor;
+      document.getElementById('col-sides').value = app.sideColor;
+      document.getElementById('sl-rough').value = app.roughness;
+      document.getElementById('val-rough').textContent = app.roughness.toFixed(2);
+      document.getElementById('sl-metal').value = app.metalness;
+      document.getElementById('val-metal').textContent = app.metalness.toFixed(2);
+      document.getElementById('sl-clearcoat').value = app.clearcoat;
+      document.getElementById('val-clearcoat').textContent = app.clearcoat.toFixed(2);
+
+      app.parts.forEach(p => { p.faceColor = app.faceColor; p.sideColor = app.sideColor; });
+      renderPartsListUI();
+      updateMeshMaterials();
+      showToast(`Applied "${type.toUpperCase()}" material`);
+    }
+
+    function setCameraView(view) {
+      switch (view) {
+        case 'front':
+          camera.position.set(0, 0, 420);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'iso':
+          camera.position.set(130, 80, 400);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'top':
+          camera.position.set(0, 460, 5);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'side':
+          camera.position.set(440, 20, 0);
+          controls.target.set(0, 0, 0);
+          break;
+      }
+      controls.update();
+    }
+
+    function handleFileInput(file) {
+      if (!file.name.toLowerCase().endsWith('.svg')) {
+        showToast('Please select a valid vector .svg file', true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        app.rawSvg = e.target.result;
+        document.getElementById('raw-svg-textarea').value = app.rawSvg;
+        parseSvgIntoParts(app.rawSvg);
+        buildExtrudedParts();
+        showToast(`Auto-detected parts from ${file.name}!`);
+      };
+      reader.readAsText(file);
+    }
+
+    function bindSlider(id, labelId, suffix, cb) {
+      const sl = document.getElementById(id);
+      const lbl = document.getElementById(labelId);
+      sl.addEventListener('input', e => {
+        lbl.textContent = e.target.value + suffix;
+        cb(e.target.value);
+      });
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('canvas-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      composer.setSize(w, h);
+    }
+
+    function showToast(msg, isErr = false) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-msg');
+      const icon = document.getElementById('toast-icon');
+
+      text.textContent = msg;
+      icon.setAttribute('data-lucide', isErr ? 'alert-triangle' : 'check-circle');
+      icon.className = isErr ? 'w-4 h-4 text-amber-400' : 'w-4 h-4 text-brand-red';
+      lucide.createIcons();
+
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+      }, 3000);
+    }
+
+    window.onload = function () {
+      initThreeEngine();
+      setupUIEventListeners();
+      lucide.createIcons();
+      animate(0);
+    };
+  </script>
+</body>
+</html>

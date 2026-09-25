@@ -55,6 +55,21 @@ export type EnvironmentScenePreset =
   | 'obsidian'
   | 'transparent';
 
+export type ProceduralTextureType = 
+  | 'none' 
+  | 'fluted' 
+  | 'brushed' 
+  | 'carbon' 
+  | 'diamond' 
+  | 'noise';
+
+export type SocialFramingAspect = 
+  | 'free' 
+  | '16:9' 
+  | '9:16' 
+  | '1:1' 
+  | '21:9';
+
 export interface AssetGroup {
   id: string;
   name: string;
@@ -128,6 +143,7 @@ export interface ThreeStudioConfig {
   emissiveIntensity: number;
   flutingEnabled: boolean;
   fluteScale: number;
+  proceduralTexture: ProceduralTextureType;
 
   // Studio Lighting
   keyColor: string;
@@ -140,6 +156,11 @@ export interface ThreeStudioConfig {
   showFloor: boolean;
   showLightHelpers: boolean;
   transparentBg: boolean;
+
+  // Viewport Gizmo & Social Framing
+  gizmoMode: 'none' | 'light' | 'model';
+  framingAspect: SocialFramingAspect;
+  showFramingMask: boolean;
 
   // Unreal Bloom
   bloomEnabled: boolean;
@@ -165,4 +186,5 @@ export interface ThreeStudioConfig {
   activePbrId: PbrPresetId;
   activeRigId: LightingRigId;
   selectedPartIndex: number;
+  hoveredPartIndex?: number;
 }

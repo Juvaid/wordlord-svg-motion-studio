@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Extruded SVG Animation &amp; Video Studio</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Three.js Suite: Core, OrbitControls, SVGLoader, GLTFExporter -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/SVGLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      background-color: #050608;
+      color: #f1f5f9;
+      user-select: none;
+    }
+    
+    code, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(10, 14, 23, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(239, 68, 68, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(239, 68, 68, 0.8);
+    }
+
+    /* Glass Panels */
+    .studio-panel {
+      background: rgba(13, 16, 26, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+    }
+    
+    .studio-card {
+      background: rgba(22, 27, 44, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Precision Range Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.08);
+      height: 5px;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ef4444;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.9);
+      transition: transform 0.1s ease, background 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+      background: #ff5c5c;
+    }
+
+    /* Viewport Framing Guides */
+    .mask-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    
+    .aspect-frame {
+      box-shadow: 0 0 0 9999px rgba(3, 4, 7, 0.78);
+      border: 1.5px dashed rgba(239, 68, 68, 0.6);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .aspect-frame::after {
+      content: attr(data-ratio-label);
+      position: absolute;
+      bottom: -24px;
+      right: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #ef4444;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Glow utility */
+    .glow-red {
+      box-shadow: 0 0 20px -3px rgba(239, 68, 68, 0.5);
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden bg-slate-950">
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+  <!-- Aspect Ratio Visual Framing Mask Overlay -->
+  <div id="aspect-mask-overlay" class="mask-overlay hidden">
+    <div id="aspect-frame" class="aspect-frame" data-ratio-label="16:9 YOUTUBE"></div>
+  </div>
+
+  <header class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-3 pointer-events-none">
+    <!-- Brand / Studio Title -->
+    <div class="flex items-center space-x-3 pointer-events-auto">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-red-500 to-amber-500 flex items-center justify-center glow-red text-white font-black text-lg shadow-lg">
+        <i class="fa-solid fa-cube"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm font-extrabold tracking-tight text-white uppercase flex items-center gap-1.5">
+            Vector3D <span class="text-red-500">Motion Studio</span>
+          </h1>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-mono font-semibold">v2.5 Pro</span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Extruded Typography &amp; Cinematic Video Render Engine</p>
+      </div>
+    </div>
+
+    <!-- Center Engine Diagnostics Pill -->
+    <div class="hidden md:flex items-center gap-4 studio-panel px-4 py-1.5 rounded-full pointer-events-auto text-xs font-mono text-slate-300">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="stat-fps" class="text-emerald-400 font-bold">60</span> FPS
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Polys:</span>
+        <span id="stat-polys" class="text-white font-bold">14,280</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div>
+        <span class="text-slate-400">Letters:</span>
+        <span id="stat-letters" class="text-red-400 font-bold">5</span>
+      </div>
+      <span class="text-slate-700">|</span>
+      <div id="stat-ratio" class="text-amber-400 font-bold uppercase">16:9</div>
+    </div>
+
+    <!-- Quick Tool Actions -->
+    <div class="flex items-center space-x-2 pointer-events-auto">
+      <button id="btn-toggle-editor" class="studio-panel hover:bg-slate-800/60 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition" title="Edit SVG Markup">
+        <i class="fa-solid fa-code text-red-400"></i>
+        <span class="hidden lg:inline">SVG Code</span>
+      </button>
+
+      <button id="btn-snap-png" class="studio-panel hover:bg-slate-800/60 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition" title="Export High-Res PNG">
+        <i class="fa-solid fa-camera text-slate-300"></i>
+        <span class="hidden sm:inline">Snapshot</span>
+      </button>
+
+      <button id="btn-quick-record-modal" class="studio-panel text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border-red-500/50 bg-red-600/30 hover:bg-red-600/50 glow-red">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+        <span>Export Video</span>
+      </button>
+
+      <button id="btn-toggle-panel" class="studio-panel text-white p-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition hover:bg-slate-800">
+        <i class="fa-solid fa-sliders text-red-400"></i>
+      </button>
+    </div>
+  </header>
+
+  <aside id="studio-dock" class="absolute top-16 right-4 bottom-24 w-84 sm:w-96 studio-panel rounded-2xl z-20 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden pointer-events-auto">
+    
+    <!-- Dock Navigation Tabs -->
+    <div class="flex border-b border-slate-800 bg-slate-900/80 p-1.5 gap-1 overflow-x-auto">
+      <button data-tab="tab-mesh" class="dock-tab active flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-white bg-red-600/30 border border-red-500/40 whitespace-nowrap">
+        <i class="fa-solid fa-shapes text-red-400"></i> Mesh
+      </button>
+      <button data-tab="tab-material" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i class="fa-solid fa-gem text-amber-400"></i> Material
+      </button>
+      <button data-tab="tab-lights" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i class="fa-solid fa-lightbulb text-cyan-400"></i> Lights
+      </button>
+      <button data-tab="tab-motion" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i class="fa-solid fa-film text-purple-400"></i> Motion
+      </button>
+      <button data-tab="tab-export" class="dock-tab flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white whitespace-nowrap">
+        <i class="fa-solid fa-video text-emerald-400"></i> Export
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs text-slate-300">
+      
+      <!-- TAB 1: 3D GEOMETRY -->
+      <div id="tab-mesh" class="dock-content space-y-4">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Extrusion Depth</span>
+            <span id="lbl-depth" class="font-mono text-red-400 font-bold">28</span>
+          </div>
+          <input type="range" id="sl-depth" min="2" max="90" value="28" class="w-full">
+          <p class="text-[10px] text-slate-500 mt-1">3D Z-thickness extrusion generated from vector paths.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Bevel Depth</span>
+              <span id="lbl-bevel-thick" class="font-mono text-red-400 font-bold">3.5</span>
+            </div>
+            <input type="range" id="sl-bevel-thick" min="0" max="10" step="0.2" value="3.5" class="w-full">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Bevel Size</span>
+              <span id="lbl-bevel-size" class="font-mono text-red-400 font-bold">2.2</span>
+            </div>
+            <input type="range" id="sl-bevel-size" min="0" max="8" step="0.2" value="2.2" class="w-full">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Bevel Smoothness (Segments)</span>
+            <span id="lbl-segments" class="font-mono text-red-400 font-bold">5</span>
+          </div>
+          <input type="range" id="sl-segments" min="1" max="10" step="1" value="5" class="w-full">
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold text-slate-200">Overall Mesh Scale</span>
+            <span id="lbl-scale" class="font-mono text-red-400 font-bold">1.0x</span>
+          </div>
+          <input type="range" id="sl-scale" min="0.4" max="2.2" step="0.05" value="1.0" class="w-full">
+        </div>
+
+        <!-- Presets -->
+        <div class="pt-2 border-t border-slate-800">
+          <label class="block font-semibold text-slate-200 mb-2">Preset Vector Logos</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="preset-logo-btn active p-2.5 rounded-xl border border-red-500/50 bg-red-600/20 text-white font-medium text-left hover:border-red-400 flex items-center gap-2" data-preset="media">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></span> MEDIA (Red)
+            </button>
+            <button class="preset-logo-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 font-medium text-left hover:border-slate-600 flex items-center gap-2" data-preset="cyber">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]"></span> CYBER Glyph
+            </button>
+            <button class="preset-logo-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 font-medium text-left hover:border-slate-600 flex items-center gap-2" data-preset="apex">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span> APEX Diamond
+            </button>
+            <button class="preset-logo-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 font-medium text-left hover:border-slate-600 flex items-center gap-2" data-preset="infinity">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_#a855f7]"></span> INFINITY Loop
+            </button>
+          </div>
+        </div>
+
+        <!-- Drag & Drop SVG -->
+        <div class="pt-2 border-t border-slate-800">
+          <label class="block font-semibold text-slate-200 mb-1.5">Import Custom Brand SVG</label>
+          <div id="dropzone" class="border-2 border-dashed border-slate-700/80 hover:border-red-500/80 rounded-xl p-3.5 text-center cursor-pointer transition bg-slate-900/40 group">
+            <input type="file" id="file-input" accept=".svg" class="hidden">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-500 group-hover:text-red-400 transition mb-1"></i>
+            <p class="font-medium text-slate-300">Drop your brand .SVG file</p>
+            <p class="text-[10px] text-slate-500">Supports multi-path vector shapes &amp; cutouts</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-material" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Cinematic PBR Presets</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="pbr-preset-btn active p-2 rounded-xl border border-red-500/60 bg-red-600/20 text-white flex items-center gap-2 font-medium" data-mat="crimson-satin">
+              <span class="w-3 h-3 rounded-full bg-[#ff1e1e] shadow-[0_0_8px_#ff1e1e]"></span> Crimson Satin
+            </button>
+            <button class="pbr-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="brushed-gold">
+              <span class="w-3 h-3 rounded-full bg-[#fbbf24] shadow-[0_0_8px_#fbbf24]"></span> 24K Gold
+            </button>
+            <button class="pbr-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="frosted-glass">
+              <span class="w-3 h-3 rounded-full bg-[#7dd3fc] shadow-[0_0_8px_#7dd3fc]"></span> Cyber Glass
+            </button>
+            <button class="pbr-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="mirror-chrome">
+              <span class="w-3 h-3 rounded-full bg-[#e2e8f0] shadow-[0_0_8px_#e2e8f0]"></span> Mirror Chrome
+            </button>
+            <button class="pbr-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="neon-holo">
+              <span class="w-3 h-3 rounded-full bg-[#06b6d4] shadow-[0_0_8px_#06b6d4]"></span> Neon Hologram
+            </button>
+            <button class="pbr-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-mat="matte-carbon">
+              <span class="w-3 h-3 rounded-full bg-[#1e293b] border border-slate-500"></span> Obsidian Carbon
+            </button>
+          </div>
+        </div>
+
+        <!-- Procedural Texture Map Selection -->
+        <div class="pt-2 border-t border-slate-800">
+          <label class="block font-semibold text-slate-200 mb-1.5">Procedural Surface Texture</label>
+          <select id="sel-proc-texture" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 font-medium">
+            <option value="none">Smooth Polished (No Texture)</option>
+            <option value="brushed">Brushed Micro-Anisotropic Streaks</option>
+            <option value="carbon">Carbon Fiber Diagonal Weave</option>
+            <option value="diamond">Precision Diamond Knurl Grid</option>
+            <option value="noise">Micro-Granular Bump Noise</option>
+          </select>
+        </div>
+
+        <!-- Dual Material Toggle -->
+        <div class="pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-slate-200">Dual-Tone Face / Sides</span>
+              <p class="text-[10px] text-slate-500">Contrast front face with dark extruded side bevels</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="chk-dual-mat" checked class="sr-only peer">
+              <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="flex items-center justify-between studio-card p-2 rounded-xl">
+              <span class="text-[11px] text-slate-300">Face</span>
+              <input type="color" id="col-face" value="#ff1e1e" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+            <div class="flex items-center justify-between studio-card p-2 rounded-xl">
+              <span class="text-[11px] text-slate-300">Sides</span>
+              <input type="color" id="col-sides" value="#660404" class="w-6 h-6 rounded bg-transparent cursor-pointer border-0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Deep Tinkering Parameters -->
+        <div class="pt-2 border-t border-slate-800 space-y-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Roughness</span>
+              <span id="lbl-rough" class="font-mono text-red-400">0.22</span>
+            </div>
+            <input type="range" id="sl-rough" min="0.0" max="1.0" step="0.02" value="0.22" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Metalness</span>
+              <span id="lbl-metal" class="font-mono text-red-400">0.45</span>
+            </div>
+            <input type="range" id="sl-metal" min="0.0" max="1.0" step="0.02" value="0.45" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Clearcoat Glaze</span>
+              <span id="lbl-clearcoat" class="font-mono text-red-400">0.70</span>
+            </div>
+            <input type="range" id="sl-clearcoat" min="0.0" max="1.0" step="0.05" value="0.70" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Transmission (Glass Refraction)</span>
+              <span id="lbl-trans" class="font-mono text-red-400">0.00</span>
+            </div>
+            <input type="range" id="sl-trans" min="0.0" max="1.0" step="0.05" value="0.00" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Emissive Pulse Glow</span>
+              <span id="lbl-emissive" class="font-mono text-red-400">0.10</span>
+            </div>
+            <input type="range" id="sl-emissive" min="0.0" max="1.5" step="0.05" value="0.10" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-lights" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Lighting Rig Presets</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="light-preset-btn active p-2 rounded-xl border border-red-500/60 bg-red-600/20 text-white flex items-center gap-2 font-medium" data-rig="classic-3point">
+              <i class="fa-solid fa-sun text-amber-400"></i> Classic 3-Point
+            </button>
+            <button class="light-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-rig="cyber-duo">
+              <i class="fa-solid fa-bolt text-cyan-400"></i> Cyber Duo
+            </button>
+            <button class="light-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-rig="film-noir">
+              <i class="fa-solid fa-moon text-slate-400"></i> High-Key Noir
+            </button>
+            <button class="light-preset-btn p-2 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex items-center gap-2 font-medium" data-rig="sunset-flare">
+              <i class="fa-solid fa-fire text-orange-400"></i> Sunset Flare
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 space-y-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Key Spotlight Power</span>
+              <span id="lbl-light-key" class="font-mono text-red-400">2.2</span>
+            </div>
+            <input type="range" id="sl-light-key" min="0.2" max="5.0" step="0.1" value="2.2" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Rim Edge Backlight</span>
+              <span id="lbl-light-rim" class="font-mono text-red-400">3.0</span>
+            </div>
+            <input type="range" id="sl-light-rim" min="0.2" max="6.0" step="0.2" value="3.0" class="w-full">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Fill Ambient Warmth</span>
+              <span id="lbl-light-fill" class="font-mono text-red-400">0.8</span>
+            </div>
+            <input type="range" id="sl-light-fill" min="0.0" max="2.5" step="0.1" value="0.8" class="w-full">
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 space-y-2">
+          <div class="flex items-center justify-between studio-card p-2.5 rounded-xl">
+            <div>
+              <span class="font-semibold text-slate-200">Floor Reflection Grid</span>
+              <p class="text-[10px] text-slate-500">Contact shadows with geometric plane</p>
+            </div>
+            <input type="checkbox" id="chk-floor" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+          </div>
+
+          <div class="flex items-center justify-between studio-card p-2.5 rounded-xl">
+            <div>
+              <span class="font-semibold text-slate-200">Transparent Background</span>
+              <p class="text-[10px] text-slate-500">Alpha transparency for video / overlay</p>
+            </div>
+            <input type="checkbox" id="chk-transparent" class="w-4 h-4 accent-red-500 cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-motion" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Cinematic Motion Presets</label>
+          <div class="space-y-1.5">
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/60 border border-red-500/50 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="turntable" checked class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-rotate text-red-400"></i> 360° Turntable Loop
+                </p>
+                <p class="text-[10px] text-slate-400">Seamless continuous showcase rotation with floating bobbing</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="reveal" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Cinematic Reveal
+                </p>
+                <p class="text-[10px] text-slate-400">Camera fly-in from depth with sweeping rim light glare</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="spring" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-compress text-emerald-400"></i> Elastic Spring Pop
+                </p>
+                <p class="text-[10px] text-slate-400">High-energy overshoot impact bounce that settles smoothly</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="wave" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-water text-cyan-400"></i> Harmonic Letter Wave
+                </p>
+                <p class="text-[10px] text-slate-400">Staggered sequential harmonic wave rippling each letter on Z-axis</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="pulse" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-heart-pulse text-rose-400"></i> Extrusion Depth Pulse
+                </p>
+                <p class="text-[10px] text-slate-400">Rhythmic breathing effect dynamically expanding extrusion thickness</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="glint" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-sun-plant-wilt text-yellow-400"></i> Float &amp; Specular Glint
+                </p>
+                <p class="text-[10px] text-slate-400">Subtle hover with orbital light sweeps that catch bevel edges</p>
+              </div>
+            </label>
+
+            <label class="flex items-start p-2.5 rounded-xl bg-slate-900/40 border border-slate-800 hover:border-slate-700 cursor-pointer motion-card">
+              <input type="radio" name="motion-preset" value="glitch" class="mt-0.5 text-red-500 focus:ring-0">
+              <div class="ml-2.5">
+                <p class="font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-triangle-exclamation text-fuchsia-400"></i> Cyber Glitch &amp; Shiver
+                </p>
+                <p class="text-[10px] text-slate-400">Digital micro-jitter offsets with snap orientation twists</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 space-y-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold text-slate-200">Motion Amplitude / Intensity</span>
+              <span id="lbl-amp" class="font-mono text-red-400">1.0x</span>
+            </div>
+            <input type="range" id="sl-amp" min="0.2" max="2.5" step="0.1" value="1.0" class="w-full">
+          </div>
+
+          <div class="flex items-center justify-between studio-card p-2.5 rounded-xl">
+            <div>
+              <span class="font-semibold text-slate-200">Mouse Gyro Interactive React</span>
+              <p class="text-[10px] text-slate-500">Subtly tilt toward pointer position</p>
+            </div>
+            <input type="checkbox" id="chk-gyro" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-export" class="dock-content hidden space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-2">Social Framing Aspect Ratio</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="aspect-btn active p-2.5 rounded-xl border border-red-500/60 bg-red-600/20 text-white flex flex-col items-center justify-center gap-1 font-medium" data-ratio="16:9" data-desc="1920x1080 Web / YouTube">
+              <i class="fa-solid fa-desktop text-base text-red-400"></i>
+              <span class="font-bold">16:9 Landscape</span>
+              <span class="text-[9px] text-slate-400">YouTube &amp; Web</span>
+            </button>
+
+            <button class="aspect-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex flex-col items-center justify-center gap-1 font-medium" data-ratio="9:16" data-desc="1080x1920 Shorts / Reels">
+              <i class="fa-solid fa-mobile-screen text-base text-cyan-400"></i>
+              <span class="font-bold">9:16 Vertical</span>
+              <span class="text-[9px] text-slate-400">Reels &amp; TikTok</span>
+            </button>
+
+            <button class="aspect-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex flex-col items-center justify-center gap-1 font-medium" data-ratio="1:1" data-desc="1080x1080 Square">
+              <i class="fa-solid fa-square text-base text-amber-400"></i>
+              <span class="font-bold">1:1 Square</span>
+              <span class="text-[9px] text-slate-400">Instagram Feed</span>
+            </button>
+
+            <button class="aspect-btn p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 flex flex-col items-center justify-center gap-1 font-medium" data-ratio="21:9" data-desc="2560x1080 Ultrawide">
+              <i class="fa-solid fa-film text-base text-purple-400"></i>
+              <span class="font-bold">21:9 Ultrawide</span>
+              <span class="text-[9px] text-slate-400">Cinematic Banner</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-200 mb-1">Loop Duration</label>
+              <select id="sel-video-duration" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="2">2 Seconds (Quick)</option>
+                <option value="4" selected>4 Seconds (Standard)</option>
+                <option value="6">6 Seconds</option>
+                <option value="8">8 Seconds (Extended)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-200 mb-1">Target Framerate</label>
+              <select id="sel-video-fps" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                <option value="30">30 FPS (Standard)</option>
+                <option value="60" selected>60 FPS (Ultra Smooth)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between studio-card p-2.5 rounded-xl">
+            <div>
+              <span class="font-semibold text-slate-200">Show Viewport Mask Guides</span>
+              <p class="text-[10px] text-slate-500">Letterbox preview of export boundaries</p>
+            </div>
+            <input type="checkbox" id="chk-mask" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+          </div>
+        </div>
+
+        <!-- Master Render Button -->
+        <div class="pt-2">
+          <button id="btn-start-record" class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition transform active:scale-98">
+            <i class="fa-solid fa-video"></i>
+            <span>Render WebM Video Loop</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Dock Footer: Quick GLTF / Snippet Buttons -->
+    <div class="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center gap-2">
+      <button id="btn-export-gltf" class="flex-1 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center justify-center gap-1.5 transition border border-slate-700">
+        <i class="fa-solid fa-cube text-red-400"></i>
+        <span>3D .GLTF</span>
+      </button>
+
+      <button id="btn-copy-embed" class="flex-1 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center justify-center gap-1.5 transition border border-slate-700">
+        <i class="fa-solid fa-code text-amber-400"></i>
+        <span>Embed Code</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="absolute bottom-5 left-1/2 transform -translate-x-1/2 z-20 w-11/12 max-w-2xl studio-panel rounded-2xl p-2.5 flex flex-col gap-2 pointer-events-auto">
+    
+    <!-- Timeline Scrubber Row -->
+    <div class="flex items-center gap-3 px-2">
+      <!-- Play/Pause -->
+      <button id="btn-seq-play" class="w-8 h-8 rounded-lg bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition shadow-md shadow-red-600/30">
+        <i class="fa-solid fa-pause text-xs" id="seq-play-icon"></i>
+      </button>
+
+      <!-- Timecode -->
+      <span id="seq-timecode" class="font-mono text-xs font-bold text-red-400 w-16">0.00s</span>
+
+      <!-- Scrubber Track -->
+      <div class="flex-1 relative flex items-center">
+        <input type="range" id="seq-scrubber" min="0" max="1000" value="0" class="w-full">
+      </div>
+
+      <!-- Speed Control Dropdown -->
+      <div class="flex items-center gap-1 text-[11px] font-mono text-slate-400">
+        <button class="speed-btn px-2 py-1 rounded bg-slate-800 hover:text-white text-slate-300" data-speed="0.5">0.5x</button>
+        <button class="speed-btn active px-2 py-1 rounded bg-red-600/40 border border-red-500/40 text-white" data-speed="1.0">1.0x</button>
+        <button class="speed-btn px-2 py-1 rounded bg-slate-800 hover:text-white text-slate-300" data-speed="2.0">2.0x</button>
+      </div>
+    </div>
+
+    <!-- Quick Camera Angles Row -->
+    <div class="flex items-center justify-between border-t border-slate-800/80 pt-2 px-2 text-xs">
+      <div class="flex items-center space-x-1">
+        <span class="text-[10px] text-slate-500 uppercase font-bold mr-1">Camera:</span>
+        <button class="cam-angle-btn px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800" data-cam="front">Front</button>
+        <button class="cam-angle-btn active px-2 py-1 rounded-lg text-white bg-red-600/30 border border-red-500/40" data-cam="iso">Perspective</button>
+        <button class="cam-angle-btn px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800" data-cam="top">Top</button>
+        <button class="cam-angle-btn px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800" data-cam="side">Side</button>
+      </div>
+
+      <button id="btn-cam-reset" class="text-slate-400 hover:text-white flex items-center gap-1 text-[11px]">
+        <i class="fa-solid fa-arrows-rotate"></i> Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Direct SVG Code Editor Modal -->
+  <div id="svg-editor-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="studio-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-700">
+      <div class="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-code text-red-400"></i>
+          <h2 class="font-bold text-white text-sm">Direct SVG Vector Input</h2>
+        </div>
+        <button id="btn-close-svg-modal" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto space-y-2">
+        <p class="text-xs text-slate-400">
+          Paste any SVG string with <code class="text-red-400">&lt;path&gt;</code>, polygon, or shape definitions. The extrusion engine will recalculate bevel geometry in real-time.
+        </p>
+        <textarea id="svg-raw-input" class="w-full h-72 p-3 rounded-xl bg-slate-950 font-mono text-[11px] text-slate-200 border border-slate-800 focus:border-red-500 focus:outline-none resize-none leading-relaxed"></textarea>
+      </div>
+      <div class="p-3 border-t border-slate-800 bg-slate-900/60 flex justify-end gap-2">
+        <button id="btn-reset-svg" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800">
+          Restore MEDIA Logo
+        </button>
+        <button id="btn-compile-svg" class="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/30">
+          Update 3D Mesh
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Export Progress Overlay Dialog -->
+  <div id="export-progress-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="studio-panel w-full max-w-md rounded-2xl p-6 flex flex-col items-center text-center border border-red-500/40">
+      <div class="w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 text-2xl mb-4 animate-pulse">
+        <i class="fa-solid fa-film"></i>
+      </div>
+      <h3 class="text-base font-bold text-white mb-1">Rendering Video Loop</h3>
+      <p id="export-status-desc" class="text-xs text-slate-400 mb-5">Encoding WebM stream at target framerate...</p>
+
+      <!-- Progress bar -->
+      <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-3">
+        <div id="export-progress-bar" class="h-full bg-gradient-to-r from-red-600 to-orange-500 rounded-full transition-all duration-100" style="width: 0%"></div>
+      </div>
+      <div class="flex justify-between w-full text-xs font-mono text-slate-400">
+        <span id="export-pct">0%</span>
+        <span id="export-frames">0 / 240 frames</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 studio-panel px-4 py-2.5 rounded-xl border border-red-500/40 text-xs font-semibold text-white shadow-2xl flex items-center gap-2 opacity-0 -translate-y-4 pointer-events-none transition-all duration-300">
+    <i class="fa-solid fa-circle-check text-red-400" id="toast-icon"></i>
+    <span id="toast-text">Ready</span>
+  </div>
+
+  <script>
+    // Precise Vector Path Library matching the user's reference "MEDIA" logo and complementary test logos
+    const PRESET_SVGS = {
+      media: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" width="540" height="120">
+        <!-- Letter M -->
+        <path id="letter-m" fill="#FF1E1E" d="M 15 110 L 15 10 L 42 10 L 62 72 L 82 10 L 109 10 L 109 110 L 89 110 L 89 44 L 70 96 L 54 96 L 35 44 L 35 110 Z" />
+        <!-- Letter E -->
+        <path id="letter-e" fill="#FF1E1E" d="M 124 110 L 124 10 L 188 10 L 188 32 L 150 32 L 150 51 L 182 51 L 182 72 L 150 72 L 150 88 L 188 88 L 188 110 Z" />
+        <!-- Letter D with inner hole cutout -->
+        <path id="letter-d" fill="#FF1E1E" d="M 204 110 L 204 10 L 246 10 C 274 10 288 28 288 60 C 288 92 274 110 246 110 Z M 228 32 L 228 88 L 244 88 C 259 88 264 78 264 60 C 264 42 259 32 244 32 Z" />
+        <!-- Letter I -->
+        <path id="letter-i" fill="#FF1E1E" d="M 304 110 L 304 10 L 330 10 L 330 110 Z" />
+        <!-- Letter A with inner triangle counter -->
+        <path id="letter-a" fill="#FF1E1E" d="M 346 110 L 376 10 L 404 10 L 434 110 L 408 110 L 402 88 L 378 88 L 372 110 Z M 390 38 L 382 70 L 398 70 Z" />
+      </svg>`,
+
+      cyber: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+        <path fill="#06b6d4" d="M 90 20 L 30 20 L 30 100 L 90 100 L 90 80 L 52 80 L 52 40 L 90 40 Z" />
+        <path fill="#06b6d4" d="M 105 20 L 122 62 L 139 20 L 160 20 L 132 80 L 132 100 L 112 100 L 112 80 L 85 20 Z" />
+        <path fill="#06b6d4" d="M 175 100 L 175 20 L 215 20 C 230 20 240 28 240 45 C 240 54 234 60 225 63 C 238 67 245 76 245 88 C 245 96 235 100 215 100 Z M 197 38 L 197 52 L 212 52 C 218 52 222 48 222 45 C 222 42 218 38 212 38 Z M 197 68 L 197 82 L 214 82 C 220 82 224 78 224 75 C 224 72 220 68 214 68 Z" />
+      </svg>`,
+
+      apex: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+        <path fill="#f59e0b" d="M 120 10 L 220 120 L 120 230 L 20 120 Z M 120 48 L 56 120 L 120 192 L 184 120 Z" />
+        <path fill="#f59e0b" d="M 120 75 L 160 120 L 120 165 L 80 120 Z" />
+      </svg>`,
+
+      infinity: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160" width="300" height="160">
+        <path fill="#a855f7" d="M 80 40 C 40 40 15 60 15 80 C 15 100 40 120 80 120 C 120 120 135 95 150 80 C 165 65 180 40 220 40 C 260 40 285 60 285 80 C 285 100 260 120 220 120 C 180 120 165 95 150 80 C 135 65 120 40 80 40 Z M 80 62 C 100 62 115 75 128 80 C 115 85 100 98 80 98 C 55 98 38 88 38 80 C 38 72 55 62 80 62 Z M 220 62 C 245 62 262 72 262 80 C 262 88 245 98 220 98 C 200 98 185 85 172 80 C 185 75 200 62 220 62 Z" />
+      </svg>`
+    };
+
+    const studio = {
+      // Mesh Geometry
+      depth: 28,
+      bevelThickness: 3.5,
+      bevelSize: 2.2,
+      bevelSegments: 5,
+      meshScale: 1.0,
+      rawSvg: PRESET_SVGS.media,
+
+      // Materials (MeshPhysicalMaterial)
+      faceColor: '#ff1e1e',
+      sideColor: '#660404',
+      dualMaterial: true,
+      roughness: 0.22,
+      metalness: 0.45,
+      clearcoat: 0.70,
+      clearcoatRoughness: 0.15,
+      transmission: 0.0,
+      ior: 1.5,
+      emissiveIntensity: 0.10,
+      procTextureType: 'none',
+
+      // Lighting & Studio
+      keyIntensity: 2.2,
+      rimIntensity: 3.0,
+      fillIntensity: 0.8,
+      keyColor: '#ffffff',
+      rimColor: '#ffffff',
+      fillColor: '#ff6655',
+      ambientColor: '#ffffff',
+      showFloor: true,
+      transparentBg: false,
+
+      // Animation & Sequencer
+      motionPreset: 'turntable',
+      isPlaying: true,
+      amplitude: 1.0,
+      duration: 4.0, // loop duration in seconds
+      time: 0.0,
+      playSpeed: 1.0,
+      gyroEnabled: true,
+      mouse: { x: 0, y: 0, targetX: 0, targetY: 0 },
+
+      // Video & Aspect
+      aspectRatio: '16:9',
+      fps: 60,
+      showMask: true
+    };
+
+    // Core Three.js references
+    let scene, camera, renderer, controls;
+    let logoGroup, letterMeshes = [];
+    let keyLight, rimLight, fillLight, ambientLight;
+    let floorMesh, floorGrid;
+    let clock = new THREE.Clock();
+    let proceduralTextures = {};
+    let isScrubbing = false;
+
+    function generateProceduralTexture(type) {
+      if (type === 'none') return null;
+      if (proceduralTextures[type]) return proceduralTextures[type];
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      if (type === 'brushed') {
+        // High frequency horizontal anisotropic streaks
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, 512, 512);
+        for (let y = 0; y < 512; y++) {
+          const val = Math.floor(128 + (Math.random() - 0.5) * 85);
+          ctx.strokeStyle = `rgb(${val},${val},${val})`;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(512, y);
+          ctx.stroke();
+        }
+      } else if (type === 'carbon') {
+        // Cross-hatch basket weave
+        ctx.fillStyle = '#181818';
+        ctx.fillRect(0, 0, 512, 512);
+        const s = 16;
+        for (let x = 0; x < 512; x += s) {
+          for (let y = 0; y < 512; y += s) {
+            const alt = (Math.floor(x/s) + Math.floor(y/s)) % 2 === 0;
+            ctx.fillStyle = alt ? '#333333' : '#111111';
+            ctx.fillRect(x, y, s, s);
+            ctx.strokeStyle = alt ? '#555555' : '#222222';
+            ctx.beginPath();
+            if (alt) {
+              ctx.moveTo(x, y); ctx.lineTo(x + s, y + s);
+            } else {
+              ctx.moveTo(x + s, y); ctx.lineTo(x, y + s);
+            }
+            ctx.stroke();
+          }
+        }
+      } else if (type === 'diamond') {
+        // Micro knurl pattern
+        ctx.fillStyle = '#777777';
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = '#222222';
+        ctx.lineWidth = 2;
+        const step = 20;
+        for (let i = -512; i < 1024; i += step) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 512, 512); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(i, 512); ctx.lineTo(i + 512, 0); ctx.stroke();
+        }
+      } else if (type === 'noise') {
+        // Per-pixel bump noise
+        const img = ctx.createImageData(512, 512);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = Math.random() * 255;
+          img.data[i] = v;
+          img.data[i+1] = v;
+          img.data[i+2] = v;
+          img.data[i+3] = 255;
+        }
+        ctx.putImageData(img, 0, 0);
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(4, 4);
+      proceduralTextures[type] = texture;
+      return texture;
+    }
+
+    function initEngine() {
+      const container = document.getElementById('canvas-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050608);
+      scene.fog = new THREE.FogExp2(0x050608, 0.0016);
+
+      // 2. Camera
+      camera = new THREE.PerspectiveCamera(45, w / h, 1, 3000);
+      camera.position.set(0, 25, 420);
+
+      // 3. Renderer with PBR tone mapping
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      container.appendChild(renderer.domElement);
+
+      // 4. OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 1400;
+      controls.minDistance = 80;
+      controls.target.set(0, 0, 0);
+
+      // 5. Lights & Studio Environment
+      setupStudioLighting();
+      setupStudioFloor();
+
+      // 6. Geometry Group
+      logoGroup = new THREE.Group();
+      scene.add(logoGroup);
+
+      // 7. Initial Build
+      rebuild3DModel();
+      updateAspectMask();
+
+      // 8. Event Listeners
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('touchmove', onTouchMove, { passive: true });
+    }
+
+    function setupStudioLighting() {
+      ambientLight = new THREE.AmbientLight(studio.ambientColor, 0.55);
+      scene.add(ambientLight);
+
+      // Key Light
+      keyLight = new THREE.DirectionalLight(studio.keyColor, studio.keyIntensity);
+      keyLight.position.set(180, 240, 280);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.camera.near = 20;
+      keyLight.shadow.camera.far = 1000;
+      const d = 300;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      keyLight.shadow.bias = -0.0004;
+      scene.add(keyLight);
+
+      // Fill Light
+      fillLight = new THREE.DirectionalLight(studio.fillColor, studio.fillIntensity);
+      fillLight.position.set(-240, 100, 200);
+      scene.add(fillLight);
+
+      // Rim Edge Light
+      rimLight = new THREE.DirectionalLight(studio.rimColor, studio.rimIntensity);
+      rimLight.position.set(0, 260, -260);
+      scene.add(rimLight);
+    }
+
+    function setupStudioFloor() {
+      const planeGeo = new THREE.PlaneGeometry(2400, 2400);
+      const planeMat = new THREE.ShadowMaterial({ opacity: 0.55 });
+      floorMesh = new THREE.Mesh(planeGeo, planeMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -85;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      floorGrid = new THREE.GridHelper(1600, 50, 0xef4444, 0x1e293b);
+      floorGrid.position.y = -84.9;
+      floorGrid.material.opacity = 0.28;
+      floorGrid.material.transparent = true;
+      scene.add(floorGrid);
+    }
+
+    function rebuild3DModel() {
+      // Dispose old geometries and materials
+      while (logoGroup.children.length > 0) {
+        const obj = logoGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else if (obj.material) obj.material.dispose();
+        logoGroup.remove(obj);
+      }
+      letterMeshes = [];
+
+      const loader = new THREE.SVGLoader();
+      let svgData;
+      try {
+        svgData = loader.parse(studio.rawSvg);
+      } catch (err) {
+        showToast('SVG parse error', true);
+        return;
+      }
+
+      if (!svgData || !svgData.paths || svgData.paths.length === 0) {
+        showToast('No vector paths detected in SVG', true);
+        return;
+      }
+
+      const extrudeSettings = {
+        depth: studio.depth,
+        bevelEnabled: studio.bevelThickness > 0 || studio.bevelSize > 0,
+        bevelThickness: studio.bevelThickness,
+        bevelSize: studio.bevelSize,
+        bevelSegments: studio.bevelSegments,
+        curveSegments: 16
+      };
+
+      const procTex = generateProceduralTexture(studio.procTextureType);
+
+      // Face PBR Physical Material
+      const faceMat = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(studio.faceColor),
+        roughness: studio.roughness,
+        metalness: studio.metalness,
+        clearcoat: studio.clearcoat,
+        clearcoatRoughness: studio.clearcoatRoughness,
+        transmission: studio.transmission,
+        ior: studio.ior,
+        emissive: new THREE.Color(studio.faceColor),
+        emissiveIntensity: studio.emissiveIntensity,
+        roughnessMap: procTex,
+        bumpMap: procTex,
+        bumpScale: procTex ? 0.35 : 0,
+        side: THREE.DoubleSide
+      });
+
+      // Side Bevel Material
+      const sideMat = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(studio.dualMaterial ? studio.sideColor : studio.faceColor),
+        roughness: Math.min(1.0, studio.roughness + 0.1),
+        metalness: Math.min(1.0, studio.metalness + 0.15),
+        clearcoat: studio.clearcoat * 0.5,
+        clearcoatRoughness: studio.clearcoatRoughness,
+        transmission: studio.transmission * 0.5,
+        emissive: new THREE.Color(studio.dualMaterial ? studio.sideColor : studio.faceColor),
+        emissiveIntensity: studio.emissiveIntensity * 0.5,
+        roughnessMap: procTex,
+        bumpMap: procTex,
+        bumpScale: procTex ? 0.25 : 0,
+        side: THREE.DoubleSide
+      });
+
+      const materials = [faceMat, sideMat];
+      const tempGroup = new THREE.Group();
+
+      svgData.paths.forEach((path, pathIdx) => {
+        const shapes = THREE.SVGLoader.createShapes(path);
+        shapes.forEach((shape) => {
+          const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+          geom.scale(1, -1, 1);
+          geom.computeVertexNormals();
+
+          const mesh = new THREE.Mesh(geom, materials);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = {
+            index: pathIdx,
+            baseX: 0,
+            baseY: 0,
+            baseZ: 0
+          };
+
+          letterMeshes.push(mesh);
+          tempGroup.add(mesh);
+        });
+      });
+
+      // Center geometry around origin
+      const bbox = new THREE.Box3().setFromObject(tempGroup);
+      const center = new THREE.Vector3();
+      bbox.getCenter(center);
+
+      while (tempGroup.children.length > 0) {
+        const m = tempGroup.children[0];
+        m.position.x -= center.x;
+        m.position.y -= center.y;
+        m.position.z -= center.z;
+        m.userData.baseX = m.position.x;
+        m.userData.baseY = m.position.y;
+        m.userData.baseZ = m.position.z;
+        logoGroup.add(m);
+      }
+
+      logoGroup.scale.set(studio.meshScale, studio.meshScale, studio.meshScale);
+
+      // Update polycount stats
+      updatePolycountStats();
+    }
+
+    function updateMaterials() {
+      const procTex = generateProceduralTexture(studio.procTextureType);
+
+      letterMeshes.forEach(mesh => {
+        if (Array.isArray(mesh.material)) {
+          // Face Material
+          mesh.material[0].color.set(studio.faceColor);
+          mesh.material[0].emissive.set(studio.faceColor);
+          mesh.material[0].emissiveIntensity = studio.emissiveIntensity;
+          mesh.material[0].roughness = studio.roughness;
+          mesh.material[0].metalness = studio.metalness;
+          mesh.material[0].clearcoat = studio.clearcoat;
+          mesh.material[0].clearcoatRoughness = studio.clearcoatRoughness;
+          mesh.material[0].transmission = studio.transmission;
+          mesh.material[0].ior = studio.ior;
+          mesh.material[0].roughnessMap = procTex;
+          mesh.material[0].bumpMap = procTex;
+          mesh.material[0].bumpScale = procTex ? 0.35 : 0;
+          mesh.material[0].needsUpdate = true;
+
+          // Side Material
+          const sideCol = studio.dualMaterial ? studio.sideColor : studio.faceColor;
+          mesh.material[1].color.set(sideCol);
+          mesh.material[1].emissive.set(sideCol);
+          mesh.material[1].emissiveIntensity = studio.emissiveIntensity * 0.5;
+          mesh.material[1].roughness = Math.min(1.0, studio.roughness + 0.1);
+          mesh.material[1].metalness = Math.min(1.0, studio.metalness + 0.15);
+          mesh.material[1].clearcoat = studio.clearcoat * 0.5;
+          mesh.material[1].transmission = studio.transmission * 0.5;
+          mesh.material[1].roughnessMap = procTex;
+          mesh.material[1].bumpMap = procTex;
+          mesh.material[1].bumpScale = procTex ? 0.25 : 0;
+          mesh.material[1].needsUpdate = true;
+        }
+      });
+    }
+
+    function applyMotionFrame(normalizedTime) {
+      if (!logoGroup) return;
+
+      const t = normalizedTime; // 0.0 to 1.0
+      const amp = studio.amplitude;
+
+      // Mouse gyro smoothing
+      studio.mouse.x += (studio.mouse.targetX - studio.mouse.x) * 0.06;
+      studio.mouse.y += (studio.mouse.targetY - studio.mouse.y) * 0.06;
+
+      const gyroX = studio.gyroEnabled ? studio.mouse.x * 0.5 * amp : 0;
+      const gyroY = studio.gyroEnabled ? -studio.mouse.y * 0.35 * amp : 0;
+
+      // Preset Motion Math
+      switch (studio.motionPreset) {
+        case 'turntable': {
+          // Seamless 360 rotation + gentle hover
+          logoGroup.rotation.y = (t * Math.PI * 2) + gyroX;
+          logoGroup.rotation.x = (Math.sin(t * Math.PI * 4) * 0.08 * amp) + gyroY;
+          logoGroup.rotation.z = 0;
+          logoGroup.position.y = Math.sin(t * Math.PI * 2) * 6 * amp;
+          resetLetterMeshTransforms();
+          break;
+        }
+
+        case 'reveal': {
+          // Cinematic camera & light flare sweep
+          if (t < 0.6) {
+            const ease = easeOutCubic(t / 0.6);
+            logoGroup.rotation.y = ((1 - ease) * Math.PI * 1.5) + gyroX;
+            logoGroup.position.z = (1 - ease) * -160;
+            keyLight.intensity = studio.keyIntensity * (1 + (1 - ease) * 1.5);
+          } else {
+            logoGroup.rotation.y = gyroX;
+            logoGroup.position.z = 0;
+            keyLight.intensity = studio.keyIntensity;
+          }
+          logoGroup.rotation.x = gyroY;
+          resetLetterMeshTransforms();
+          break;
+        }
+
+        case 'spring': {
+          // Elastic impact pop-in
+          const decay = Math.exp(-t * 5);
+          const bounce = Math.cos(t * Math.PI * 8) * decay;
+          const s = Math.max(0.01, 1 + bounce * 0.45 * amp);
+          logoGroup.scale.set(studio.meshScale * s, studio.meshScale * s, studio.meshScale * s);
+          logoGroup.rotation.y = (bounce * 0.35 * amp) + gyroX;
+          logoGroup.rotation.x = gyroY;
+          resetLetterMeshTransforms();
+          break;
+        }
+
+        case 'wave': {
+          // Harmonic letter-by-letter Z ripple
+          logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.25) + gyroX;
+          logoGroup.rotation.x = gyroY;
+          logoGroup.position.y = 0;
+
+          letterMeshes.forEach((mesh, idx) => {
+            const phase = idx * 0.55;
+            const wave = Math.sin(t * Math.PI * 4 - phase);
+            mesh.position.z = mesh.userData.baseZ + wave * 18 * amp;
+            mesh.position.y = mesh.userData.baseY + Math.cos(t * Math.PI * 4 - phase) * 5 * amp;
+            mesh.rotation.x = wave * 0.16 * amp;
+          });
+          break;
+        }
+
+        case 'pulse': {
+          // Extrusion depth flexing
+          resetLetterMeshTransforms();
+          const p = 1.0 + Math.sin(t * Math.PI * 4) * 0.5 * amp;
+          letterMeshes.forEach(mesh => {
+            mesh.scale.z = Math.max(0.1, p);
+          });
+          logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.3) + gyroX;
+          logoGroup.rotation.x = gyroY;
+          break;
+        }
+
+        case 'glint': {
+          // Orbital light sweep with floating glint
+          resetLetterMeshTransforms();
+          logoGroup.rotation.y = (Math.sin(t * Math.PI * 2) * 0.2) + gyroX;
+          logoGroup.rotation.x = gyroY;
+          logoGroup.position.y = Math.sin(t * Math.PI * 2) * 4;
+
+          const angle = t * Math.PI * 2;
+          rimLight.position.x = Math.sin(angle) * 300;
+          rimLight.position.z = Math.cos(angle) * 300;
+          break;
+        }
+
+        case 'glitch': {
+          // Micro digital jitter
+          resetLetterMeshTransforms();
+          const isJitter = Math.random() < 0.12;
+          logoGroup.rotation.y = (isJitter ? (Math.random() - 0.5) * 0.3 * amp : 0) + gyroX;
+          logoGroup.position.x = isJitter ? (Math.random() - 0.5) * 8 * amp : 0;
+          logoGroup.position.y = (isJitter ? (Math.random() - 0.5) * 8 * amp : 0) + gyroY;
+          break;
+        }
+      }
+    }
+
+    function resetLetterMeshTransforms() {
+      letterMeshes.forEach(mesh => {
+        mesh.position.set(mesh.userData.baseX, mesh.userData.baseY, mesh.userData.baseZ);
+        mesh.rotation.set(0, 0, 0);
+        mesh.scale.set(1, 1, 1);
+      });
+    }
+
+    function easeOutCubic(x) {
+      return 1 - Math.pow(1 - x, 3);
+    }
+
+    let fpsFrames = 0, lastFpsUpdate = 0;
+
+    function renderLoop(now) {
+      requestAnimationFrame(renderLoop);
+
+      // FPS tracking
+      fpsFrames++;
+      if (now - lastFpsUpdate >= 1000) {
+        document.getElementById('stat-fps').textContent = fpsFrames;
+        fpsFrames = 0;
+        lastFpsUpdate = now;
+      }
+
+      const delta = clock.getDelta();
+
+      if (studio.isPlaying && !isScrubbing) {
+        studio.time += delta * studio.playSpeed;
+        if (studio.time >= studio.duration) {
+          studio.time = studio.time % studio.duration;
+        }
+
+        const normalized = studio.time / studio.duration;
+        applyMotionFrame(normalized);
+
+        // Update timeline UI
+        const scrubber = document.getElementById('seq-scrubber');
+        scrubber.value = Math.floor(normalized * 1000);
+        document.getElementById('seq-timecode').textContent = studio.time.toFixed(2) + 's';
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function updateAspectMask() {
+      const overlay = document.getElementById('aspect-mask-overlay');
+      const frame = document.getElementById('aspect-frame');
+      const statRatio = document.getElementById('stat-ratio');
+
+      if (!studio.showMask) {
+        overlay.classList.add('hidden');
+        return;
+      }
+
+      overlay.classList.remove('hidden');
+      statRatio.textContent = studio.aspectRatio;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      let targetW, targetH;
+
+      switch (studio.aspectRatio) {
+        case '16:9':
+          frame.setAttribute('data-ratio-label', '16:9 YOUTUBE / WEB');
+          targetW = Math.min(vw * 0.85, (vh * 0.75) * (16 / 9));
+          targetH = targetW / (16 / 9);
+          break;
+        case '9:16':
+          frame.setAttribute('data-ratio-label', '9:16 REELS / SHORTS / TIKTOK');
+          targetH = Math.min(vh * 0.8, (vw * 0.85) * (16 / 9));
+          targetW = targetH * (9 / 16);
+          break;
+        case '1:1':
+          frame.setAttribute('data-ratio-label', '1:1 INSTAGRAM SQUARE');
+          targetW = Math.min(vw * 0.75, vh * 0.75);
+          targetH = targetW;
+          break;
+        case '21:9':
+          frame.setAttribute('data-ratio-label', '21:9 ULTRAWIDE HERO');
+          targetW = Math.min(vw * 0.9, (vh * 0.6) * (21 / 9));
+          targetH = targetW / (21 / 9);
+          break;
+      }
+
+      frame.style.width = `${targetW}px`;
+      frame.style.height = `${targetH}px`;
+    }
+
+    let mediaRecorder = null;
+    let recordedBlobs = [];
+
+    async function recordCinematicVideo() {
+      const modal = document.getElementById('export-progress-modal');
+      const progressBar = document.getElementById('export-progress-bar');
+      const pctLabel = document.getElementById('export-pct');
+      const framesLabel = document.getElementById('export-frames');
+      const descLabel = document.getElementById('export-status-desc');
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      progressBar.style.width = '0%';
+      pctLabel.textContent = '0%';
+
+      // Pause regular loop
+      const wasPlaying = studio.isPlaying;
+      studio.isPlaying = false;
+
+      const targetFps = studio.fps;
+      const totalFrames = Math.floor(studio.duration * targetFps);
+      recordedBlobs = [];
+
+      const stream = renderer.domElement.captureStream(targetFps);
+      let options = { mimeType: 'video/webm;codecs=vp9' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        showToast('MediaRecorder not supported on this browser', true);
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        studio.isPlaying = wasPlaying;
+        return;
+      }
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) recordedBlobs.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `3d-logo-${studio.motionPreset}-${studio.aspectRatio.replace(':', '-')}.webm`;
+        a.click();
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        studio.isPlaying = wasPlaying;
+        showToast('Video export completed! Download started.');
+      };
+
+      mediaRecorder.start();
+      descLabel.textContent = `Rendering ${totalFrames} frames @ ${targetFps} FPS (${studio.aspectRatio})...`;
+
+      // Deterministic frame rendering
+      for (let i = 0; i <= totalFrames; i++) {
+        const normalized = i / totalFrames;
+        applyMotionFrame(normalized);
+        renderer.render(scene, camera);
+
+        const pct = Math.round((i / totalFrames) * 100);
+        progressBar.style.width = `${pct}%`;
+        pctLabel.textContent = `${pct}%`;
+        framesLabel.textContent = `${i} / ${totalFrames} frames`;
+
+        // Yield to browser execution
+        await new Promise(r => setTimeout(r, 1000 / targetFps));
+      }
+
+      mediaRecorder.stop();
+    }
+
+    function exportGLTFModel() {
+      const exporter = new THREE.GLTFExporter();
+      exporter.parse(
+        logoGroup,
+        gltf => {
+          const blob = new Blob([JSON.stringify(gltf, null, 2)], { type: 'application/json' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'extruded-brand-logo.gltf';
+          link.click();
+          showToast('3D .GLTF model exported successfully!');
+        },
+        { binary: false }
+      );
+    }
+
+    function exportPNGSnapshot() {
+      renderer.render(scene, camera);
+      const dataUrl = renderer.domElement.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = '3d-logo-snapshot.png';
+      link.href = dataUrl;
+      link.click();
+      showToast('High-Res snapshot downloaded!');
+    }
+
+    function copyEmbedSnippet() {
+      const snippet = `// Three.js 3D Extruded Logo Setup
+import * as THREE from 'three';
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
+
+const loader = new SVGLoader();
+const svgData = loader.parse(\`${studio.rawSvg.replace(/`/g, '\\`')}\`);
+const group = new THREE.Group();
+
+const extrudeSettings = {
+  depth: ${studio.depth},
+  bevelEnabled: true,
+  bevelThickness: ${studio.bevelThickness},
+  bevelSize: ${studio.bevelSize},
+  bevelSegments: ${studio.bevelSegments}
+};
+
+const material = new THREE.MeshPhysicalMaterial({
+  color: '${studio.faceColor}',
+  metalness: ${studio.metalness},
+  roughness: ${studio.roughness},
+  clearcoat: ${studio.clearcoat},
+  side: THREE.DoubleSide
+});
+
+svgData.paths.forEach(path => {
+  const shapes = SVGLoader.createShapes(path);
+  shapes.forEach(shape => {
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geom.scale(1, -1, 1);
+    geom.center();
+    group.add(new THREE.Mesh(geom, material));
+  });
+});
+scene.add(group);`;
+
+      const ta = document.createElement('textarea');
+      ta.value = snippet;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Three.js embed snippet copied!');
+      } catch (e) {
+        showToast('Copy restricted in iframe', true);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function setupEventListeners() {
+      // Tab switching
+      document.querySelectorAll('.dock-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.dock-tab').forEach(t => {
+            t.classList.remove('active', 'text-white', 'bg-red-600/30', 'border', 'border-red-500/40');
+            t.classList.add('text-slate-400');
+          });
+          tab.classList.add('active', 'text-white', 'bg-red-600/30', 'border', 'border-red-500/40');
+          tab.classList.remove('text-slate-400');
+
+          const target = tab.getAttribute('data-tab');
+          document.querySelectorAll('.dock-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(target).classList.remove('hidden');
+        });
+      });
+
+      // Mesh Geometry Sliders
+      linkSlider('sl-depth', 'lbl-depth', '', v => { studio.depth = parseFloat(v); rebuild3DModel(); });
+      linkSlider('sl-bevel-thick', 'lbl-bevel-thick', '', v => { studio.bevelThickness = parseFloat(v); rebuild3DModel(); });
+      linkSlider('sl-bevel-size', 'lbl-bevel-size', '', v => { studio.bevelSize = parseFloat(v); rebuild3DModel(); });
+      linkSlider('sl-segments', 'lbl-segments', '', v => { studio.bevelSegments = parseInt(v); rebuild3DModel(); });
+      linkSlider('sl-scale', 'lbl-scale', 'x', v => {
+        studio.meshScale = parseFloat(v);
+        if (logoGroup) logoGroup.scale.set(studio.meshScale, studio.meshScale, studio.meshScale);
+      });
+
+      // Material Tinkering Sliders
+      linkSlider('sl-rough', 'lbl-rough', '', v => { studio.roughness = parseFloat(v); updateMaterials(); });
+      linkSlider('sl-metal', 'lbl-metal', '', v => { studio.metalness = parseFloat(v); updateMaterials(); });
+      linkSlider('sl-clearcoat', 'lbl-clearcoat', '', v => { studio.clearcoat = parseFloat(v); updateMaterials(); });
+      linkSlider('sl-trans', 'lbl-trans', '', v => { studio.transmission = parseFloat(v); updateMaterials(); });
+      linkSlider('sl-emissive', 'lbl-emissive', '', v => { studio.emissiveIntensity = parseFloat(v); updateMaterials(); });
+
+      // Colors & Dual Material
+      document.getElementById('col-face').addEventListener('input', e => {
+        studio.faceColor = e.target.value;
+        updateMaterials();
+      });
+      document.getElementById('col-sides').addEventListener('input', e => {
+        studio.sideColor = e.target.value;
+        updateMaterials();
+      });
+      document.getElementById('chk-dual-mat').addEventListener('change', e => {
+        studio.dualMaterial = e.target.checked;
+        updateMaterials();
+      });
+
+      // Procedural Texture dropdown
+      document.getElementById('sel-proc-texture').addEventListener('change', e => {
+        studio.procTextureType = e.target.value;
+        updateMaterials();
+        showToast(`Surface texture: ${e.target.value}`);
+      });
+
+      // Material Preset buttons
+      document.querySelectorAll('.pbr-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.pbr-preset-btn').forEach(b => {
+            b.classList.remove('border-red-500/60', 'bg-red-600/20', 'text-white');
+            b.classList.add('border-slate-800', 'bg-slate-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-red-500/60', 'bg-red-600/20', 'text-white');
+          applyPbrPreset(btn.getAttribute('data-mat'));
+        });
+      });
+
+      // Lighting Sliders
+      linkSlider('sl-light-key', 'lbl-light-key', '', v => {
+        studio.keyIntensity = parseFloat(v);
+        if (keyLight) keyLight.intensity = studio.keyIntensity;
+      });
+      linkSlider('sl-light-rim', 'lbl-light-rim', '', v => {
+        studio.rimIntensity = parseFloat(v);
+        if (rimLight) rimLight.intensity = studio.rimIntensity;
+      });
+      linkSlider('sl-light-fill', 'lbl-light-fill', '', v => {
+        studio.fillIntensity = parseFloat(v);
+        if (fillLight) fillLight.intensity = studio.fillIntensity;
+      });
+
+      // Lighting Rig presets
+      document.querySelectorAll('.light-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.light-preset-btn').forEach(b => {
+            b.classList.remove('border-red-500/60', 'bg-red-600/20', 'text-white');
+            b.classList.add('border-slate-800', 'bg-slate-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-red-500/60', 'bg-red-600/20', 'text-white');
+          applyLightingRig(btn.getAttribute('data-rig'));
+        });
+      });
+
+      // Environment Toggles
+      document.getElementById('chk-floor').addEventListener('change', e => {
+        studio.showFloor = e.target.checked;
+        if (floorMesh) floorMesh.visible = studio.showFloor;
+        if (floorGrid) floorGrid.visible = studio.showFloor;
+      });
+      document.getElementById('chk-transparent').addEventListener('change', e => {
+        studio.transparentBg = e.target.checked;
+        scene.background = studio.transparentBg ? null : new THREE.Color(0x050608);
+      });
+
+      // Motion preset radio
+      document.querySelectorAll('input[name="motion-preset"]').forEach(radio => {
+        radio.addEventListener('change', e => {
+          studio.motionPreset = e.target.value;
+          document.querySelectorAll('.motion-card').forEach(card => {
+            card.classList.remove('border-red-500/50', 'bg-slate-900/60');
+            card.classList.add('border-slate-800', 'bg-slate-900/40');
+          });
+          radio.closest('.motion-card').classList.add('border-red-500/50', 'bg-slate-900/60');
+        });
+      });
+
+      linkSlider('sl-amp', 'lbl-amp', 'x', v => { studio.amplitude = parseFloat(v); });
+      document.getElementById('chk-gyro').addEventListener('change', e => { studio.gyroEnabled = e.target.checked; });
+
+      // Aspect Ratio Selector
+      document.querySelectorAll('.aspect-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.aspect-btn').forEach(b => {
+            b.classList.remove('border-red-500/60', 'bg-red-600/20', 'text-white');
+            b.classList.add('border-slate-800', 'bg-slate-900/50', 'text-slate-300');
+          });
+          btn.classList.add('border-red-500/60', 'bg-red-600/20', 'text-white');
+          studio.aspectRatio = btn.getAttribute('data-ratio');
+          updateAspectMask();
+        });
+      });
+
+      document.getElementById('chk-mask').addEventListener('change', e => {
+        studio.showMask = e.target.checked;
+        updateAspectMask();
+      });
+
+      document.getElementById('sel-video-duration').addEventListener('change', e => {
+        studio.duration = parseFloat(e.target.value);
+      });
+      document.getElementById('sel-video-fps').addEventListener('change', e => {
+        studio.fps = parseInt(e.target.value);
+      });
+
+      // Sequencer timeline
+      const btnSeqPlay = document.getElementById('btn-seq-play');
+      const seqPlayIcon = document.getElementById('seq-play-icon');
+      btnSeqPlay.addEventListener('click', () => {
+        studio.isPlaying = !studio.isPlaying;
+        seqPlayIcon.className = studio.isPlaying ? 'fa-solid fa-pause text-xs' : 'fa-solid fa-play text-xs';
+      });
+
+      const scrubber = document.getElementById('seq-scrubber');
+      scrubber.addEventListener('input', e => {
+        isScrubbing = true;
+        const normalized = parseInt(e.target.value) / 1000;
+        studio.time = normalized * studio.duration;
+        applyMotionFrame(normalized);
+        document.getElementById('seq-timecode').textContent = studio.time.toFixed(2) + 's';
+      });
+      scrubber.addEventListener('change', () => { isScrubbing = false; });
+
+      // Speed Buttons
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            b.classList.remove('bg-red-600/40', 'border', 'border-red-500/40', 'text-white');
+            b.classList.add('bg-slate-800', 'text-slate-300');
+          });
+          btn.classList.add('bg-red-600/40', 'border', 'border-red-500/40', 'text-white');
+          studio.playSpeed = parseFloat(btn.getAttribute('data-speed'));
+        });
+      });
+
+      // Camera views
+      document.querySelectorAll('.cam-angle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.cam-angle-btn').forEach(b => {
+            b.classList.remove('text-white', 'bg-red-600/30', 'border', 'border-red-500/40');
+            b.classList.add('text-slate-300');
+          });
+          btn.classList.add('text-white', 'bg-red-600/30', 'border', 'border-red-500/40');
+          setCameraAngle(btn.getAttribute('data-cam'));
+        });
+      });
+      document.getElementById('btn-cam-reset').addEventListener('click', () => setCameraAngle('iso'));
+
+      // Preset Logo Buttons
+      document.querySelectorAll('.preset-logo-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.preset-logo-btn').forEach(b => {
+            b.classList.remove('border-red-500/50', 'bg-red-600/20', 'text-white');
+            b.classList.add('border-slate-800', 'bg-slate-900/60', 'text-slate-300');
+          });
+          btn.classList.add('border-red-500/50', 'bg-red-600/20', 'text-white');
+          const key = btn.getAttribute('data-preset');
+          if (PRESET_SVGS[key]) {
+            studio.rawSvg = PRESET_SVGS[key];
+            document.getElementById('svg-raw-input').value = studio.rawSvg;
+            rebuild3DModel();
+            showToast(`Loaded ${key.toUpperCase()} logo`);
+          }
+        });
+      });
+
+      // File Drag & Drop
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('border-red-500'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-red-500'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('border-red-500');
+        if (e.dataTransfer.files.length) handleCustomSvgFile(e.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleCustomSvgFile(e.target.files[0]);
+      });
+
+      // Raw SVG Editor Modal
+      const svgModal = document.getElementById('svg-editor-modal');
+      const svgInput = document.getElementById('svg-raw-input');
+      svgInput.value = studio.rawSvg;
+
+      document.getElementById('btn-toggle-editor').addEventListener('click', () => {
+        svgInput.value = studio.rawSvg;
+        svgModal.classList.remove('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-close-svg-modal').addEventListener('click', () => {
+        svgModal.classList.add('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-reset-svg').addEventListener('click', () => {
+        svgInput.value = PRESET_SVGS.media;
+      });
+      document.getElementById('btn-compile-svg').addEventListener('click', () => {
+        const val = svgInput.value.trim();
+        if (val) {
+          studio.rawSvg = val;
+          rebuild3DModel();
+          svgModal.classList.add('opacity-0', 'pointer-events-none');
+          showToast('Updated 3D model with custom SVG markup!');
+        }
+      });
+
+      // Side panel toggle
+      const dock = document.getElementById('studio-dock');
+      document.getElementById('btn-toggle-panel').addEventListener('click', () => {
+        dock.classList.toggle('translate-x-full');
+        dock.classList.toggle('opacity-0');
+      });
+
+      // Export Buttons
+      document.getElementById('btn-start-record').addEventListener('click', recordCinematicVideo);
+      document.getElementById('btn-quick-record-modal').addEventListener('click', () => {
+        // Switch to export tab and start recording
+        document.querySelector('[data-tab="tab-export"]').click();
+        recordCinematicVideo();
+      });
+      document.getElementById('btn-snap-png').addEventListener('click', exportPNGSnapshot);
+      document.getElementById('btn-export-gltf').addEventListener('click', exportGLTFModel);
+      document.getElementById('btn-copy-embed').addEventListener('click', copyEmbedSnippet);
+    }
+
+    function applyPbrPreset(key) {
+      switch (key) {
+        case 'crimson-satin':
+          studio.faceColor = '#ff1e1e';
+          studio.sideColor = '#660404';
+          studio.roughness = 0.22;
+          studio.metalness = 0.45;
+          studio.clearcoat = 0.70;
+          studio.transmission = 0.0;
+          studio.emissiveIntensity = 0.10;
+          break;
+        case 'brushed-gold':
+          studio.faceColor = '#fbbf24';
+          studio.sideColor = '#92400e';
+          studio.roughness = 0.18;
+          studio.metalness = 0.92;
+          studio.clearcoat = 0.85;
+          studio.transmission = 0.0;
+          studio.emissiveIntensity = 0.04;
+          break;
+        case 'frosted-glass':
+          studio.faceColor = '#bae6fd';
+          studio.sideColor = '#0284c7';
+          studio.roughness = 0.20;
+          studio.metalness = 0.05;
+          studio.clearcoat = 1.0;
+          studio.transmission = 0.85;
+          studio.ior = 1.52;
+          studio.emissiveIntensity = 0.0;
+          break;
+        case 'mirror-chrome':
+          studio.faceColor = '#f1f5f9';
+          studio.sideColor = '#94a3b8';
+          studio.roughness = 0.05;
+          studio.metalness = 0.98;
+          studio.clearcoat = 1.0;
+          studio.transmission = 0.0;
+          studio.emissiveIntensity = 0.0;
+          break;
+        case 'neon-holo':
+          studio.faceColor = '#06b6d4';
+          studio.sideColor = '#083344';
+          studio.roughness = 0.12;
+          studio.metalness = 0.50;
+          studio.clearcoat = 0.90;
+          studio.transmission = 0.0;
+          studio.emissiveIntensity = 0.45;
+          break;
+        case 'matte-carbon':
+          studio.faceColor = '#1e293b';
+          studio.sideColor = '#0f172a';
+          studio.roughness = 0.40;
+          studio.metalness = 0.20;
+          studio.clearcoat = 0.25;
+          studio.transmission = 0.0;
+          studio.emissiveIntensity = 0.0;
+          break;
+      }
+
+      // Sync form sliders
+      document.getElementById('col-face').value = studio.faceColor;
+      document.getElementById('col-sides').value = studio.sideColor;
+      document.getElementById('sl-rough').value = studio.roughness;
+      document.getElementById('lbl-rough').textContent = studio.roughness.toFixed(2);
+      document.getElementById('sl-metal').value = studio.metalness;
+      document.getElementById('lbl-metal').textContent = studio.metalness.toFixed(2);
+      document.getElementById('sl-clearcoat').value = studio.clearcoat;
+      document.getElementById('lbl-clearcoat').textContent = studio.clearcoat.toFixed(2);
+      document.getElementById('sl-trans').value = studio.transmission;
+      document.getElementById('lbl-trans').textContent = studio.transmission.toFixed(2);
+      document.getElementById('sl-emissive').value = studio.emissiveIntensity;
+      document.getElementById('lbl-emissive').textContent = studio.emissiveIntensity.toFixed(2);
+
+      updateMaterials();
+      showToast(`Applied preset: ${key}`);
+    }
+
+    function applyLightingRig(rig) {
+      switch (rig) {
+        case 'classic-3point':
+          keyLight.color.set('#ffffff'); keyLight.position.set(180, 240, 280);
+          rimLight.color.set('#ffffff'); rimLight.position.set(0, 260, -260);
+          fillLight.color.set('#ff6655'); fillLight.position.set(-240, 100, 200);
+          ambientLight.color.set('#ffffff');
+          break;
+        case 'cyber-duo':
+          keyLight.color.set('#06b6d4'); keyLight.position.set(220, 180, 220);
+          rimLight.color.set('#f43f5e'); rimLight.position.set(-200, 220, -220);
+          fillLight.color.set('#3b82f6');
+          ambientLight.color.set('#0f172a');
+          break;
+        case 'film-noir':
+          keyLight.color.set('#ffffff'); keyLight.position.set(280, 300, 200);
+          rimLight.color.set('#94a3b8'); rimLight.position.set(0, 300, -300);
+          fillLight.color.set('#1e293b');
+          ambientLight.color.set('#050505');
+          break;
+        case 'sunset-flare':
+          keyLight.color.set('#f97316'); keyLight.position.set(220, 120, 260);
+          rimLight.color.set('#fbbf24'); rimLight.position.set(0, 200, -240);
+          fillLight.color.set('#7c2d12');
+          ambientLight.color.set('#451a03');
+          break;
+      }
+      showToast(`Applied lighting rig: ${rig}`);
+    }
+
+    function linkSlider(id, labelId, suffix, callback) {
+      const sl = document.getElementById(id);
+      const lbl = document.getElementById(labelId);
+      sl.addEventListener('input', e => {
+        lbl.textContent = e.target.value + suffix;
+        callback(e.target.value);
+      });
+    }
+
+    function handleCustomSvgFile(file) {
+      if (!file.name.toLowerCase().endsWith('.svg')) {
+        showToast('Please select a valid .svg vector file', true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        studio.rawSvg = e.target.result;
+        document.getElementById('svg-raw-input').value = studio.rawSvg;
+        rebuild3DModel();
+        showToast(`Loaded ${file.name}!`);
+      };
+      reader.readAsText(file);
+    }
+
+    function setCameraAngle(view) {
+      switch (view) {
+        case 'front':
+          camera.position.set(0, 0, 420);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'iso':
+          camera.position.set(130, 80, 400);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'top':
+          camera.position.set(0, 460, 5);
+          controls.target.set(0, 0, 0);
+          break;
+        case 'side':
+          camera.position.set(440, 20, 0);
+          controls.target.set(0, 0, 0);
+          break;
+      }
+      controls.update();
+    }
+
+    function updatePolycountStats() {
+      let triangles = 0;
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.geometry) {
+          if (obj.geometry.index) {
+            triangles += obj.geometry.index.count / 3;
+          } else if (obj.geometry.attributes.position) {
+            triangles += obj.geometry.attributes.position.count / 3;
+          }
+        }
+      });
+      document.getElementById('stat-polys').textContent = Math.round(triangles).toLocaleString();
+      document.getElementById('stat-letters').textContent = letterMeshes.length;
+    }
+
+    function onMouseMove(e) {
+      studio.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
+      studio.mouse.targetY = (e.clientY / window.innerHeight) * 2 - 1;
+    }
+
+    function onTouchMove(e) {
+      if (e.touches.length > 0) {
+        studio.mouse.targetX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+        studio.mouse.targetY = (e.touches[0].clientY / window.innerHeight) * 2 - 1;
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateAspectMask();
+    }
+
+    function showToast(msg, isErr = false) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      const icon = document.getElementById('toast-icon');
+
+      text.textContent = msg;
+      icon.className = isErr ? 'fa-solid fa-triangle-exclamation text-amber-400' : 'fa-solid fa-circle-check text-red-400';
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+      }, 3200);
+    }
+
+    // Initialize application on load
+    window.onload = function () {
+      initEngine();
+      setupEventListeners();
+      renderLoop(0);
+    };
+  </script>
+</body>
+</html>

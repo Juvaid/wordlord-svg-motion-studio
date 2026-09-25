@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { ThreePart, ThreeStudioConfig, ThreeMotionMode } from '../types/threeStudio';
+import { ThreePart, ThreeStudioConfig, ThreeMotionMode, ProceduralTextureType } from '../types/threeStudio';
 
 /**
  * Procedural Fluted Normal Bump Map Generator
@@ -31,6 +31,113 @@ export function generateFlutedTexture(): THREE.CanvasTexture {
   tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(4, 4);
   return tex;
+}
+
+/**
+ * Multi-type Procedural Texture Generator (Fluted, Brushed, Carbon, Diamond, Noise)
+ */
+export function generateProceduralTexture(type: ProceduralTextureType): THREE.CanvasTexture | null {
+  if (type === 'none') return null;
+  if (type === 'fluted') return generateFlutedTexture();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  if (type === 'brushed') {
+    // 512x512 micro-anisotropic horizontal brushed metal streaks
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 5000; i++) {
+      const y = Math.random() * 512;
+      const len = 40 + Math.random() * 140;
+      const x = Math.random() * 512;
+      const alpha = 0.05 + Math.random() * 0.1;
+      ctx.strokeStyle = Math.random() > 0.5 ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
+      ctx.lineWidth = 0.5 + Math.random() * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y);
+      ctx.stroke();
+    }
+  } else if (type === 'carbon') {
+    // 512x512 diagonal cross-hatch carbon fiber weave
+    ctx.fillStyle = '#111318';
+    ctx.fillRect(0, 0, 512, 512);
+    const size = 16;
+    for (let x = 0; x < 512; x += size) {
+      for (let y = 0; y < 512; y += size) {
+        const isAlt = ((x / size) + (y / size)) % 2 === 0;
+        ctx.fillStyle = isAlt ? '#252b38' : '#141822';
+        ctx.fillRect(x, y, size, size);
+        ctx.strokeStyle = isAlt ? '#3b4356' : '#0c0e14';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, size, size);
+      }
+    }
+  } else if (type === 'diamond') {
+    // 512x512 diamond knurl grid
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.strokeStyle = '#a0a0ff';
+    ctx.lineWidth = 1.5;
+    const step = 24;
+    for (let i = -512; i < 1024; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + 512, 512);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(i, 512);
+      ctx.lineTo(i + 512, 0);
+      ctx.stroke();
+    }
+  } else if (type === 'noise') {
+    // Per-pixel bump noise
+    const imgData = ctx.createImageData(512, 512);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const v = 110 + Math.floor(Math.random() * 90);
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  return tex;
+}
+
+/**
+ * Highlight a clicked mesh momentarily with a clean white specular flash
+ */
+export function flashMeshHighlight(mesh: THREE.Mesh): void {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  const faceMat = materials[0] as THREE.MeshPhysicalMaterial;
+  if (!faceMat) return;
+
+  const origColor = faceMat.color.clone();
+  faceMat.color.set('#ffffff');
+  if (faceMat.emissive) {
+    faceMat.emissive.set('#ff4e2e');
+    faceMat.emissiveIntensity = 0.6;
+  }
+
+  setTimeout(() => {
+    faceMat.color.copy(origColor);
+    if (faceMat.emissive) {
+      faceMat.emissive.set('#000000');
+      faceMat.emissiveIntensity = 0;
+    }
+  }, 200);
 }
 
 /**
@@ -105,7 +212,7 @@ export function parseSvgIntoParts(svgString: string, faceColor: string, sideColo
       roughness: 0.22,
       emissive: '#000000',
       transmission: 0.0,
-      visible: true,
+      visible: !isBgCandidate,
       isolated: false,
       isBackground: isBgCandidate
     });
@@ -117,83 +224,117 @@ export function parseSvgIntoParts(svgString: string, faceColor: string, sideColo
 }
 
 /**
- * Build Extruded Three.js Meshes from parts with normalized coordinates and dual materials
+ * Filter out full-bleed bounding background boxes from SVG string
+ */
+export function cleanSvgArtboardBackground(svgString: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgString, 'image/svg+xml');
+  const svgRoot = doc.querySelector('svg');
+  if (!svgRoot) return svgString;
+
+  let vbWidth = 500, vbHeight = 150;
+  if (svgRoot.hasAttribute('viewBox')) {
+    const rawVb = svgRoot.getAttribute('viewBox')?.split(/[\s,]+/).filter(Boolean) || [];
+    if (rawVb.length === 4) {
+      vbWidth = parseFloat(rawVb[2]);
+      vbHeight = parseFloat(rawVb[3]);
+    }
+  }
+
+  const rects = svgRoot.querySelectorAll('rect');
+  rects.forEach(rect => {
+    const w = parseFloat(rect.getAttribute('width') || '0');
+    const h = parseFloat(rect.getAttribute('height') || '0');
+    if (w >= vbWidth * 0.85 && h >= vbHeight * 0.85) {
+      rect.remove();
+    }
+  });
+
+  return new XMLSerializer().serializeToString(doc);
+}
+
+/**
+ * Build Extruded Meshes from parts with exact coordinate normalization
  */
 export function buildExtrudedParts(
   logoGroup: THREE.Group,
   parts: ThreePart[],
   config: ThreeStudioConfig,
-  flutedTexture: THREE.Texture | null
+  proceduralTexture: THREE.Texture | null
 ): THREE.Mesh[] {
-  // Clear old meshes cleanly
+  // Clear previous children cleanly
   while (logoGroup.children.length > 0) {
-    const obj = logoGroup.children[0] as THREE.Mesh;
-    if (obj.geometry) obj.geometry.dispose();
-    if (Array.isArray(obj.material)) {
-      obj.material.forEach(m => m.dispose());
-    } else if (obj.material) {
-      obj.material.dispose();
+    const child = logoGroup.children[0] as THREE.Mesh;
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach(m => m.dispose());
+      } else {
+        child.material.dispose();
+      }
     }
-    logoGroup.remove(obj);
+    logoGroup.remove(child);
   }
 
   const meshes: THREE.Mesh[] = [];
   const activeParts = parts.filter(p => p.visible);
   if (activeParts.length === 0) return meshes;
 
-  // Build composite SVG markup for outer perimeters & counter holes
-  let combinedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">`;
-  activeParts.forEach(p => {
-    combinedSvg += `<path d="${p.pathD}" fill="${p.faceColor}" />`;
-  });
-  combinedSvg += `</svg>`;
-
-  const loader = new SVGLoader();
-  const svgData = loader.parse(combinedSvg);
-
-  // 1. Calculate compound 2D bounding box across all vector shapes
+  // Global normalization box
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const parsedItems: { path: any; shapes: THREE.Shape[]; partRef: ThreePart; pIdx: number }[] = [];
 
-  svgData.paths.forEach((path, pIdx) => {
-    const partRef = activeParts[pIdx];
-    const shapes = SVGLoader.createShapes(path);
-    shapes.forEach(shape => {
-      const points = shape.getPoints();
-      points.forEach(pt => {
-        if (pt.x < minX) minX = pt.x;
-        if (pt.x > maxX) maxX = pt.x;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.y > maxY) maxY = pt.y;
+  const parsedShapesList: { shapes: THREE.Shape[]; partRef: ThreePart; pIdx: number }[] = [];
+
+  activeParts.forEach((part, pIdx) => {
+    const loader = new SVGLoader();
+    const wrappedSvg = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${part.pathD}" /></svg>`;
+    const svgData = loader.parse(wrappedSvg);
+
+    svgData.paths.forEach(path => {
+      const shapes = SVGLoader.createShapes(path);
+      shapes.forEach(shape => {
+        const points = shape.getPoints();
+        points.forEach(pt => {
+          if (pt.x < minX) minX = pt.x;
+          if (pt.y < minY) minY = pt.y;
+          if (pt.x > maxX) maxX = pt.x;
+          if (pt.y > maxY) maxY = pt.y;
+        });
       });
+      parsedShapesList.push({ shapes, partRef: part, pIdx });
     });
-    parsedItems.push({ path, shapes, partRef, pIdx });
   });
 
-  const rawWidth = Math.max(0.01, maxX - minX);
-  const rawHeight = Math.max(0.01, maxY - minY);
-  const rawMaxDim = Math.max(rawWidth, rawHeight);
+  const svgWidth = Math.max(1, maxX - minX);
+  const svgHeight = Math.max(1, maxY - minY);
+  const centerX = minX + svgWidth / 2;
+  const centerY = minY + svgHeight / 2;
 
-  // Normalized visual coordinate scale factor (aims for ~280 units design canvas)
-  const targetDim = 280;
-  const normScale = rawMaxDim > 0 ? targetDim / rawMaxDim : 1.0;
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+  // Scale normalization: Fit inside standard 280-unit viewing box
+  const targetDesignSpan = 280;
+  const maxSpan = Math.max(svgWidth, svgHeight);
+  const normScale = maxSpan > 0 ? (targetDesignSpan / maxSpan) : 1.0;
 
-  parsedItems.forEach(({ shapes, partRef, pIdx }) => {
-    const totalDepth = Math.max(2, config.depth + (partRef ? partRef.depthOffset : 0));
+  parsedShapesList.forEach(({ shapes, partRef, pIdx }) => {
+    const totalDepth = Math.max(2, (config.depth + (partRef ? partRef.depthOffset : 0)));
+    const bevelThickness = Math.max(0, config.bevelThickness * (partRef ? partRef.bevelScale : 1.0));
+    const bevelSize = Math.max(0, config.bevelSize * (partRef ? partRef.bevelScale : 1.0));
 
     const extrudeSettings: THREE.ExtrudeGeometryOptions = {
       depth: totalDepth,
-      bevelEnabled: config.bevelThickness > 0 || config.bevelSize > 0,
-      bevelThickness: config.bevelThickness * (partRef ? partRef.bevelScale : 1.0),
-      bevelSize: config.bevelSize * (partRef ? partRef.bevelScale : 1.0),
-      bevelSegments: config.bevelSegments,
-      curveSegments: 16
+      bevelEnabled: bevelThickness > 0 || bevelSize > 0,
+      bevelThickness: bevelThickness,
+      bevelSize: bevelSize,
+      bevelOffset: 0,
+      bevelSegments: Math.max(1, config.bevelSegments),
+      curveSegments: 5,
+      steps: 1
     };
 
     const faceColor = partRef ? partRef.faceColor : config.faceColor;
     const sideColor = partRef ? partRef.sideColor : config.sideColor;
+
+    const hasProcedural = config.flutingEnabled || (config.proceduralTexture && config.proceduralTexture !== 'none');
 
     const faceMat = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(faceColor),
@@ -202,8 +343,8 @@ export function buildExtrudedParts(
       clearcoat: config.clearcoat,
       clearcoatRoughness: 0.15,
       transmission: partRef ? partRef.transmission : config.transmission,
-      bumpMap: config.flutingEnabled ? flutedTexture : null,
-      bumpScale: config.flutingEnabled ? config.fluteScale : 0.0,
+      bumpMap: hasProcedural ? proceduralTexture : null,
+      bumpScale: hasProcedural ? (config.fluteScale || 0.45) : 0.0,
       ior: 1.5,
       side: THREE.DoubleSide
     });
