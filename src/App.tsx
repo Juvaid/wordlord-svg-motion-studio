@@ -235,18 +235,21 @@ export const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2000);
   }, []);
 
-  // History & Non-Destructive State Engine
+  // History & Non-Destructive State Engine (60-step Visual Time Travel)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const undoStackRef = useRef<ProjectStateSnapshot[]>([]);
   const redoStackRef = useRef<ProjectStateSnapshot[]>([]);
+  const [undoStackList, setUndoStackList] = useState<ProjectStateSnapshot[]>([]);
+  const [redoStackList, setRedoStackList] = useState<ProjectStateSnapshot[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const isRestoringRef = useRef(false);
 
-  const createStateSnapshot = useCallback((): ProjectStateSnapshot => {
+  const createStateSnapshot = useCallback((actionName?: string): ProjectStateSnapshot => {
     return {
       version: '5.0',
       timestamp: Date.now(),
+      actionName: actionName || 'State Modification',
       studioMode,
       activeMotionId,
       activeStyleId,
@@ -305,43 +308,96 @@ export const App: React.FC = () => {
     }, 50);
   }, []);
 
-  const pushUndoSnapshot = useCallback(() => {
+  const pushUndoSnapshot = useCallback((actionName = 'Edit Parameter') => {
     if (isRestoringRef.current) return;
-    const snap = createStateSnapshot();
+    const snap = createStateSnapshot(actionName);
     undoStackRef.current.push(snap);
-    if (undoStackRef.current.length > 40) {
+    if (undoStackRef.current.length > 60) {
       undoStackRef.current.shift();
     }
     redoStackRef.current = [];
+    setUndoStackList([...undoStackRef.current]);
+    setRedoStackList([]);
     setCanUndo(true);
     setCanRedo(false);
   }, [createStateSnapshot]);
 
   const handleUndo = useCallback(() => {
     if (undoStackRef.current.length === 0) return;
-    const currentSnap = createStateSnapshot();
+    const currentSnap = createStateSnapshot('Pre-Undo State');
     redoStackRef.current.push(currentSnap);
 
     const prevSnap = undoStackRef.current.pop()!;
     applySnapshot(prevSnap);
 
+    setUndoStackList([...undoStackRef.current]);
+    setRedoStackList([...redoStackRef.current]);
     setCanUndo(undoStackRef.current.length > 0);
     setCanRedo(true);
-    showToast('Undo change');
+    showToast(`Undo: ${prevSnap.actionName || 'Change'}`);
   }, [applySnapshot, createStateSnapshot, showToast]);
 
   const handleRedo = useCallback(() => {
     if (redoStackRef.current.length === 0) return;
-    const currentSnap = createStateSnapshot();
+    const currentSnap = createStateSnapshot('Pre-Redo State');
     undoStackRef.current.push(currentSnap);
 
     const nextSnap = redoStackRef.current.pop()!;
     applySnapshot(nextSnap);
 
+    setUndoStackList([...undoStackRef.current]);
+    setRedoStackList([...redoStackRef.current]);
     setCanUndo(true);
     setCanRedo(redoStackRef.current.length > 0);
-    showToast('Redo change');
+    showToast(`Redo: ${nextSnap.actionName || 'Change'}`);
   }, [applySnapshot, createStateSnapshot, showToast]);
+
+  const handleJumpToUndoStep = useCallback((index: number) => {
+    if (index < 0 || index >= undoStackRef.current.length) return;
+    const currentSnap = createStateSnapshot('Pre-Jump State');
+
+    // Move steps beyond index into redoStack in reverse order
+    const discarded = undoStackRef.current.splice(index + 1);
+    redoStackRef.current = [currentSnap, ...discarded.reverse(), ...redoStackRef.current];
+
+    const targetSnap = undoStackRef.current[index];
+    undoStackRef.current.splice(index, 1);
+
+    applySnapshot(targetSnap);
+
+    setUndoStackList([...undoStackRef.current]);
+    setRedoStackList([...redoStackRef.current]);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+    showToast(`Restored: ${targetSnap.actionName || `Step #${index + 1}`}`);
+  }, [applySnapshot, createStateSnapshot, showToast]);
+
+  const handleJumpToRedoStep = useCallback((index: number) => {
+    if (index < 0 || index >= redoStackRef.current.length) return;
+    const currentSnap = createStateSnapshot('Pre-Jump State');
+
+    const toRestore = redoStackRef.current.splice(0, index + 1);
+    const targetSnap = toRestore.pop()!;
+
+    undoStackRef.current.push(currentSnap, ...toRestore);
+    applySnapshot(targetSnap);
+
+    setUndoStackList([...undoStackRef.current]);
+    setRedoStackList([...redoStackRef.current]);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+    showToast(`Redone: ${targetSnap.actionName || 'Step'}`);
+  }, [applySnapshot, createStateSnapshot, showToast]);
+
+  const handleClearHistory = useCallback(() => {
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    setUndoStackList([]);
+    setRedoStackList([]);
+    setCanUndo(false);
+    setCanRedo(false);
+    showToast('History stack cleared');
+  }, [showToast]);
 
   // Initial load from local storage
   useEffect(() => {
@@ -382,7 +438,7 @@ export const App: React.FC = () => {
 
   const handleImportProject = useCallback(async (file: File) => {
     try {
-      pushUndoSnapshot();
+      pushUndoSnapshot(`Import: ${file.name}`);
       const snap = await importProjectFromFile(file);
       applySnapshot(snap);
       showToast(`Imported ${file.name}`);
@@ -396,9 +452,9 @@ export const App: React.FC = () => {
   }, []);
 
   const handleSelect3DAsset = useCallback((assetId: string) => {
-    pushUndoSnapshot();
     const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
     if (!preset) return;
+    pushUndoSnapshot(`Asset: ${preset.name}`);
     const newParts = parseSvgIntoParts(preset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
     setThreeConfig(prev => ({ 
@@ -414,9 +470,9 @@ export const App: React.FC = () => {
   }, [threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
 
   const handleSelect3DPbrPreset = useCallback((presetId: PbrPresetId) => {
-    pushUndoSnapshot();
     const pbr = PBR_PRESETS.find(p => p.id === presetId);
     if (!pbr) return;
+    pushUndoSnapshot(`PBR: ${pbr.name}`);
     setThreeConfig(prev => ({
       ...prev,
       activePbrId: presetId,
@@ -444,9 +500,9 @@ export const App: React.FC = () => {
   }, [pushUndoSnapshot, showToast]);
 
   const handleSelect3DLightingRig = useCallback((rigId: LightingRigId) => {
-    pushUndoSnapshot();
     const rig = LIGHTING_RIGS.find(r => r.id === rigId);
     if (!rig) return;
+    pushUndoSnapshot(`Lighting: ${rig.name}`);
     setThreeConfig(prev => ({
       ...prev,
       activeRigId: rigId,
@@ -477,7 +533,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleResetParts = useCallback(() => {
-    pushUndoSnapshot();
+    pushUndoSnapshot('Reset Parts Offsets');
     const asset = THREE_ASSET_PRESETS.find(a => a.id === threeConfig.activeAssetId) || THREE_ASSET_PRESETS[0];
     const newParts = parseSvgIntoParts(asset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
@@ -485,7 +541,7 @@ export const App: React.FC = () => {
   }, [threeConfig.activeAssetId, threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
 
   const handleResetTransforms = useCallback(() => {
-    pushUndoSnapshot();
+    pushUndoSnapshot('Reset 3D Transforms');
     setThreeConfig(prev => ({
       ...prev,
       posX: 0,
@@ -503,10 +559,10 @@ export const App: React.FC = () => {
   }, [pushUndoSnapshot, showToast]);
 
   const handleImportCustomSvg = useCallback((svgString: string, name?: string) => {
-    pushUndoSnapshot();
+    const assignedName = name || 'Imported Custom Vector Mark';
+    pushUndoSnapshot(`Import SVG: ${assignedName}`);
     const newParts = parseSvgIntoParts(svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
-    const assignedName = name || 'Imported Custom Vector Mark';
     setThreeConfig(prev => ({ 
       ...prev, 
       activeAssetId: 'custom',
@@ -1012,7 +1068,7 @@ export const App: React.FC = () => {
 
   // Handle Preset Switching
   const handleSelectMotion = (m: MotionPreset) => {
-    pushUndoSnapshot();
+    pushUndoSnapshot(`Motion: ${m.name}`);
     setActiveMotionId(m.id);
     setDuration(m.defaultDuration);
     setStagger(m.defaultStagger);
@@ -1031,7 +1087,7 @@ export const App: React.FC = () => {
   };
 
   const handleSelectStyle = (s: StylePreset) => {
-    pushUndoSnapshot();
+    pushUndoSnapshot(`Style: ${s.name}`);
     setActiveStyleId(s.id);
     setColors({
       word: s.fillWord,
@@ -1070,8 +1126,13 @@ export const App: React.FC = () => {
         activeStyleName={activeStyle.name}
         canUndo={canUndo}
         canRedo={canRedo}
+        undoStack={undoStackList}
+        redoStack={redoStackList}
         onUndo={handleUndo}
         onRedo={handleRedo}
+        onJumpToUndoStep={handleJumpToUndoStep}
+        onJumpToRedoStep={handleJumpToRedoStep}
+        onClearHistory={handleClearHistory}
         onSaveProject={handleSaveProject}
         onExportProject={handleExportProject}
         onImportProject={handleImportProject}

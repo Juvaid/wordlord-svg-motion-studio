@@ -19,7 +19,7 @@
 ## Durable Architectural Rules
 1. **Zero Emojis**: Always use `lucide-react` vector SVG icons. Never insert unicode emojis in UI, headers, tooltips, or buttons.
 2. **No Nested Cards**: Panels use clean horizontal dividers (`border-b border-[#1f2430]`), subtle background contrast, and full-width content blocks instead of floating boxes with competing borders.
-3. **Non-Destructive State**: All destructive actions (preset changes, resets, imports) push snapshots to `undoStackRef`. Keyboard shortcuts `Cmd+Z`, `Cmd+Shift+Z`, `Cmd+S`, `Tab` are supported.
+3. **Non-Destructive State**: All destructive actions push snapshots to `undoStackRef` (up to 60 steps). Named action descriptions and TopNavbar visual history flyout dropdown support 1-click time-travel jumping. Shortcuts `Cmd+Z`, `Cmd+Shift+Z`, `Cmd+S`, `Tab` are supported.
 4. **Clean Builds**: `npx tsc --noEmit` must pass with 0 errors before finishing.
 
 ## Context Pointers (Progressive Disclosure)

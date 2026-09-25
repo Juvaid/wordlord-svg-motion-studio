@@ -15,6 +15,7 @@ import {
   Download,
   Undo2,
   Redo2,
+  History,
   Save,
   FileDown,
   FileUp,
@@ -23,6 +24,8 @@ import {
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
 import { getMotionIcon } from '../utils/presetIcons';
+import { HistoryDropdown } from './HistoryDropdown';
+import { ProjectStateSnapshot } from '../utils/projectState';
 
 interface TopNavbarProps {
   studioMode: '2d' | '3d' | 'motion-graphics';
@@ -34,8 +37,13 @@ interface TopNavbarProps {
   activeStyleName: string;
   canUndo?: boolean;
   canRedo?: boolean;
+  undoStack?: ProjectStateSnapshot[];
+  redoStack?: ProjectStateSnapshot[];
   onUndo?: () => void;
   onRedo?: () => void;
+  onJumpToUndoStep?: (index: number) => void;
+  onJumpToRedoStep?: (index: number) => void;
+  onClearHistory?: () => void;
   onSaveProject?: () => void;
   onExportProject?: () => void;
   onImportProject?: (file: File) => void;
@@ -61,8 +69,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   activeStyleName,
   canUndo = false,
   canRedo = false,
+  undoStack = [],
+  redoStack = [],
   onUndo,
   onRedo,
+  onJumpToUndoStep,
+  onJumpToRedoStep,
+  onClearHistory,
   onSaveProject,
   onExportProject,
   onImportProject,
@@ -77,6 +90,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onOpenVideoExport,
   onOpen3DExport
 }) => {
+  const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+
   return (
     <header className="h-12 bg-[#0c0e14] border-b border-[#1f2430] flex items-center justify-between px-3.5 z-40 select-none">
       {/* Brand Identity */}
@@ -152,8 +167,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           </button>
         </div>
 
-        {/* Undo / Redo History Buttons */}
-        <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+        {/* Undo / Redo History Buttons + History Stack Flyout */}
+        <div className="relative flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
           <Tooltip content="Undo change" shortcut="Cmd+Z" side="bottom">
             <button
               onClick={onUndo}
@@ -182,6 +197,35 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               <Redo2 size={13} />
             </button>
           </Tooltip>
+
+          <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+
+          {/* History Stack Trigger */}
+          <Tooltip content="History Stack" side="bottom">
+            <button
+              onClick={() => setIsHistoryOpen(h => !h)}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-mono transition-all ${
+                isHistoryOpen
+                  ? 'bg-[#ff4e2e] text-white font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="View History Stack"
+            >
+              <History size={12} />
+              <span>{undoStack.length}</span>
+            </button>
+          </Tooltip>
+
+          {/* Floating History Dropdown */}
+          <HistoryDropdown
+            isOpen={isHistoryOpen}
+            onClose={() => setIsHistoryOpen(false)}
+            undoStack={undoStack}
+            redoStack={redoStack}
+            onJumpToUndoStep={(idx) => onJumpToUndoStep?.(idx)}
+            onJumpToRedoStep={(idx) => onJumpToRedoStep?.(idx)}
+            onClearHistory={() => onClearHistory?.()}
+          />
         </div>
 
         {/* Project State Actions: Save Snapshot, Export JSON, Import JSON */}

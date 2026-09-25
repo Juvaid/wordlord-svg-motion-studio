@@ -7,7 +7,7 @@
   - Viewport navigation stabilization: Figma/Blender-style `V` (Select) and `H` (Hand) modes, pointer capture, and 1-click Reset (`Cmd+0`).
   - Gyro cursor tracking disabled by default in 3D studio, eliminating accidental cursor follow.
   - 6 Standalone HTML prototypes preserved under `prototypes/`.
-  - Non-destructive history engine (undo/redo up to 40 steps, `Cmd+Z` / `Cmd+Shift+Z`).
+  - Visual History Stack & Time Travel (60-step history with human-readable action labels, TopNavbar history flyout dropdown, 1-click step jumping, and clear stack controls).
   - Project JSON import/export and debounced auto-save to `localStorage`.
   - Collective Asset Grouping with lock/visibility toggles, editable group name, Blender N-panel transforms (`Pos`, `Rot`, `Scale`, `Uniform Scale`).
   - Raycast 3D part selection with white flash feedback.
