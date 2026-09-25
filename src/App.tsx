@@ -633,9 +633,18 @@ export const App: React.FC = () => {
       <VideoExportModal
         isOpen={isVideoExportOpen}
         onClose={() => setIsVideoExportOpen(false)}
+        motionId={activeMotion.id}
         motionName={activeMotion.name}
         duration={duration}
         bgGradient={activeStyle.bgGradient}
+        colors={colors}
+        glowRadius={glowRadius}
+        glowIntensity={glowIntensity}
+        geometryMode={geometryMode}
+        strokeWidth={strokeWidth}
+        tiltX={tiltX}
+        tiltY={tiltY}
+        layerVisibility={layerVisibility}
         seekFrame={async (p) => {
           seekToProgress(p, true);
         }}

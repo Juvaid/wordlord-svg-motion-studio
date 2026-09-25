@@ -1,27 +1,58 @@
 import React, { useState } from 'react';
-import { X, Film, Download, Check, RefreshCw, AlertCircle, Play, Sparkles } from 'lucide-react';
+import { X, Film, Download, Check, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 import { renderAnimationToVideo, VideoExportResult } from '../utils/videoExporter';
+import { getMotionIcon } from '../utils/presetIcons';
 
 interface VideoExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  motionId: string;
   motionName: string;
   duration: number;
   bgGradient: string;
+  colors: {
+    word: string;
+    lord: string;
+    ligature: string;
+    media: string;
+  };
+  glowRadius: number;
+  glowIntensity: number;
+  geometryMode: 'fill' | 'stroke' | 'hybrid';
+  strokeWidth: number;
+  tiltX: number;
+  tiltY: number;
+  layerVisibility: {
+    master: boolean;
+    word: boolean;
+    lord: boolean;
+    ligature: boolean;
+    media: boolean;
+    glow: boolean;
+  };
   seekFrame: (p: number) => Promise<void> | void;
 }
 
 export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   isOpen,
   onClose,
+  motionId,
   motionName,
   duration,
   bgGradient,
+  colors,
+  glowRadius,
+  glowIntensity,
+  geometryMode,
+  strokeWidth,
+  tiltX,
+  tiltY,
+  layerVisibility,
   seekFrame
 }) => {
   const [resolution, setResolution] = useState<'1080p' | 'square' | '4k' | '720p'>('1080p');
   const [fps, setFps] = useState<number>(60);
-  const [bgChoice, setBgChoice] = useState<'theme' | 'black' | 'transparent'>('theme');
+  const [bgChoice, setBgChoice] = useState<'theme' | 'black'>('theme');
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -53,9 +84,17 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         fps,
         width: targetRes.width,
         height: targetRes.height,
-        bgColor: bgChoice === 'black' ? '#07080c' : bgChoice === 'transparent' ? 'rgba(0,0,0,0)' : '#07080c',
-        bgGradient: bgChoice === 'theme' ? bgGradient : undefined,
         presetName: motionName,
+        colors,
+        glowRadius,
+        glowIntensity,
+        geometryMode,
+        strokeWidth,
+        tiltX,
+        tiltY,
+        layerVisibility,
+        bgChoice,
+        bgGradient,
         seekFrame,
         onProgress: (p, frame, total) => {
           setProgress(Math.round(p * 100));
@@ -110,15 +149,37 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         {/* Modal Body */}
         <div className="p-5 flex flex-col gap-4">
           
-          {/* Active Preset Summary Banner */}
+          {/* Active Preset & Settings Summary Banner */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-[#121520] border border-[#202534]">
-            <div className="flex flex-col">
-              <span className="text-xs font-display font-bold text-white uppercase">{motionName}</span>
-              <span className="text-[10px] font-mono text-slate-400">Duration: {duration.toFixed(2)}s @ {fps} FPS</span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 rounded bg-black/60 border border-white/10 flex-shrink-0">
+                {getMotionIcon(motionId, 16)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-display font-bold text-white uppercase truncate">
+                  {motionName}
+                </span>
+                <div className="flex items-center gap-2 text-[9.5px] font-mono text-slate-400 mt-0.5">
+                  <span>{duration.toFixed(2)}s @ {fps} FPS</span>
+                  <span>•</span>
+                  <span className="capitalize">{geometryMode}</span>
+                  {tiltX !== 0 || tiltY !== 0 ? (
+                    <>
+                      <span>•</span>
+                      <span>3D ({tiltX}°, {tiltY}°)</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#ff4e2e]/20 text-[#ff4e2e] border border-[#ff4e2e]/30 font-semibold">
-              H.264 MP4 ENGINE
-            </span>
+
+            {/* Active Color Swatches Pill */}
+            <div className="flex items-center gap-1.5 bg-[#0a0c10] border border-white/5 rounded-md px-2 py-1 flex-shrink-0">
+              <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: colors.word }} title="Word Color" />
+              <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: colors.lord }} title="Lord Color" />
+              <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: colors.ligature }} title="Ligature Color" />
+              <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: colors.media }} title="Media Glow Color" />
+            </div>
           </div>
 
           {/* Config Options when not rendering */}
@@ -214,7 +275,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-display font-bold text-white uppercase tracking-wider">
-                  Rendering 60 FPS Video...
+                  Rendering {fps} FPS Video...
                 </span>
                 <span className="text-xs font-mono text-slate-400">
                   Frame {currentFrame} of {totalFrames} ({progress}%)
@@ -228,7 +289,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                 />
               </div>
               <span className="text-[10px] font-mono text-slate-500">
-                Synchronizing frame buffers with hardware acceleration...
+                Baking typography keyframes with hardware acceleration...
               </span>
             </div>
           )}
@@ -253,6 +314,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                   controls
                   autoPlay
                   loop
+                  playsInline
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
