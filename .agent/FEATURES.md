@@ -142,10 +142,28 @@ The Motion Graphics workspace provides an editorial and presentation layout engi
 
 ---
 
-## 6. Animation, Timeline & Keyframing
-
-- **Double-Buffered Sequencer**: High-precision RAF playback synchronized across 2D CSS/DOM and 3D WebGL meshes.
-- **Transport Controls**: Play/Pause (`Space`), Rewind (`Home`), Step Forward/Backward (`←`/`→`), Loop Toggle (`L`).
+## 6. Animation, Multi-Track Timeline & Keyframe Sequencer
+ 
+### 6.1 Unified Multi-Track Architecture
+- **Work Area Loop Brackets (`[`, `]`)**:
+  - Independent In-Point (`[`) and Out-Point (`]`) loop handles draggable on the time ruler.
+  - Constrains continuous loop playback to the defined work area in both 2D and 3D.
+  - 1-click Reset Work Area button and `Option+X` reset.
+- **Interactive Drag-to-Retime Keyframes**:
+  - Keyframe diamonds are fully interactive draggable handles.
+  - Horizontal drag retimes keyframe occurrence with sub-frame precision.
+  - Keyframe selection state with pulsing cyan/crimson ring, timecode readout, and Delete (`Del` / `Backspace`).
+- **Magnetic Playhead Snapping**:
+  - Playhead magnetically snaps to keyframes, In/Out points, and boundary markers when scrubbing within ±1.5%.
+  - High-frequency snap tick audio feedback and visual alignment guide.
+- **Contextual Workspaces Channels**:
+  - **2D Vector Mark**: Master, Word, Lord, Ligature, Media, Volumetric Aura.
+  - **3D Extruded Studio**: 3D Camera & Stage, Word Meshes, Lord Meshes, Tall D Ligature, Media Group, PBR Light Rig & Bloom.
+  - **Motion Graphics Studio**: Bento Shell, Kinetic Word, Kinetic Lord, Monolith D Anchor, Neon Subline Glow, Telemetry Metrics Stagger.
+- **Full NLE Transport Controls**:
+  - Play / Pause (`Space`), Rewind (`Home`), Step Back 1 Frame (`←`), Step Forward 1 Frame (`→`), Jump Prev Keyframe (`J`), Jump Next Keyframe (`Shift+J`), Loop Toggle (`L`), Audio Clicks (`M`).
+  - Timecode & Frame Counter toggle: switch between `00:01.42s` and `FR 85 / 180 (60 FPS)`.
+  - Speed multipliers: `0.25x`, `0.5x`, `1.0x`, `1.5x`, `2.0x`.
 - **Interactive Bézier Curve Editor**: Visual cubic-bezier control point handles (`P1`, `P2`) with instant preset saving.
 - **Effect Stacking**: Combine multiple kinetic effects (Turntable Spin, Harmonic Wave, Light Sweep, Gyro Tilt).
 
