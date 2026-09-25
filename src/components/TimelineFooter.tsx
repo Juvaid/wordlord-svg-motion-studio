@@ -10,7 +10,9 @@ import {
   Volume2, 
   VolumeX,
   Eye,
-  EyeOff
+  EyeOff,
+  RotateCcw,
+  Plus
 } from 'lucide-react';
 import { TimelineTrack } from '../types';
 import { Tooltip } from './Tooltip';
@@ -34,6 +36,9 @@ interface TimelineFooterProps {
   onSpeedChange: (speed: number) => void;
   onSeekProgress: (progress: number) => void;
   onToggleLayerVisibility: (trackId: string) => void;
+  onAddKeyframe?: () => void;
+  onJumpPrevKeyframe?: () => void;
+  onJumpNextKeyframe?: () => void;
   onPlaySound?: (pitch?: number, dur?: number) => void;
 }
 
@@ -56,6 +61,9 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
   onSpeedChange,
   onSeekProgress,
   onToggleLayerVisibility,
+  onAddKeyframe,
+  onJumpPrevKeyframe,
+  onJumpNextKeyframe,
   onPlaySound
 }) => {
   const rulerTrackRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +114,23 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
     }
   }, [isScrubbing, handlePointerMove, handlePointerUp]);
 
+  // Find nearest keyframe across all tracks
+  const nearestKeyframe = React.useMemo(() => {
+    let closestMatch: { kf: { id: string; timeRatio: number; label: string }; diff: number; trackName: string } | null = null;
+    for (const t of tracks) {
+      for (const kf of t.keyframes) {
+        const diff = Math.abs(kf.timeRatio - currentProgress);
+        if (!closestMatch || diff < closestMatch.diff) {
+          closestMatch = { kf, diff, trackName: t.name };
+        }
+      }
+    }
+    if (closestMatch && closestMatch.diff < 0.025) {
+      return closestMatch;
+    }
+    return null;
+  }, [tracks, currentProgress]);
+
   return (
     <footer
       style={{ height: `${height}px` }}
@@ -115,16 +140,29 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
       <div className="h-10 px-3.5 bg-[#0d0f15] border-b border-[#1f2430] flex items-center justify-between gap-4 flex-shrink-0">
         {/* Left Transport Buttons */}
         <div className="flex items-center gap-1.5">
-          <Tooltip content="Jump to Start" shortcut="Home" side="top">
+          {/* Rewind / Reset to 0s */}
+          <Tooltip content="Rewind to 0:00 (Start)" shortcut="Home" side="top">
             <button
               onClick={onJumpStart}
-              aria-label="Jump to Start"
+              aria-label="Rewind to Beginning"
+              className="w-7 h-7 flex items-center justify-center bg-[#151822] hover:bg-[#1f2432] text-slate-300 hover:text-white border border-[#232736] rounded-md transition-colors"
+            >
+              <RotateCcw size={11} />
+            </button>
+          </Tooltip>
+
+          {/* Jump Previous Keyframe */}
+          <Tooltip content="Jump to Previous Keyframe" shortcut="J" side="top">
+            <button
+              onClick={onJumpPrevKeyframe || onJumpStart}
+              aria-label="Previous Keyframe"
               className="w-7 h-7 flex items-center justify-center bg-[#151822] hover:bg-[#1f2432] text-slate-400 hover:text-white border border-[#232736] rounded-md transition-colors"
             >
               <SkipBack size={12} />
             </button>
           </Tooltip>
 
+          {/* Step Back 1 Frame */}
           <Tooltip content="Step Back 1 Frame (1/60s)" shortcut="←" side="top">
             <button
               onClick={onStepBack}
@@ -135,6 +173,7 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
             </button>
           </Tooltip>
 
+          {/* Master Play / Pause Button */}
           <Tooltip content={isPlaying ? "Pause Sequence" : "Play Sequence"} shortcut="Space" side="top">
             <button
               onClick={onPlayPause}
@@ -153,6 +192,7 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
             </button>
           </Tooltip>
 
+          {/* Step Forward 1 Frame */}
           <Tooltip content="Step Forward 1 Frame (1/60s)" shortcut="→" side="top">
             <button
               onClick={onStepForward}
@@ -163,17 +203,31 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
             </button>
           </Tooltip>
 
-          <Tooltip content="Jump to End" shortcut="End" side="top">
+          {/* Jump Next Keyframe */}
+          <Tooltip content="Jump to Next Keyframe" shortcut="Shift+J" side="top">
             <button
-              onClick={onJumpEnd}
-              aria-label="Jump to End"
+              onClick={onJumpNextKeyframe || onJumpEnd}
+              aria-label="Next Keyframe"
               className="w-7 h-7 flex items-center justify-center bg-[#151822] hover:bg-[#1f2432] text-slate-400 hover:text-white border border-[#232736] rounded-md transition-colors"
             >
               <SkipForward size={12} />
             </button>
           </Tooltip>
 
-          <div className="w-[1px] h-4 bg-[#232736] mx-1" />
+          <div className="w-[1px] h-4 bg-[#232736] mx-0.5" />
+
+          {/* Add Keyframe Marker Button */}
+          {onAddKeyframe && (
+            <Tooltip content="Insert Keyframe at Current Time" shortcut="K" side="top">
+              <button
+                onClick={onAddKeyframe}
+                aria-label="Add Keyframe"
+                className="w-7 h-7 flex items-center justify-center bg-[#151822] hover:bg-[#1f2432] text-[#ff4e2e] hover:text-white border border-[#232736] rounded-md transition-colors"
+              >
+                <Plus size={12} strokeWidth={2.5} />
+              </button>
+            </Tooltip>
+          )}
 
           {/* Loop Mode Toggle */}
           <Tooltip content={isLooping ? "Continuous Loop: Enabled" : "Continuous Loop: Disabled"} shortcut="L" side="top">
@@ -208,13 +262,24 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
 
         {/* Center Frame & Timecode Readout */}
         <div className="flex items-center gap-2.5 font-mono text-[11px] font-semibold text-slate-100">
-          <Tooltip content="Current Frame Index at 60 FPS" side="top">
-            <span className="bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/30 px-2 py-0.5 rounded text-[8.5px] tracking-wider cursor-default">
+          <Tooltip content="Click to Rewind to 0:00" side="top">
+            <button
+              onClick={onJumpStart}
+              className="bg-[#38bdf8]/10 text-[#38bdf8] hover:bg-[#38bdf8]/20 border border-[#38bdf8]/30 px-2 py-0.5 rounded text-[8.5px] tracking-wider transition-colors cursor-pointer"
+            >
               FR {String(curFrame).padStart(2, '0')}/{totalFrames}
-            </span>
+            </button>
           </Tooltip>
           <span className="text-white text-xs">{formatTime(curSec)}</span>
           <span className="text-slate-500 font-normal">/ {formatTime(duration)}</span>
+
+          {/* Active Keyframe Chip if near one */}
+          {nearestKeyframe && (
+            <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-[#ff4e2e]/15 text-[#ff4e2e] border border-[#ff4e2e]/30 flex items-center gap-1 animate-in fade-in duration-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e2e] animate-pulse" />
+              <span>{nearestKeyframe.kf.label}</span>
+            </span>
+          )}
         </div>
 
         {/* Right Playback Speed Multipliers */}
@@ -243,7 +308,7 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
         <div className="w-40 flex-shrink-0 flex flex-col border-r border-[#1f2430] bg-[#0a0c11] z-20">
           {/* Header Spacer matching Ruler height */}
           <div className="h-6 px-3 border-b border-[#1f2430] flex items-center justify-between font-mono text-[8.5px] font-bold text-slate-400 uppercase tracking-wider bg-[#0d0f15]">
-            <span>CHANNELS (6)</span>
+            <span>CHANNELS ({tracks.length})</span>
             <Eye size={11} className="text-slate-500" />
           </div>
 
@@ -325,23 +390,30 @@ export const TimelineFooter: React.FC<TimelineFooterProps> = ({
                   <span className="truncate pointer-events-none font-semibold">{track.name}</span>
 
                   {/* Keyframe Diamonds with Tooltips */}
-                  {track.keyframes.map(kf => (
-                    <Tooltip
-                      key={kf.id}
-                      content={`${kf.label} (${(kf.timeRatio * duration).toFixed(2)}s)`}
-                      side="top"
-                    >
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSeekProgress(kf.timeRatio);
-                          if (onPlaySound) onPlaySound(850, 0.03);
-                        }}
-                        style={{ left: `${kf.timeRatio * 100}%` }}
-                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-white border border-black rotate-45 cursor-pointer z-10 hover:scale-150 hover:bg-[#ff4e2e] hover:border-white transition-transform"
-                      />
-                    </Tooltip>
-                  ))}
+                  {track.keyframes.map(kf => {
+                    const isNear = Math.abs(kf.timeRatio - currentProgress) < 0.015;
+                    return (
+                      <Tooltip
+                        key={kf.id}
+                        content={`[◆] ${kf.label} — ${(kf.timeRatio * duration).toFixed(2)}s (Click to jump)`}
+                        side="top"
+                      >
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSeekProgress(kf.timeRatio);
+                            if (onPlaySound) onPlaySound(850, 0.03);
+                          }}
+                          style={{ left: `${kf.timeRatio * 100}%` }}
+                          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 cursor-pointer z-10 transition-transform ${
+                            isNear
+                              ? 'bg-[#ff4e2e] scale-150 border-2 border-white shadow-[0_0_8px_rgba(255,78,46,1)]'
+                              : 'bg-white border border-black hover:scale-150 hover:bg-[#ff4e2e] hover:border-white'
+                          }`}
+                        />
+                      </Tooltip>
+                    );
+                  })}
                 </div>
               </div>
             ))}

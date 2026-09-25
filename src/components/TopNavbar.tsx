@@ -7,7 +7,8 @@ import {
   Code2, 
   Grid, 
   Monitor, 
-  Sparkles
+  Sparkles,
+  Film
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
@@ -22,7 +23,9 @@ interface TopNavbarProps {
   onResetView: () => void;
   onSetBgMode: (mode: BackgroundMode) => void;
   onQuickPlay: () => void;
+  onResetToStart: () => void;
   onOpenExport: () => void;
+  onOpenVideoExport: () => void;
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
@@ -35,7 +38,9 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onResetView,
   onSetBgMode,
   onQuickPlay,
+  onResetToStart,
   onOpenExport,
+  onOpenVideoExport
 }) => {
   return (
     <header className="h-12 bg-[#0c0e14] border-b border-[#1f2430] flex items-center justify-between px-3.5 z-40 select-none">
@@ -150,18 +155,40 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           </Tooltip>
         </div>
 
+        {/* Rewind / Reset to 0:00 */}
+        <Tooltip content="Reset Timeline to 0:00 (Beginning)" shortcut="Home" side="bottom">
+          <button
+            onClick={onResetToStart}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#141722] hover:bg-[#1d2232] border border-[#262c3e] text-slate-300 hover:text-white rounded-md text-xs font-mono transition-all shadow-sm"
+          >
+            <RotateCcw size={11} strokeWidth={2} className="text-slate-400" />
+            <span>Reset</span>
+          </button>
+        </Tooltip>
+
         {/* Quick Replay Trigger */}
-        <Tooltip content="Re-trigger Animation from Start" shortcut="R" side="bottom">
+        <Tooltip content="Replay Animation from Beginning" shortcut="R" side="bottom">
           <button
             onClick={onQuickPlay}
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181c26] hover:bg-[#202534] border border-[#262c3e] hover:border-slate-500 text-slate-200 rounded-md text-xs font-mono transition-all shadow-sm"
           >
-            <Play size={12} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
+            <Play size={11} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
             <span>Replay</span>
           </button>
         </Tooltip>
 
-        {/* Export Modal Trigger */}
+        {/* Video MP4 Export Trigger */}
+        <Tooltip content="Render & Export 60 FPS MP4 / WebM Video" shortcut="V" side="bottom">
+          <button
+            onClick={onOpenVideoExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1f2434] hover:bg-[#293046] border border-[#3b4460] text-slate-100 rounded-md text-xs font-semibold shadow-sm transition-all"
+          >
+            <Film size={13} className="text-[#38bdf8]" />
+            <span>Export MP4</span>
+          </button>
+        </Tooltip>
+
+        {/* Code Export Modal Trigger */}
         <Tooltip content="Export Standalone SVG, CSS & React Component" shortcut="E" side="bottom">
           <button
             onClick={onOpenExport}

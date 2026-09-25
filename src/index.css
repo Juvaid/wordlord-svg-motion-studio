@@ -82,6 +82,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .anim-typewriter #glyph-media-d { animation-delay: 0.62s; }
 .anim-typewriter #glyph-media-i { animation-delay: 0.68s; }
 .anim-typewriter #glyph-media-a { animation-delay: 0.74s; }
+.anim-typewriter #media-glow-layer {
+  opacity: 0;
+  animation: glyphFadeIn 0.38s 0.50s forwards var(--motion-ease);
+}
 
 @keyframes glyphFadeIn {
   from { opacity: 0; transform: translateY(3px) scale(0.92); }
@@ -93,6 +97,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   stroke-dasharray: 60;
   stroke-dashoffset: 60;
   animation: pathDraw 1.4s forwards var(--motion-ease);
+}
+.anim-wiredraw #media-glow-layer {
+  opacity: 0;
+  animation: glyphFadeIn 0.5s 0.70s forwards var(--motion-ease);
 }
 @keyframes pathDraw {
   0% { stroke-dashoffset: 60; fill-opacity: 0; stroke-width: 0.8px; }
@@ -154,6 +162,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   animation: foldLord 0.8s 0.15s forwards var(--motion-ease);
   transform-origin: top center;
 }
+.anim-origami #group-ligature {
+  animation: foldLord 0.8s 0.20s forwards var(--motion-ease);
+  transform-origin: top center;
+}
 .anim-origami #group-media {
   animation: foldMedia 0.7s 0.3s forwards var(--motion-ease);
   transform-origin: top center;
@@ -207,6 +219,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* 10. Kinetic Split & Lock */
 .anim-split-converge #group-word { animation: splitWordIn 0.8s forwards var(--motion-ease); }
 .anim-split-converge #group-lord { animation: splitLordIn 0.8s 0.1s forwards var(--motion-ease); }
+.anim-split-converge #group-ligature { animation: splitWordIn 0.8s 0.15s forwards var(--motion-ease); }
 .anim-split-converge #group-media { animation: splitMediaIn 0.8s 0.2s forwards var(--motion-ease); }
 @keyframes splitWordIn {
   from { transform: translateY(-16px); opacity: 0; }
@@ -238,6 +251,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .anim-matrix-rain #glyph-media-d { animation-delay: 0.69s; }
 .anim-matrix-rain #glyph-media-i { animation-delay: 0.76s; }
 .anim-matrix-rain #glyph-media-a { animation-delay: 0.83s; }
+.anim-matrix-rain #media-glow-layer {
+  opacity: 0;
+  animation: glyphFadeIn 0.4s 0.55s forwards var(--motion-ease);
+}
 
 @keyframes matrixDrop {
   0% { transform: translateY(-24px); opacity: 0; filter: drop-shadow(0 0 6px #10b981); }
@@ -262,6 +279,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .anim-elastic-pop #glyph-media-d { animation-delay: 0.41s; }
 .anim-elastic-pop #glyph-media-i { animation-delay: 0.45s; }
 .anim-elastic-pop #glyph-media-a { animation-delay: 0.49s; }
+.anim-elastic-pop #media-glow-layer {
+  opacity: 0;
+  animation: glyphFadeIn 0.4s 0.33s forwards var(--motion-ease);
+}
 
 @keyframes popHarmonic {
   0% { transform: scale(0.35); opacity: 0; }

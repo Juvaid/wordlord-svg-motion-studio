@@ -5,6 +5,7 @@ import { StageViewport } from './components/StageViewport';
 import { RightInspector } from './components/RightInspector';
 import { TimelineFooter } from './components/TimelineFooter';
 import { ExportModal } from './components/ExportModal';
+import { VideoExportModal } from './components/VideoExportModal';
 import { PanelResizer } from './components/PanelResizer';
 import { MOTIONS } from './data/motions';
 import { STYLES } from './data/styles';
@@ -75,8 +76,9 @@ export const App: React.FC = () => {
     glow: true
   });
 
-  // Modal & Toast
+  // Modals & Toast
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const activeMotion = MOTIONS.find(m => m.id === activeMotionId) || MOTIONS[0];
@@ -89,14 +91,14 @@ export const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2000);
   }, []);
 
-  // Multi-Track Timeline Lanes Definition
-  const tracks: TimelineTrack[] = [
+  // Multi-Track Timeline Lanes State
+  const [userTracks, setUserTracks] = useState<TimelineTrack[]>([
     {
       id: 'master',
       name: '0: Master Stage',
       groupKey: 'master',
       color: '#00ffff',
-      visible: layerVisibility.master,
+      visible: true,
       locked: false,
       startRatio: 0,
       widthRatio: 1,
@@ -113,7 +115,7 @@ export const App: React.FC = () => {
       name: '1: WORD (W,O,R)',
       groupKey: 'word',
       color: colors.word,
-      visible: layerVisibility.word,
+      visible: true,
       locked: false,
       startRatio: 0.04,
       widthRatio: 0.52,
@@ -128,7 +130,7 @@ export const App: React.FC = () => {
       name: '2: LORD (L,O,R)',
       groupKey: 'lord',
       color: colors.lord,
-      visible: layerVisibility.lord,
+      visible: true,
       locked: false,
       startRatio: 0.2,
       widthRatio: 0.52,
@@ -143,7 +145,7 @@ export const App: React.FC = () => {
       name: '3: TALL D Ligature',
       groupKey: 'ligature',
       color: colors.ligature,
-      visible: layerVisibility.ligature,
+      visible: true,
       locked: false,
       startRatio: 0.3,
       widthRatio: 0.56,
@@ -158,7 +160,7 @@ export const App: React.FC = () => {
       name: '4: MEDIA Subline',
       groupKey: 'media',
       color: colors.media,
-      visible: layerVisibility.media,
+      visible: true,
       locked: false,
       startRatio: 0.45,
       widthRatio: 0.52,
@@ -173,7 +175,7 @@ export const App: React.FC = () => {
       name: '5: Volumetric Aura',
       groupKey: 'glow',
       color: '#ff4e2e',
-      visible: layerVisibility.glow,
+      visible: true,
       locked: false,
       startRatio: 0.4,
       widthRatio: 0.6,
@@ -183,7 +185,14 @@ export const App: React.FC = () => {
         { id: 'kf-g2', timeRatio: 1.0, label: 'Ambient Radiance' }
       ]
     }
-  ];
+  ]);
+
+  // Sync track visibility and colors with state
+  const tracks: TimelineTrack[] = userTracks.map(t => ({
+    ...t,
+    visible: layerVisibility[t.id as keyof typeof layerVisibility] ?? true,
+    color: t.id === 'word' ? colors.word : t.id === 'lord' ? colors.lord : t.id === 'ligature' ? colors.ligature : t.id === 'media' ? colors.media : t.color
+  }));
 
   // Scrubbing & Seeking Animation Engine
   const seekToProgress = useCallback((progress: number, fromLoop = false) => {
@@ -210,7 +219,7 @@ export const App: React.FC = () => {
       const curSec = p * duration;
       stage.style.animationPlayState = 'paused';
       stage.style.animationDelay = `-${curSec}s`;
-      stage.querySelectorAll('[data-glyph], #laser-sweep-rect, #main-stage-svg').forEach(el => {
+      stage.querySelectorAll('[data-glyph], #laser-sweep-rect, #main-stage-svg, #media-glow-layer').forEach(el => {
         const h = el as HTMLElement;
         h.style.animationPlayState = 'paused';
         h.style.animationDelay = `-${curSec}s`;
@@ -230,12 +239,22 @@ export const App: React.FC = () => {
 
     stage.style.animationPlayState = 'running';
     stage.style.animationDelay = '0s';
-    stage.querySelectorAll('[data-glyph], #laser-sweep-rect, #main-stage-svg').forEach(el => {
+    stage.querySelectorAll('[data-glyph], #laser-sweep-rect, #main-stage-svg, #media-glow-layer').forEach(el => {
       const h = el as HTMLElement;
       h.style.animationPlayState = 'running';
       h.style.animationDelay = '';
     });
   }, [activeMotion.animClass]);
+
+  // Full Rewind & Reset to 0:00 (Beginning)
+  const handleResetToStart = useCallback(() => {
+    setIsPlaying(false);
+    if (tlRafRef.current) cancelAnimationFrame(tlRafRef.current);
+    seekToProgress(0);
+    setAnimKey(k => k + 1);
+    playTick(soundEnabled, 600, 0.02);
+    showToast('Rewound to 0:00 (Start)');
+  }, [seekToProgress, soundEnabled, showToast]);
 
   // Playback Loop
   const tlRafRef = useRef<number | null>(null);
@@ -261,6 +280,61 @@ export const App: React.FC = () => {
     if (isPlaying) stopPlayback();
     else startPlayback();
   }, [isPlaying, stopPlayback, startPlayback]);
+
+  // Jump to Previous Keyframe
+  const handleJumpPrevKeyframe = useCallback(() => {
+    stopPlayback();
+    const allKeyframes: number[] = [];
+    tracks.forEach(t => t.keyframes.forEach(kf => allKeyframes.push(kf.timeRatio)));
+    allKeyframes.sort((a, b) => a - b);
+
+    // Find keyframe strictly before currentProgress - 0.01
+    const prev = [...allKeyframes].reverse().find(t => t < currentProgress - 0.015);
+    const target = prev !== undefined ? prev : 0;
+    seekToProgress(target);
+    playTick(soundEnabled, 800, 0.02);
+    showToast(`Jump: ${(target * duration).toFixed(2)}s`);
+  }, [tracks, currentProgress, duration, seekToProgress, soundEnabled, showToast, stopPlayback]);
+
+  // Jump to Next Keyframe
+  const handleJumpNextKeyframe = useCallback(() => {
+    stopPlayback();
+    const allKeyframes: number[] = [];
+    tracks.forEach(t => t.keyframes.forEach(kf => allKeyframes.push(kf.timeRatio)));
+    allKeyframes.sort((a, b) => a - b);
+
+    // Find keyframe strictly after currentProgress + 0.01
+    const next = allKeyframes.find(t => t > currentProgress + 0.015);
+    const target = next !== undefined ? next : 1;
+    seekToProgress(target);
+    playTick(soundEnabled, 850, 0.02);
+    showToast(`Jump: ${(target * duration).toFixed(2)}s`);
+  }, [tracks, currentProgress, duration, seekToProgress, soundEnabled, showToast, stopPlayback]);
+
+  // Add Keyframe at Current Timecode
+  const handleAddKeyframe = useCallback(() => {
+    const curTime = (currentProgress * duration).toFixed(2);
+    const newKf = {
+      id: `kf-user-${Date.now()}`,
+      timeRatio: currentProgress,
+      label: `Mark @ ${curTime}s`
+    };
+
+    setUserTracks(prev => {
+      return prev.map(t => {
+        if (t.id === 'master') {
+          return {
+            ...t,
+            keyframes: [...t.keyframes, newKf].sort((a, b) => a.timeRatio - b.timeRatio)
+          };
+        }
+        return t;
+      });
+    });
+
+    playTick(soundEnabled, 900, 0.03);
+    showToast(`Added Keyframe at ${curTime}s`);
+  }, [currentProgress, duration, soundEnabled, showToast]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -297,7 +371,7 @@ export const App: React.FC = () => {
     };
   }, [isPlaying, isLooping, playbackMode, playbackSpeed, duration, currentProgress, restartAnimation, seekToProgress, stopPlayback, soundEnabled]);
 
-  // Keyboard Shortcuts (Space, 0, 1, 2, 3, R, E, L, M, Home, End, Arrows)
+  // Keyboard Shortcuts: Space, 0/Home, Escape, R, V, E, J, K, Shift+J, L, M, Arrows
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
@@ -312,6 +386,9 @@ export const App: React.FC = () => {
         seekToProgress(0);
         restartAnimation();
         playTick(soundEnabled, 700, 0.02);
+      } else if (e.code === 'KeyV') {
+        e.preventDefault();
+        setIsVideoExportOpen(true);
       } else if (e.code === 'KeyE') {
         e.preventDefault();
         setIsExportOpen(true);
@@ -321,19 +398,22 @@ export const App: React.FC = () => {
       } else if (e.code === 'KeyM') {
         e.preventDefault();
         setSoundEnabled(s => !s);
+      } else if (e.code === 'KeyJ') {
+        e.preventDefault();
+        if (e.shiftKey) handleJumpNextKeyframe();
+        else handleJumpPrevKeyframe();
+      } else if (e.code === 'KeyK') {
+        e.preventDefault();
+        handleAddKeyframe();
       } else if (e.code === 'Digit1') {
         setBgMode('dark');
       } else if (e.code === 'Digit2') {
         setBgMode('radial');
       } else if (e.code === 'Digit3') {
         setBgMode('grid');
-      } else if (e.code === 'Digit0') {
-        setScale(1.0);
-        setPan({ x: 0, y: 0 });
-      } else if (e.code === 'Home') {
+      } else if (e.code === 'Digit0' || e.code === 'Home' || e.code === 'Escape') {
         e.preventDefault();
-        stopPlayback();
-        seekToProgress(0);
+        handleResetToStart();
       } else if (e.code === 'End') {
         e.preventDefault();
         stopPlayback();
@@ -350,7 +430,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause, seekToProgress, restartAnimation, stopPlayback, currentProgress, duration, soundEnabled]);
+  }, [handlePlayPause, seekToProgress, restartAnimation, stopPlayback, handleResetToStart, handleJumpPrevKeyframe, handleJumpNextKeyframe, handleAddKeyframe, currentProgress, duration, soundEnabled]);
 
   // Handle Preset Switching
   const handleSelectMotion = (m: MotionPreset) => {
@@ -410,7 +490,9 @@ export const App: React.FC = () => {
         onResetView={() => { setScale(1.0); setPan({ x: 0, y: 0 }); }}
         onSetBgMode={setBgMode}
         onQuickPlay={() => { seekToProgress(0); startPlayback(); }}
+        onResetToStart={handleResetToStart}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenVideoExport={() => setIsVideoExportOpen(true)}
       />
 
       {/* Main Workspace Body (3-Column Layout with Resizable Dividers) */}
@@ -519,7 +601,7 @@ export const App: React.FC = () => {
         playbackSpeed={playbackSpeed}
         tracks={tracks}
         onPlayPause={handlePlayPause}
-        onJumpStart={() => { stopPlayback(); seekToProgress(0); playTick(soundEnabled, 700, 0.02); }}
+        onJumpStart={handleResetToStart}
         onJumpEnd={() => { stopPlayback(); seekToProgress(1); playTick(soundEnabled, 700, 0.02); }}
         onStepBack={() => { stopPlayback(); seekToProgress(Math.max(0, currentProgress - (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
         onStepForward={() => { stopPlayback(); seekToProgress(Math.min(1, currentProgress + (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
@@ -528,6 +610,9 @@ export const App: React.FC = () => {
         onSpeedChange={(s) => { setPlaybackSpeed(s); showToast(`Speed: ${s}x`); }}
         onSeekProgress={(p) => seekToProgress(p)}
         onToggleLayerVisibility={handleToggleLayerVisibility}
+        onAddKeyframe={handleAddKeyframe}
+        onJumpPrevKeyframe={handleJumpPrevKeyframe}
+        onJumpNextKeyframe={handleJumpNextKeyframe}
         onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}
       />
 
@@ -542,9 +627,21 @@ export const App: React.FC = () => {
         colors={colors}
       />
 
+      {/* 60 FPS MP4 / WebM Video Export Modal */}
+      <VideoExportModal
+        isOpen={isVideoExportOpen}
+        onClose={() => setIsVideoExportOpen(false)}
+        motionName={activeMotion.name}
+        duration={duration}
+        bgGradient={activeStyle.bgGradient}
+        seekFrame={async (p) => {
+          seekToProgress(p, true);
+        }}
+      />
+
       {/* Floating System Toast */}
       {toastMessage && (
-        <div className="fixed bottom-52 left-1/2 -translate-x-1/2 bg-[#12151e]/95 text-white border border-[#ff4e2e] shadow-2xl shadow-[#ff4e2e]/30 px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold z-50 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="fixed bottom-56 left-1/2 -translate-x-1/2 bg-[#12151e]/95 text-white border border-[#ff4e2e] shadow-2xl shadow-[#ff4e2e]/30 px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold z-50 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-150">
           {toastMessage}
         </div>
       )}

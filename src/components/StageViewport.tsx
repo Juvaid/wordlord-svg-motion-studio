@@ -215,23 +215,6 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             </linearGradient>
           </defs>
 
-          {/* Dedicated Volumetric Glow Layer */}
-          <g
-            id="media-glow-layer"
-            filter="url(#unclipped-media-glow)"
-            style={{
-              opacity: (glowIntensity / 100) * (layerVisibility.glow ? 1 : 0),
-              transition: 'opacity 0.2s ease',
-              overflow: 'visible'
-            }}
-          >
-            <path d={GLYPH_PATHS.mediaM} fill={colors.media} />
-            <path d={GLYPH_PATHS.mediaE} fill={colors.media} />
-            <path d={GLYPH_PATHS.mediaD} fill={colors.media} />
-            <path d={GLYPH_PATHS.mediaI} fill={colors.media} />
-            <path d={GLYPH_PATHS.mediaA} fill={colors.media} />
-          </g>
-
           {/* Group: WORD */}
           <g id="group-word" style={{ visibility: layerVisibility.word ? 'visible' : 'hidden' }}>
             <path
@@ -307,8 +290,25 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             />
           </g>
 
-          {/* Group: MEDIA Sub-brand */}
+          {/* Group: MEDIA Sub-brand with Synchronized Glow Layer */}
           <g id="group-media" style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}>
+            {/* Volumetric Glow Backing inside MEDIA group so transforms and visibility stay 100% in sync */}
+            <g
+              id="media-glow-layer"
+              filter="url(#unclipped-media-glow)"
+              style={{
+                opacity: (glowIntensity / 100) * (layerVisibility.glow ? 1 : 0),
+                overflow: 'visible'
+              }}
+            >
+              <path d={GLYPH_PATHS.mediaM} fill={colors.media} />
+              <path d={GLYPH_PATHS.mediaE} fill={colors.media} />
+              <path d={GLYPH_PATHS.mediaD} fill={colors.media} />
+              <path d={GLYPH_PATHS.mediaI} fill={colors.media} />
+              <path d={GLYPH_PATHS.mediaA} fill={colors.media} />
+            </g>
+
+            {/* Sharp Foreground Glyph Paths */}
             <path
               id="glyph-media-m"
               data-glyph="M"
