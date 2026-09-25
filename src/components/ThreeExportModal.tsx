@@ -16,6 +16,7 @@ import {
   Gauge,
   Layers
 } from 'lucide-react';
+import * as THREE from 'three';
 import { exportThreeGLTF, exportThreeSnapshot } from '../utils/threeEngine';
 import { ThreeStudioConfig } from '../types/threeStudio';
 
@@ -57,7 +58,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
 
   const targetRes = resolutionMap[resolution];
 
-  // High-Fidelity 60 FPS 3D Video Export with Hardware-Accelerated Bitrate
+  // High-Fidelity 60 FPS 3D Video Export with Hardware-Accelerated Bitrate & Frame-by-Frame Rendering
   const handleRecordVideo = async () => {
     if (!canvas) {
       setStatusMessage('WebGL Canvas is not ready for recording.');
@@ -67,19 +68,38 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
     const renderer = (window as any).__THREE_RENDERER__;
     const camera = (window as any).__THREE_CAMERA__;
     const composer = (window as any).__THREE_COMPOSER__;
+    const scene = (window as any).__THREE_SCENE__;
+    const renderThreeFrame = (window as any).__THREE_RENDER_FRAME__;
 
-    // Cache original dimensions and aspect ratio to restore after render
+    if (!renderThreeFrame) {
+      setStatusMessage('3D WebGL render pipeline is initializing. Please try again.');
+      return;
+    }
+
+    // Cache original dimensions, aspect ratio, and background
     const origW = renderer?.domElement?.width || canvas.width;
     const origH = renderer?.domElement?.height || canvas.height;
     const origStyleW = renderer?.domElement?.style?.width || canvas.style.width;
     const origStyleH = renderer?.domElement?.style?.height || canvas.style.height;
     const origAspect = camera?.aspect;
+    const origBg = scene?.background;
 
     try {
       setIsRecording(true);
+      (window as any).__THREE_IS_RECORDING__ = true;
       setStatusMessage(null);
       if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
       setRecordedVideoUrl(null);
+
+      // Handle Backdrop choice
+      if (scene) {
+        if (backdropChoice === 'black') {
+          scene.background = new THREE.Color(0x07080c);
+        } else if (backdropChoice === 'alpha') {
+          scene.background = null;
+          if (renderer) renderer.setClearColor(0x000000, 0);
+        }
+      }
 
       // Scale WebGL renderer buffer to true target resolution during export
       if (renderer && camera) {
@@ -89,8 +109,12 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
         if (composer) composer.setSize(targetRes.width, targetRes.height);
       }
 
+      // Prime frame 0 immediately
+      renderThreeFrame(0);
+
       // Setup recorder stream at requested framerate
       const stream = canvas.captureStream(fps);
+      const videoTrack = stream.getVideoTracks()[0] as any;
 
       // Select highest fidelity supported codec
       let mimeType = 'video/webm;codecs=vp9';
@@ -137,17 +161,36 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
 
       recorder.start();
 
-      const totalDurationMs = config.duration * 1000;
-      const intervalMs = 60;
-      let elapsedMs = 0;
+      const duration = config.duration || 4.0;
+      const totalFrames = Math.max(1, Math.round(duration * fps));
+      const frameIntervalMs = 1000 / fps;
+      const startTime = performance.now();
 
-      const progressTimer = setInterval(() => {
-        elapsedMs += intervalMs;
-        setRecordProgress(Math.min(100, Math.round((elapsedMs / totalDurationMs) * 100)));
-      }, intervalMs);
+      // Deterministic Frame-by-Frame Render Pipeline
+      for (let f = 0; f < totalFrames; f++) {
+        const normT = totalFrames > 1 ? f / (totalFrames - 1) : 0;
+        
+        // 1. Advance 3D physics transforms & draw frame
+        renderThreeFrame(normT);
 
-      await new Promise(r => setTimeout(r, totalDurationMs + 300));
-      clearInterval(progressTimer);
+        // 2. Request video frame capture
+        if (videoTrack && typeof videoTrack.requestFrame === 'function') {
+          videoTrack.requestFrame();
+        }
+
+        // 3. Keep real-time synchronization for MediaRecorder timestamps
+        const expectedElapsedMs = (f + 1) * frameIntervalMs;
+        const actualElapsedMs = performance.now() - startTime;
+        const remainingWaitMs = Math.max(0, expectedElapsedMs - actualElapsedMs);
+        if (remainingWaitMs > 0) {
+          await new Promise(r => setTimeout(r, remainingWaitMs));
+        }
+
+        setRecordProgress(Math.min(100, Math.round(((f + 1) / totalFrames) * 100)));
+      }
+
+      // Hold final frame slightly for clean ending
+      await new Promise(r => setTimeout(r, 160));
 
       recorder.stop();
       const blob = await recordPromise;
@@ -166,7 +209,11 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
     } catch (err: any) {
       setStatusMessage(err?.message || 'Error recording 3D WebGL stream.');
     } finally {
-      // Restore renderer and camera viewport to screen dimensions
+      (window as any).__THREE_IS_RECORDING__ = false;
+      // Restore renderer, scene background, and camera viewport
+      if (scene) {
+        scene.background = origBg;
+      }
       if (renderer && camera) {
         camera.aspect = origAspect || (origW / origH);
         camera.updateProjectionMatrix();
@@ -176,6 +223,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
           if (origStyleH) renderer.domElement.style.height = origStyleH;
         }
         if (composer) composer.setSize(origW, origH);
+        if (renderThreeFrame) renderThreeFrame(0);
       }
       setIsRecording(false);
     }

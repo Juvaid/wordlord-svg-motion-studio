@@ -86,7 +86,6 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Animation Playback Synchronization Refs (eliminates stale closures)
   const timeRef = useRef<number>(config.time || 0);
   const isPlayingRef = useRef<boolean>(config.isPlaying);
   const speedRef = useRef<number>(config.speed || 1);
@@ -95,6 +94,8 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   const motionModeRef = useRef(config.motionMode);
   const amplitudeRef = useRef<number>(config.amplitude || 1);
   const onUpdateConfigRef = useRef(onUpdateConfig);
+  const configRef = useRef<ThreeStudioConfig>(config);
+  const partsRef = useRef<ThreePart[]>(parts);
 
   useEffect(() => {
     timeRef.current = config.time || 0;
@@ -111,7 +112,12 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     motionModeRef.current = config.motionMode;
     amplitudeRef.current = config.amplitude;
     onUpdateConfigRef.current = onUpdateConfig;
-  }, [config.speed, config.duration, config.workArea, config.motionMode, config.amplitude, onUpdateConfig]);
+    configRef.current = config;
+  }, [config, onUpdateConfig]);
+
+  useEffect(() => {
+    partsRef.current = parts;
+  }, [parts]);
 
   // 1. Initialize Scene & Renderer
   useEffect(() => {
@@ -256,12 +262,36 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     (window as any).__THREE_CAMERA__ = camera;
     (window as any).__THREE_RENDERER__ = renderer;
     (window as any).__THREE_COMPOSER__ = composer;
+    (window as any).__THREE_RENDER_FRAME__ = (normalizedTime: number) => {
+      const curConfig = configRef.current;
+      const curParts = partsRef.current;
+      if (lightsRef.current && logoGroupRef.current) {
+        evaluate3DMotion(
+          logoGroupRef.current,
+          meshesRef.current,
+          motionModeRef.current,
+          normalizedTime,
+          amplitudeRef.current,
+          { x: 0, y: 0 },
+          { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
+          curConfig,
+          curParts
+        );
+      }
+      if (composerRef.current && curConfig.shadingMode === 'bloom' && curConfig.bloomEnabled) {
+        composerRef.current.render();
+      } else if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    };
 
     return () => {
       delete (window as any).__THREE_SCENE__;
       delete (window as any).__THREE_CAMERA__;
       delete (window as any).__THREE_RENDERER__;
       delete (window as any).__THREE_COMPOSER__;
+      delete (window as any).__THREE_RENDER_FRAME__;
+      delete (window as any).__THREE_IS_RECORDING__;
       resizeObserver.disconnect();
       renderer.dispose();
       composer.dispose();
@@ -448,6 +478,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
     const renderLoop = () => {
       animId = requestAnimationFrame(renderLoop);
+
+      // If an export session is currently actively rendering frame-by-frame, skip the standard RAF tick
+      if ((window as any).__THREE_IS_RECORDING__) {
+        return;
+      }
 
       const now = performance.now();
       const deltaSec = Math.min(0.05, (now - lastFrameTime) / 1000);
