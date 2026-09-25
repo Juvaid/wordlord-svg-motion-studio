@@ -88,6 +88,13 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Could not obtain 2D Canvas context for video export.');
 
+  // Double-buffering: Offscreen scratch canvas for complete, flicker-free atomic frame blitting
+  const bufferCanvas = document.createElement('canvas');
+  bufferCanvas.width = width;
+  bufferCanvas.height = height;
+  const bCtx = bufferCanvas.getContext('2d');
+  if (!bCtx) throw new Error('Could not obtain scratch canvas buffer context.');
+
   // Target Stage SVG
   const stage = document.getElementById('stage-wrapper');
   const svgEl = document.getElementById('main-stage-svg') as SVGElement | null;
@@ -118,6 +125,8 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
 
   // Set up MediaRecorder Stream with high bitrate (28 Mbps)
   const stream = canvas.captureStream(fps);
+  const videoTrack = stream.getVideoTracks()[0] as any;
+
   const recorder = new MediaRecorder(stream, {
     mimeType,
     videoBitsPerSecond: 28000000 // 28 Mbps cinema master quality
@@ -136,21 +145,21 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
 
   recorder.start();
 
-  // Draw background according to user selection
-  const drawBackground = () => {
+  // Draw background onto the scratch buffer
+  const drawBackgroundToBuffer = () => {
     if (bgChoice === 'theme') {
-      const grad = ctx.createRadialGradient(
+      const grad = bCtx.createRadialGradient(
         width / 2, height / 2, 20,
         width / 2, height / 2, Math.max(width, height) * 0.65
       );
       grad.addColorStop(0, '#1c2232');
       grad.addColorStop(0.45, '#0b0e16');
       grad.addColorStop(1, '#050608');
-      ctx.fillStyle = grad;
+      bCtx.fillStyle = grad;
     } else {
-      ctx.fillStyle = '#07080c';
+      bCtx.fillStyle = '#07080c';
     }
-    ctx.fillRect(0, 0, width, height);
+    bCtx.fillRect(0, 0, width, height);
   };
 
   // Dimensions & Coordinates calculation with user-selected markScale (88% default)
@@ -189,8 +198,8 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     // Allow browser rendering engine to evaluate CSS animation keyframes
     await new Promise(r => requestAnimationFrame(r));
 
-    // 2. Clear canvas and draw background
-    drawBackground();
+    // 2. Draw background to offscreen buffer ONLY (keeps recorder canvas intact)
+    drawBackgroundToBuffer();
 
     // 3. Clone SVG and strip problematic elements
     const svgClone = svgEl.cloneNode(true) as SVGElement;
@@ -279,65 +288,73 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
         img.src = blobUrl;
       });
 
-      // 5. Render volumetric glow layer with Canvas 2D
+      // 5. Render volumetric glow layer with scratch buffer
       if (layerVisibility.glow && glowIntensity > 0 && glowRadius > 0) {
-        ctx.save();
-        ctx.shadowColor = colors.media;
-        ctx.shadowBlur = Math.min(100, (glowRadius * (width / 1920) * (glowIntensity / 100)) * 2.2);
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        ctx.drawImage(img, dx, dy, targetWidth, targetHeight);
-        ctx.restore();
+        bCtx.save();
+        bCtx.shadowColor = colors.media;
+        bCtx.shadowBlur = Math.min(100, (glowRadius * (width / 1920) * (glowIntensity / 100)) * 2.2);
+        bCtx.shadowOffsetX = 0;
+        bCtx.shadowOffsetY = 0;
+        bCtx.drawImage(img, dx, dy, targetWidth, targetHeight);
+        bCtx.restore();
       }
 
-      // 6. Draw crisp vector mark foreground
-      ctx.drawImage(img, dx, dy, targetWidth, targetHeight);
+      // 6. Draw crisp vector mark foreground to scratch buffer
+      bCtx.drawImage(img, dx, dy, targetWidth, targetHeight);
     } catch {
-      // Hardware Fallback: Direct Canvas 2D Path rendering
-      ctx.save();
-      ctx.translate(dx, dy);
-      ctx.scale(targetWidth / 25, targetHeight / 26);
+      // Hardware Fallback: Direct Canvas 2D Path rendering to scratch buffer
+      bCtx.save();
+      bCtx.translate(dx, dy);
+      bCtx.scale(targetWidth / 25, targetHeight / 26);
 
       if (layerVisibility.glow && glowRadius > 0) {
-        ctx.shadowColor = colors.media;
-        ctx.shadowBlur = glowRadius * (targetWidth / 25) * 0.05;
+        bCtx.shadowColor = colors.media;
+        bCtx.shadowBlur = glowRadius * (targetWidth / 25) * 0.05;
       }
 
       // Line 1: WORD
       if (layerVisibility.word) {
-        ctx.fillStyle = colors.word;
-        ctx.fill(PATH_2D_CACHE.wordW);
-        ctx.fill(PATH_2D_CACHE.wordO);
-        ctx.fill(PATH_2D_CACHE.wordR);
+        bCtx.fillStyle = colors.word;
+        bCtx.fill(PATH_2D_CACHE.wordW);
+        bCtx.fill(PATH_2D_CACHE.wordO);
+        bCtx.fill(PATH_2D_CACHE.wordR);
       }
 
       // Line 2: LORD
       if (layerVisibility.lord) {
-        ctx.fillStyle = colors.lord;
-        ctx.fill(PATH_2D_CACHE.lordL);
-        ctx.fill(PATH_2D_CACHE.lordO);
-        ctx.fill(PATH_2D_CACHE.lordR);
+        bCtx.fillStyle = colors.lord;
+        bCtx.fill(PATH_2D_CACHE.lordL);
+        bCtx.fill(PATH_2D_CACHE.lordO);
+        bCtx.fill(PATH_2D_CACHE.lordR);
       }
 
       // Monolith Ligature D
       if (layerVisibility.ligature) {
-        ctx.fillStyle = colors.ligature;
-        ctx.fill(PATH_2D_CACHE.ligatureD);
+        bCtx.fillStyle = colors.ligature;
+        bCtx.fill(PATH_2D_CACHE.ligatureD);
       }
 
       // Line 3: MEDIA
       if (layerVisibility.media) {
-        ctx.fillStyle = colors.media;
-        ctx.fill(PATH_2D_CACHE.mediaM);
-        ctx.fill(PATH_2D_CACHE.mediaE);
-        ctx.fill(PATH_2D_CACHE.mediaD);
-        ctx.fill(PATH_2D_CACHE.mediaI);
-        ctx.fill(PATH_2D_CACHE.mediaA);
+        bCtx.fillStyle = colors.media;
+        bCtx.fill(PATH_2D_CACHE.mediaM);
+        bCtx.fill(PATH_2D_CACHE.mediaE);
+        bCtx.fill(PATH_2D_CACHE.mediaD);
+        bCtx.fill(PATH_2D_CACHE.mediaI);
+        bCtx.fill(PATH_2D_CACHE.mediaA);
       }
 
-      ctx.restore();
+      bCtx.restore();
     } finally {
       URL.revokeObjectURL(blobUrl);
+    }
+
+    // 7. Atomic Blit: Single instantaneous paint from buffer to recording canvas
+    ctx.drawImage(bufferCanvas, 0, 0);
+
+    // Request frame on video track if browser supports it
+    if (videoTrack && typeof videoTrack.requestFrame === 'function') {
+      videoTrack.requestFrame();
     }
 
     // 7. Enforce cumulative real-time clock synchronization for MediaRecorder

@@ -7,6 +7,28 @@ import { TimelineFooter } from './components/TimelineFooter';
 import { ExportModal } from './components/ExportModal';
 import { VideoExportModal } from './components/VideoExportModal';
 import { PanelResizer } from './components/PanelResizer';
+
+// 3D Extruded Studio Components & Data
+import { ThreeStageViewport } from './components/ThreeStageViewport';
+import { ThreeLeftLibrary } from './components/ThreeLeftLibrary';
+import { ThreeRightInspector } from './components/ThreeRightInspector';
+import { ThreeTimelineFooter } from './components/ThreeTimelineFooter';
+import { ThreeExportModal } from './components/ThreeExportModal';
+import { CustomSvgModal } from './components/CustomSvgModal';
+import { 
+  ThreeStudioConfig, 
+  ThreePart, 
+  PbrPresetId, 
+  LightingRigId, 
+  ThreeMotionMode 
+} from './types/threeStudio';
+import { 
+  THREE_ASSET_PRESETS, 
+  PBR_PRESETS, 
+  LIGHTING_RIGS 
+} from './data/threePresets';
+import { parseSvgIntoParts } from './utils/threeEngine';
+
 import { MOTIONS } from './data/motions';
 import { STYLES } from './data/styles';
 import { playTick, playWhoosh } from './utils/audio';
@@ -81,6 +103,64 @@ export const App: React.FC = () => {
   const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // 3D Studio Workspace State
+  const [studioMode, setStudioMode] = useState<'2d' | '3d'>('2d');
+  const [is3DExportOpen, setIs3DExportOpen] = useState(false);
+  const [isCustomSvgOpen, setIsCustomSvgOpen] = useState(false);
+
+  const [threeConfig, setThreeConfig] = useState<ThreeStudioConfig>({
+    depth: 32,
+    bevelThickness: 3.5,
+    bevelSize: 2.2,
+    bevelSegments: 5,
+    meshScale: 1.0,
+    autoCenter: true,
+    faceColor: '#ff263e',
+    sideColor: '#4a070e',
+    roughness: 0.22,
+    metalness: 0.45,
+    clearcoat: 0.75,
+    transmission: 0.0,
+    emissiveIntensity: 0.0,
+    flutingEnabled: false,
+    fluteScale: 0.45,
+    keyColor: '#ffffff',
+    keyIntensity: 2.2,
+    rimColor: '#ffffff',
+    rimIntensity: 2.8,
+    fillColor: '#ff8877',
+    fillIntensity: 0.9,
+    ambientIntensity: 0.5,
+    showFloor: true,
+    showLightHelpers: false,
+    transparentBg: false,
+    bloomEnabled: true,
+    bloomStrength: 0.75,
+    bloomRadius: 0.5,
+    bloomThreshold: 0.75,
+    motionMode: 'reveal',
+    isPlaying: true,
+    amplitude: 1.0,
+    time: 0.0,
+    duration: 5.0,
+    speed: 1.0,
+    gyroEnabled: true,
+    shadingMode: 'rendered',
+    cameraPreset: 'front',
+    activeAssetId: 'wordlord',
+    activePbrId: 'crimson',
+    activeRigId: 'studio',
+    selectedPartIndex: -1
+  });
+
+  const [threeParts, setThreeParts] = useState<ThreePart[]>(() => {
+    return parseSvgIntoParts(
+      THREE_ASSET_PRESETS[0].svgString,
+      '#ff263e',
+      '#4a070e'
+    );
+  });
+
   const activeMotion = MOTIONS.find(m => m.id === activeMotionId) || MOTIONS[0];
   const activeStyle = STYLES.find(s => s.id === activeStyleId) || STYLES[0];
   const easeFormula = `cubic-bezier(${bezier.p1.x.toFixed(2)}, ${bezier.p1.y.toFixed(2)}, ${bezier.p2.x.toFixed(2)}, ${bezier.p2.y.toFixed(2)})`;
@@ -90,6 +170,93 @@ export const App: React.FC = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2000);
   }, []);
+
+  const handleUpdateThreeConfig = useCallback((partial: Partial<ThreeStudioConfig>) => {
+    setThreeConfig(prev => ({ ...prev, ...partial }));
+  }, []);
+
+  const handleSelect3DAsset = useCallback((assetId: string) => {
+    const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
+    if (!preset) return;
+    const newParts = parseSvgIntoParts(preset.svgString, threeConfig.faceColor, threeConfig.sideColor);
+    setThreeParts(newParts);
+    setThreeConfig(prev => ({ ...prev, activeAssetId: assetId, time: 0 }));
+    showToast(`Loaded ${preset.name}`);
+  }, [threeConfig.faceColor, threeConfig.sideColor, showToast]);
+
+  const handleSelect3DPbrPreset = useCallback((presetId: PbrPresetId) => {
+    const pbr = PBR_PRESETS.find(p => p.id === presetId);
+    if (!pbr) return;
+    setThreeConfig(prev => ({
+      ...prev,
+      activePbrId: presetId,
+      faceColor: pbr.faceColor,
+      sideColor: pbr.sideColor,
+      roughness: pbr.roughness,
+      metalness: pbr.metalness,
+      clearcoat: pbr.clearcoat,
+      transmission: pbr.transmission,
+      flutingEnabled: pbr.flutingEnabled,
+      fluteScale: pbr.fluteScale,
+      bloomEnabled: pbr.bloomEnabled,
+      bloomStrength: pbr.bloomStrength
+    }));
+    setThreeParts(prev => prev.map(p => ({
+      ...p,
+      faceColor: pbr.faceColor,
+      sideColor: pbr.sideColor,
+      metalness: pbr.metalness,
+      roughness: pbr.roughness,
+      transmission: pbr.transmission
+    })));
+    showToast(`Applied ${pbr.name} PBR`);
+  }, [showToast]);
+
+  const handleSelect3DLightingRig = useCallback((rigId: LightingRigId) => {
+    const rig = LIGHTING_RIGS.find(r => r.id === rigId);
+    if (!rig) return;
+    setThreeConfig(prev => ({
+      ...prev,
+      activeRigId: rigId,
+      keyColor: rig.keyColor,
+      keyIntensity: rig.keyIntensity,
+      rimColor: rig.rimColor,
+      rimIntensity: rig.rimIntensity,
+      fillColor: rig.fillColor,
+      fillIntensity: rig.fillIntensity,
+      ambientIntensity: rig.ambientIntensity
+    }));
+    showToast(`Switched to ${rig.name}`);
+  }, [showToast]);
+
+  const handleSelect3DMotion = useCallback((motion: ThreeMotionMode) => {
+    setThreeConfig(prev => ({ ...prev, motionMode: motion, time: 0, isPlaying: true }));
+    showToast(`Motion: ${motion.toUpperCase()}`);
+  }, [showToast]);
+
+  const handleUpdatePart = useCallback((idx: number, partial: Partial<ThreePart>) => {
+    setThreeParts(prev => {
+      const next = [...prev];
+      if (next[idx]) {
+        next[idx] = { ...next[idx], ...partial };
+      }
+      return next;
+    });
+  }, []);
+
+  const handleResetParts = useCallback(() => {
+    const asset = THREE_ASSET_PRESETS.find(a => a.id === threeConfig.activeAssetId) || THREE_ASSET_PRESETS[0];
+    const newParts = parseSvgIntoParts(asset.svgString, threeConfig.faceColor, threeConfig.sideColor);
+    setThreeParts(newParts);
+    showToast('Reset parts geometry & offsets');
+  }, [threeConfig.activeAssetId, threeConfig.faceColor, threeConfig.sideColor, showToast]);
+
+  const handleImportCustomSvg = useCallback((svgString: string, name?: string) => {
+    const newParts = parseSvgIntoParts(svgString, threeConfig.faceColor, threeConfig.sideColor);
+    setThreeParts(newParts);
+    setThreeConfig(prev => ({ ...prev, activeAssetId: 'custom', time: 0 }));
+    showToast(name ? `Imported ${name}` : 'Imported Custom SVG');
+  }, [threeConfig.faceColor, threeConfig.sideColor, showToast]);
 
   // Multi-Track Timeline Lanes State
   const [userTracks, setUserTracks] = useState<TimelineTrack[]>([
@@ -481,6 +648,8 @@ export const App: React.FC = () => {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#07080c] text-slate-100 font-sans">
       {/* Top Navigation Bar */}
       <TopNavbar
+        studioMode={studioMode}
+        onSetStudioMode={setStudioMode}
         scale={scale}
         bgMode={bgMode}
         activeMotionId={activeMotion.id}
@@ -494,25 +663,38 @@ export const App: React.FC = () => {
         onResetToStart={handleResetToStart}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenVideoExport={() => setIsVideoExportOpen(true)}
+        onOpen3DExport={() => setIs3DExportOpen(true)}
       />
 
       {/* Main Workspace Body (3-Column Layout with Resizable Dividers) */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Creative Library */}
-        <LeftLibrary
-          width={leftWidth}
-          activeTab={activeTab}
-          activeMotionId={activeMotionId}
-          activeStyleId={activeStyleId}
-          searchQuery={searchQuery}
-          categoryFilter={categoryFilter}
-          onTabChange={setActiveTab}
-          onSelectMotion={handleSelectMotion}
-          onSelectStyle={handleSelectStyle}
-          onSearchChange={setSearchQuery}
-          onCategoryFilterChange={setCategoryFilter}
-          onShowInfo={(title, desc) => showToast(`${title}: ${desc}`)}
-        />
+        {/* Left Library (2D Preset Engine vs 3D Assets & PBR) */}
+        {studioMode === '2d' ? (
+          <LeftLibrary
+            width={leftWidth}
+            activeTab={activeTab}
+            activeMotionId={activeMotionId}
+            activeStyleId={activeStyleId}
+            searchQuery={searchQuery}
+            categoryFilter={categoryFilter}
+            onTabChange={setActiveTab}
+            onSelectMotion={handleSelectMotion}
+            onSelectStyle={handleSelectStyle}
+            onSearchChange={setSearchQuery}
+            onCategoryFilterChange={setCategoryFilter}
+            onShowInfo={(title, desc) => showToast(`${title}: ${desc}`)}
+          />
+        ) : (
+          <ThreeLeftLibrary
+            width={leftWidth}
+            config={threeConfig}
+            onSelectAsset={handleSelect3DAsset}
+            onSelectPbrPreset={handleSelect3DPbrPreset}
+            onSelectLightingRig={handleSelect3DLightingRig}
+            onSelectMotion={handleSelect3DMotion}
+            onOpenCustomSvgModal={() => setIsCustomSvgOpen(true)}
+          />
+        )}
 
         {/* Vertical Resizer: Left Library <-> Stage */}
         <PanelResizer
@@ -521,28 +703,38 @@ export const App: React.FC = () => {
           title="Drag to resize Library panel"
         />
 
-        {/* Center Vector Motion Canvas */}
-        <StageViewport
-          animKey={animKey}
-          animClass={activeMotion.animClass}
-          duration={duration}
-          easeFormula={easeFormula}
-          stagger={stagger}
-          glowRadius={glowRadius}
-          glowIntensity={glowIntensity}
-          geometryMode={geometryMode}
-          strokeWidth={strokeWidth}
-          tiltX={tiltX}
-          tiltY={tiltY}
-          scale={scale}
-          pan={pan}
-          bgMode={bgMode}
-          bgGradient={activeStyle.bgGradient}
-          colors={colors}
-          layerVisibility={layerVisibility}
-          onPanChange={setPan}
-          onScaleChange={setScale}
-        />
+        {/* Center Stage Viewport (2D CSS Motion Canvas vs 3D WebGL PBR Viewport) */}
+        {studioMode === '2d' ? (
+          <StageViewport
+            animKey={animKey}
+            animClass={activeMotion.animClass}
+            duration={duration}
+            easeFormula={easeFormula}
+            stagger={stagger}
+            glowRadius={glowRadius}
+            glowIntensity={glowIntensity}
+            geometryMode={geometryMode}
+            strokeWidth={strokeWidth}
+            tiltX={tiltX}
+            tiltY={tiltY}
+            scale={scale}
+            pan={pan}
+            bgMode={bgMode}
+            bgGradient={activeStyle.bgGradient}
+            colors={colors}
+            layerVisibility={layerVisibility}
+            onPanChange={setPan}
+            onScaleChange={setScale}
+          />
+        ) : (
+          <ThreeStageViewport
+            config={threeConfig}
+            parts={threeParts}
+            onUpdateConfig={handleUpdateThreeConfig}
+            onSelectPart={(idx) => setThreeConfig(prev => ({ ...prev, selectedPartIndex: idx }))}
+            onSetParts={setThreeParts}
+          />
+        )}
 
         {/* Vertical Resizer: Stage <-> Right Inspector */}
         <PanelResizer
@@ -551,38 +743,49 @@ export const App: React.FC = () => {
           title="Drag to resize Inspector panel"
         />
 
-        {/* Right Properties & Inspector Lab */}
-        <RightInspector
-          width={rightWidth}
-          motionId={activeMotion.id}
-          motionName={activeMotion.name}
-          category={activeMotion.badge}
-          duration={duration}
-          stagger={stagger}
-          bezier={bezier}
-          easeFormula={easeFormula}
-          playbackMode={playbackMode}
-          glowRadius={glowRadius}
-          glowIntensity={glowIntensity}
-          geometryMode={geometryMode}
-          strokeWidth={strokeWidth}
-          tiltX={tiltX}
-          tiltY={tiltY}
-          colors={colors}
-          onDurationChange={(d) => { setDuration(d); seekToProgress(currentProgress); }}
-          onStaggerChange={setStagger}
-          onBezierChange={setBezier}
-          onPlaybackModeChange={setPlaybackMode}
-          onGlowRadiusChange={setGlowRadius}
-          onGlowIntensityChange={setGlowIntensity}
-          onGeometryModeChange={setGeometryMode}
-          onStrokeWidthChange={setStrokeWidth}
-          onTiltXChange={setTiltX}
-          onTiltYChange={setTiltY}
-          onResetTilt={() => { setTiltX(0); setTiltY(0); showToast('3D Tilt Reset'); }}
-          onColorChange={(k, val) => setColors(prev => ({ ...prev, [k]: val }))}
-          onPlaySound={() => playTick(soundEnabled, 650, 0.02)}
-        />
+        {/* Right Inspector (2D Typography Optics vs 3D Extrusion & PBR Lab) */}
+        {studioMode === '2d' ? (
+          <RightInspector
+            width={rightWidth}
+            motionId={activeMotion.id}
+            motionName={activeMotion.name}
+            category={activeMotion.badge}
+            duration={duration}
+            stagger={stagger}
+            bezier={bezier}
+            easeFormula={easeFormula}
+            playbackMode={playbackMode}
+            glowRadius={glowRadius}
+            glowIntensity={glowIntensity}
+            geometryMode={geometryMode}
+            strokeWidth={strokeWidth}
+            tiltX={tiltX}
+            tiltY={tiltY}
+            colors={colors}
+            onDurationChange={(d) => { setDuration(d); seekToProgress(currentProgress); }}
+            onStaggerChange={setStagger}
+            onBezierChange={setBezier}
+            onPlaybackModeChange={setPlaybackMode}
+            onGlowRadiusChange={setGlowRadius}
+            onGlowIntensityChange={setGlowIntensity}
+            onGeometryModeChange={setGeometryMode}
+            onStrokeWidthChange={setStrokeWidth}
+            onTiltXChange={setTiltX}
+            onTiltYChange={setTiltY}
+            onResetTilt={() => { setTiltX(0); setTiltY(0); showToast('3D Tilt Reset'); }}
+            onColorChange={(k, val) => setColors(prev => ({ ...prev, [k]: val }))}
+            onPlaySound={() => playTick(soundEnabled, 650, 0.02)}
+          />
+        ) : (
+          <ThreeRightInspector
+            width={rightWidth}
+            config={threeConfig}
+            parts={threeParts}
+            onUpdateConfig={handleUpdateThreeConfig}
+            onUpdatePart={handleUpdatePart}
+            onResetParts={handleResetParts}
+          />
+        )}
       </div>
 
       {/* Horizontal Resizer: Workspace <-> Timeline */}
@@ -592,33 +795,43 @@ export const App: React.FC = () => {
         title="Drag to resize Timeline height"
       />
 
-      {/* Bottom Professional NLE Timeline */}
-      <TimelineFooter
-        height={timelineHeight}
-        duration={duration}
-        currentProgress={currentProgress}
-        isPlaying={isPlaying}
-        isLooping={isLooping}
-        soundEnabled={soundEnabled}
-        playbackSpeed={playbackSpeed}
-        tracks={tracks}
-        onPlayPause={handlePlayPause}
-        onJumpStart={handleResetToStart}
-        onJumpEnd={() => { stopPlayback(); seekToProgress(1); playTick(soundEnabled, 700, 0.02); }}
-        onStepBack={() => { stopPlayback(); seekToProgress(Math.max(0, currentProgress - (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
-        onStepForward={() => { stopPlayback(); seekToProgress(Math.min(1, currentProgress + (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
-        onToggleLoop={() => { setIsLooping(l => !l); showToast(`Loop: ${!isLooping ? 'ON' : 'OFF'}`); }}
-        onToggleSound={() => { setSoundEnabled(s => !s); showToast(`Audio FX: ${!soundEnabled ? 'ON' : 'MUTED'}`); }}
-        onSpeedChange={(s) => { setPlaybackSpeed(s); showToast(`Speed: ${s}x`); }}
-        onSeekProgress={(p) => seekToProgress(p)}
-        onToggleLayerVisibility={handleToggleLayerVisibility}
-        onAddKeyframe={handleAddKeyframe}
-        onJumpPrevKeyframe={handleJumpPrevKeyframe}
-        onJumpNextKeyframe={handleJumpNextKeyframe}
-        onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}
-      />
+      {/* Bottom Professional Timeline (2D Multi-Track vs 3D Normalized Scrubber) */}
+      {studioMode === '2d' ? (
+        <TimelineFooter
+          height={timelineHeight}
+          duration={duration}
+          currentProgress={currentProgress}
+          isPlaying={isPlaying}
+          isLooping={isLooping}
+          soundEnabled={soundEnabled}
+          playbackSpeed={playbackSpeed}
+          tracks={tracks}
+          onPlayPause={handlePlayPause}
+          onJumpStart={handleResetToStart}
+          onJumpEnd={() => { stopPlayback(); seekToProgress(1); playTick(soundEnabled, 700, 0.02); }}
+          onStepBack={() => { stopPlayback(); seekToProgress(Math.max(0, currentProgress - (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
+          onStepForward={() => { stopPlayback(); seekToProgress(Math.min(1, currentProgress + (1/60)/duration)); playTick(soundEnabled, 550, 0.015); }}
+          onToggleLoop={() => { setIsLooping(l => !l); showToast(`Loop: ${!isLooping ? 'ON' : 'OFF'}`); }}
+          onToggleSound={() => { setSoundEnabled(s => !s); showToast(`Audio FX: ${!soundEnabled ? 'ON' : 'MUTED'}`); }}
+          onSpeedChange={(s) => { setPlaybackSpeed(s); showToast(`Speed: ${s}x`); }}
+          onSeekProgress={(p) => seekToProgress(p)}
+          onToggleLayerVisibility={handleToggleLayerVisibility}
+          onAddKeyframe={handleAddKeyframe}
+          onJumpPrevKeyframe={handleJumpPrevKeyframe}
+          onJumpNextKeyframe={handleJumpNextKeyframe}
+          onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}
+        />
+      ) : (
+        <ThreeTimelineFooter
+          height={timelineHeight}
+          config={threeConfig}
+          onUpdateConfig={handleUpdateThreeConfig}
+          onTogglePlay={() => setThreeConfig(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
+          onResetTime={() => setThreeConfig(prev => ({ ...prev, time: 0 }))}
+        />
+      )}
 
-      {/* Code Export Modal */}
+      {/* Code Export Modal (2D) */}
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
@@ -629,7 +842,7 @@ export const App: React.FC = () => {
         colors={colors}
       />
 
-      {/* 60 FPS MP4 / WebM Video Export Modal */}
+      {/* 60 FPS MP4 / WebM Video Export Modal (2D) */}
       <VideoExportModal
         isOpen={isVideoExportOpen}
         onClose={() => setIsVideoExportOpen(false)}
@@ -648,6 +861,21 @@ export const App: React.FC = () => {
         seekFrame={async (p) => {
           seekToProgress(p, true);
         }}
+      />
+
+      {/* 3D Asset & Animation Export Modal */}
+      <ThreeExportModal
+        isOpen={is3DExportOpen}
+        onClose={() => setIs3DExportOpen(false)}
+        config={threeConfig}
+        canvas={document.getElementById('three-stage-canvas') as HTMLCanvasElement | null}
+      />
+
+      {/* Custom SVG Vector Import Modal */}
+      <CustomSvgModal
+        isOpen={isCustomSvgOpen}
+        onClose={() => setIsCustomSvgOpen(false)}
+        onImportSvg={handleImportCustomSvg}
       />
 
       {/* Floating System Toast */}

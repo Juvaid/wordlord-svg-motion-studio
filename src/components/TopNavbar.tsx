@@ -8,13 +8,19 @@ import {
   Grid, 
   Monitor, 
   Sparkles,
-  Film
+  Film,
+  Layers,
+  Box,
+  Camera,
+  Download
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
 import { getMotionIcon } from '../utils/presetIcons';
 
 interface TopNavbarProps {
+  studioMode: '2d' | '3d';
+  onSetStudioMode: (mode: '2d' | '3d') => void;
   scale: number;
   bgMode: BackgroundMode;
   activeMotionId: string;
@@ -28,9 +34,12 @@ interface TopNavbarProps {
   onResetToStart: () => void;
   onOpenExport: () => void;
   onOpenVideoExport: () => void;
+  onOpen3DExport?: () => void;
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
+  studioMode,
+  onSetStudioMode,
   scale,
   bgMode,
   activeMotionId,
@@ -43,7 +52,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onQuickPlay,
   onResetToStart,
   onOpenExport,
-  onOpenVideoExport
+  onOpenVideoExport,
+  onOpen3DExport
 }) => {
   return (
     <header className="h-12 bg-[#0c0e14] border-b border-[#1f2430] flex items-center justify-between px-3.5 z-40 select-none">
@@ -63,147 +73,183 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <span className="text-[9px] font-mono px-1 py-0.2 bg-[#ff4e2e]/10 text-[#ff4e2e] border border-[#ff4e2e]/20 rounded font-normal">v5.0</span>
           </div>
           <div className="text-[9px] font-mono text-slate-500 tracking-tight flex items-center gap-1">
-            <span className="inline-flex items-center gap-1 text-slate-300">
-              {getMotionIcon(activeMotionId, 10)}
-              <span>{activeMotionName}</span>
-            </span>
-            <span>•</span>
-            <span className="text-slate-400">{activeStyleName}</span>
+            {studioMode === '2d' ? (
+              <>
+                <span className="inline-flex items-center gap-1 text-slate-300">
+                  {getMotionIcon(activeMotionId, 10)}
+                  <span>{activeMotionName}</span>
+                </span>
+                <span>•</span>
+                <span className="text-slate-400">{activeStyleName}</span>
+              </>
+            ) : (
+              <span className="text-[#ff4e2e] font-semibold">Three.js WebGL Extruded Engine</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Center Stage Viewport Navigation Tools */}
-      <div className="flex items-center gap-1 bg-[#131620] border border-[#222736] rounded-md p-0.5">
-        <Tooltip content="Zoom Out" shortcut="-" side="bottom">
-          <button
-            onClick={onZoomOut}
-            aria-label="Zoom Out"
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-          >
-            <ZoomOut size={13} strokeWidth={2} />
-          </button>
-        </Tooltip>
-
-        <Tooltip content="Current Scale (Scroll or drag stage)" side="bottom">
-          <span className="text-[10px] font-mono font-medium px-1.5 text-slate-300 min-w-[3.2rem] text-center cursor-default">
-            {Math.round(scale * 100)}%
-          </span>
-        </Tooltip>
-
-        <Tooltip content="Zoom In" shortcut="+" side="bottom">
-          <button
-            onClick={onZoomIn}
-            aria-label="Zoom In"
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-          >
-            <ZoomIn size={13} strokeWidth={2} />
-          </button>
-        </Tooltip>
-
-        <div className="w-[1px] h-3.5 bg-[#222736] mx-0.5" />
-
-        <Tooltip content="Reset View (100% Zoom & Centered Pan)" shortcut="0" side="bottom">
-          <button
-            onClick={onResetView}
-            aria-label="Reset View"
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
-          >
-            <RotateCcw size={13} strokeWidth={2} />
-          </button>
-        </Tooltip>
+      {/* Center: Studio Workspace Mode Switcher (2D Vector Motion vs 3D Extruded Studio) */}
+      <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+        <button
+          onClick={() => onSetStudioMode('2d')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
+            studioMode === '2d'
+              ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers size={13} />
+          <span>2D Motion Studio</span>
+        </button>
+        <button
+          onClick={() => onSetStudioMode('3d')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
+            studioMode === '3d'
+              ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Box size={13} />
+          <span>3D Extruded Studio</span>
+        </button>
       </div>
 
       {/* Right Actions & Canvas Stage Modes */}
       <div className="flex items-center gap-2">
-        {/* Background Mode Selector */}
-        <div className="flex items-center bg-[#131620] border border-[#222736] rounded-md p-0.5">
-          <Tooltip content="Solid Dark Stage" shortcut="1" side="bottom">
+        {studioMode === '2d' ? (
+          <>
+            {/* Center Stage Viewport Navigation Tools */}
+            <div className="flex items-center gap-1 bg-[#131620] border border-[#222736] rounded-md p-0.5">
+              <Tooltip content="Zoom Out" shortcut="-" side="bottom">
+                <button
+                  onClick={onZoomOut}
+                  aria-label="Zoom Out"
+                  className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+                >
+                  <ZoomOut size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Current Scale (Scroll or drag stage)" side="bottom">
+                <span className="text-[10px] font-mono font-medium px-1.5 text-slate-300 min-w-[3.2rem] text-center cursor-default">
+                  {Math.round(scale * 100)}%
+                </span>
+              </Tooltip>
+
+              <Tooltip content="Zoom In" shortcut="+" side="bottom">
+                <button
+                  onClick={onZoomIn}
+                  aria-label="Zoom In"
+                  className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+                >
+                  <ZoomIn size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+
+              <div className="w-[1px] h-3.5 bg-[#222736] mx-0.5" />
+
+              <Tooltip content="Reset View (100% Zoom & Centered Pan)" shortcut="0" side="bottom">
+                <button
+                  onClick={onResetView}
+                  aria-label="Reset View"
+                  className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-white/5 rounded transition-colors"
+                >
+                  <RotateCcw size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+            </div>
+
+            {/* Background Mode Selector */}
+            <div className="flex items-center bg-[#131620] border border-[#222736] rounded-md p-0.5">
+              <Tooltip content="Solid Dark Stage" shortcut="1" side="bottom">
+                <button
+                  onClick={() => onSetBgMode('dark')}
+                  aria-label="Solid Dark Stage"
+                  className={`p-1.5 rounded transition-all ${
+                    bgMode === 'dark'
+                      ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Monitor size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Radial Ambient Spotlight" shortcut="2" side="bottom">
+                <button
+                  onClick={() => onSetBgMode('radial')}
+                  aria-label="Radial Ambient Spotlight"
+                  className={`p-1.5 rounded transition-all ${
+                    bgMode === 'radial'
+                      ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Sparkles size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Sub-pixel Dot Calibration Grid" shortcut="3" side="bottom">
+                <button
+                  onClick={() => onSetBgMode('grid')}
+                  aria-label="Sub-pixel Dot Calibration Grid"
+                  className={`p-1.5 rounded transition-all ${
+                    bgMode === 'grid'
+                      ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Grid size={13} strokeWidth={2} />
+                </button>
+              </Tooltip>
+            </div>
+
+            {/* Quick Replay Trigger */}
+            <Tooltip content="Replay Animation from Beginning" shortcut="R" side="bottom">
+              <button
+                onClick={onQuickPlay}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181c26] hover:bg-[#202534] border border-[#262c3e] hover:border-slate-500 text-slate-200 rounded-md text-xs font-mono transition-all shadow-sm"
+              >
+                <Play size={11} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
+                <span>Replay</span>
+              </button>
+            </Tooltip>
+
+            {/* Video MP4 Export Trigger */}
+            <Tooltip content="Render & Export 60 FPS MP4 / WebM Video" shortcut="V" side="bottom">
+              <button
+                onClick={onOpenVideoExport}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1f2434] hover:bg-[#293046] border border-[#3b4460] text-slate-100 rounded-md text-xs font-semibold shadow-sm transition-all"
+              >
+                <Film size={13} className="text-[#38bdf8]" />
+                <span>Export MP4</span>
+              </button>
+            </Tooltip>
+
+            {/* Code Export Modal Trigger */}
+            <Tooltip content="Export Standalone SVG, CSS & React Component" shortcut="E" side="bottom">
+              <button
+                onClick={onOpenExport}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded-md text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all"
+              >
+                <Code2 size={13} strokeWidth={2.2} />
+                <span>Export Code</span>
+              </button>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            {/* 3D Export Trigger */}
             <button
-              onClick={() => onSetBgMode('dark')}
-              aria-label="Solid Dark Stage"
-              className={`p-1.5 rounded transition-all ${
-                bgMode === 'dark'
-                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={onOpen3DExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded-md text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all"
             >
-              <Monitor size={13} strokeWidth={2} />
+              <Download size={13} />
+              <span>Export 3D Asset / Video</span>
             </button>
-          </Tooltip>
-
-          <Tooltip content="Radial Ambient Spotlight" shortcut="2" side="bottom">
-            <button
-              onClick={() => onSetBgMode('radial')}
-              aria-label="Radial Ambient Spotlight"
-              className={`p-1.5 rounded transition-all ${
-                bgMode === 'radial'
-                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Sparkles size={13} strokeWidth={2} />
-            </button>
-          </Tooltip>
-
-          <Tooltip content="Sub-pixel Dot Calibration Grid" shortcut="3" side="bottom">
-            <button
-              onClick={() => onSetBgMode('grid')}
-              aria-label="Sub-pixel Dot Calibration Grid"
-              className={`p-1.5 rounded transition-all ${
-                bgMode === 'grid'
-                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Grid size={13} strokeWidth={2} />
-            </button>
-          </Tooltip>
-        </div>
-
-        {/* Rewind / Reset to 0:00 */}
-        <Tooltip content="Reset Timeline to 0:00 (Beginning)" shortcut="Home" side="bottom">
-          <button
-            onClick={onResetToStart}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#141722] hover:bg-[#1d2232] border border-[#262c3e] text-slate-300 hover:text-white rounded-md text-xs font-mono transition-all shadow-sm"
-          >
-            <RotateCcw size={11} strokeWidth={2} className="text-slate-400" />
-            <span>Reset</span>
-          </button>
-        </Tooltip>
-
-        {/* Quick Replay Trigger */}
-        <Tooltip content="Replay Animation from Beginning" shortcut="R" side="bottom">
-          <button
-            onClick={onQuickPlay}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#181c26] hover:bg-[#202534] border border-[#262c3e] hover:border-slate-500 text-slate-200 rounded-md text-xs font-mono transition-all shadow-sm"
-          >
-            <Play size={11} fill="currentColor" strokeWidth={0} className="text-[#ff4e2e]" />
-            <span>Replay</span>
-          </button>
-        </Tooltip>
-
-        {/* Video MP4 Export Trigger */}
-        <Tooltip content="Render & Export 60 FPS MP4 / WebM Video" shortcut="V" side="bottom">
-          <button
-            onClick={onOpenVideoExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1f2434] hover:bg-[#293046] border border-[#3b4460] text-slate-100 rounded-md text-xs font-semibold shadow-sm transition-all"
-          >
-            <Film size={13} className="text-[#38bdf8]" />
-            <span>Export MP4</span>
-          </button>
-        </Tooltip>
-
-        {/* Code Export Modal Trigger */}
-        <Tooltip content="Export Standalone SVG, CSS & React Component" shortcut="E" side="bottom">
-          <button
-            onClick={onOpenExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded-md text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all"
-          >
-            <Code2 size={13} strokeWidth={2.2} />
-            <span>Export Code</span>
-          </button>
-        </Tooltip>
+          </>
+        )}
       </div>
     </header>
   );
