@@ -13,18 +13,21 @@
   - Raycast 3D part selection with white flash feedback.
   - Social framing masks (16:9, 9:16, 1:1, 21:9).
   - Procedural surface textures (`fluted`, `brushed`, `carbon`, `knurl`, `noise`).
+  - Added dedicated **Motion Graphics Studio** workspace (SaaS Notion Bento Card UI Graphic Studio with Dynamic Vector Stagger, 3D perspective matrix lift, and customizable telemetry grids from `gemini-code-1790343396383.html`).
 
 ## Core Agent Documentation
-- [`.agent/FEATURES.md`](FEATURES.md): Comprehensive feature inventory (2D motions, 3D PBR materials, lighting, export pipelines).
+- [`.agent/FEATURES.md`](FEATURES.md): Comprehensive feature inventory (2D motions, 3D PBR materials, Motion Graphics bento UI, export pipelines).
 - [`.agent/ARCHITECTURE.md`](ARCHITECTURE.md): Technical deep-dive on SVG decomposition, Three.js extrusion, canvas exporters, state flow.
 - [`.agent/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md): Strict visual tokens, Obsidian palette, zero-emoji policy, and inspector primitives.
 - [`.agent/USER_EXPERIENCE_MEASURES.md`](USER_EXPERIENCE_MEASURES.md): UX ergonomics roadmap, shortcuts matrix, and interaction design.
 
 ## Directory Structure
-- `src/App.tsx`: Main application shell, state management, workspace router (2D vs 3D).
+- `src/App.tsx`: Main application shell, state management, workspace router (2D vs 3D vs Motion Graphics).
 - `src/components/`:
-  - `TopNavbar.tsx`: Global navigation, undo/redo, save/load, shortcuts trigger, mode switch.
+  - `TopNavbar.tsx`: Global navigation, undo/redo, save/load, shortcuts trigger, 3-mode switch (`2d`, `3d`, `motion-graphics`).
   - `StageViewport.tsx` & `ThreeStageViewport.tsx`: 2D SVG canvas and 3D WebGL viewport.
+  - `MotionGraphicsViewport.tsx`: SaaS Notion Bento Card UI Graphic Studio with 3D perspective tilt.
+  - `MotionGraphicsInspector.tsx`: Bento typography, theme switcher, telemetry grid inspector.
   - `LeftLibrary.tsx` & `ThreeLeftLibrary.tsx`: Creative presets and asset libraries.
   - `RightInspector.tsx` & `ThreeRightInspector.tsx`: Parameter inspectors and PBR properties.
   - `TimelineFooter.tsx` & `ThreeTimelineFooter.tsx`: Sequencer timelines and transport decks.

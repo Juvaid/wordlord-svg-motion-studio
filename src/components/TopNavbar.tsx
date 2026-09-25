@@ -25,8 +25,8 @@ import { Tooltip } from './Tooltip';
 import { getMotionIcon } from '../utils/presetIcons';
 
 interface TopNavbarProps {
-  studioMode: '2d' | '3d';
-  onSetStudioMode: (mode: '2d' | '3d') => void;
+  studioMode: '2d' | '3d' | 'motion-graphics';
+  onSetStudioMode: (mode: '2d' | '3d' | 'motion-graphics') => void;
   scale: number;
   bgMode: BackgroundMode;
   activeMotionId: string;
@@ -104,8 +104,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 <span>•</span>
                 <span className="text-slate-400">{activeStyleName}</span>
               </>
-            ) : (
+            ) : studioMode === '3d' ? (
               <span className="text-[#ff4e2e] font-semibold">Three.js WebGL Extruded Engine</span>
+            ) : (
+              <span className="text-cyan-400 font-semibold">SaaS Notion Bento Card Motion Studio</span>
             )}
           </div>
         </div>
@@ -113,7 +115,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
       {/* Center: Studio Switcher & History / Project Controls */}
       <div className="flex items-center gap-2">
-        {/* Studio Workspace Mode Switcher (2D Vector Motion vs 3D Extruded Studio) */}
+        {/* Studio Workspace Mode Switcher (2D Vector Motion vs 3D Extruded vs Motion Graphics) */}
         <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
           <button
             onClick={() => onSetStudioMode('2d')}
@@ -124,7 +126,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             }`}
           >
             <Layers size={13} />
-            <span>2D Motion Studio</span>
+            <span>2D Vector</span>
           </button>
           <button
             onClick={() => onSetStudioMode('3d')}
@@ -135,7 +137,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             }`}
           >
             <Box size={13} />
-            <span>3D Extruded Studio</span>
+            <span>3D Extruded</span>
+          </button>
+          <button
+            onClick={() => onSetStudioMode('motion-graphics')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
+              studioMode === 'motion-graphics'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles size={13} />
+            <span>Motion Graphics</span>
           </button>
         </div>
 

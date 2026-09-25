@@ -103,3 +103,25 @@ export interface StudioState {
     media: string;
   };
 }
+
+export type BentoTheme = 'obsidian' | 'slate' | 'cyberpunk' | 'monochrome' | 'gold';
+
+export interface BentoConfig {
+  headlineWord: string;
+  headlineLord: string;
+  sublineText: string;
+  docPath: string;
+  tagText: string;
+  theme: BentoTheme;
+  cardTiltX: number;
+  cardTiltY: number;
+  glassmorphism: boolean;
+  borderGlow: boolean;
+  showMark: boolean;
+  staggerMs: number;
+  engineSpec: string;
+  dynamicsSpec: string;
+  fpsSpec: string;
+  resSpec: string;
+}
+

@@ -8,8 +8,9 @@
 - **Core Aesthetic**: Desktop creative suite (Linear / DaVinci Resolve / Blender / Figma). Obsidian dark surfaces (`#07080c` to `#161a25`), WordLord crimson accent (`#ff4e2e`), strict **zero-emoji** policy across all UI chrome.
 
 ## Key Workspaces
-1. **2D Kinetic Motion Studio**: 12 choreographed motion presets, 8 optical shader styles, 17 vector glyph tracks, interactive Bézier curve editor, multi-track timeline, 60 FPS MP4/WebM video exporter.
+1. **2D Vector Mark Studio**: 12 choreographed motion presets, 8 optical shader styles, 17 vector glyph tracks, interactive Bézier curve editor, multi-track timeline, 60 FPS MP4/WebM video exporter.
 2. **3D Extruded Studio**: Hardware WebGL 3D engine, custom SVG part decomposition, collective asset transforms (Blender N-panel style: Pos, Rot, Scale, Uniform Scale), PBR materials, fluted/ribbed bump maps, 3-point studio lighting, UnrealBloom post-processing, GLTF/GLB/PNG/WebM export.
+3. **Motion Graphics Studio**: SaaS Notion Bento Card UI Graphic Studio, dynamic vector typography showcase, 3D perspective matrix lift, customizable telemetry grids, and 5 curated aesthetic themes.
 
 ## Development & Build Commands
 - `npm run dev`: Starts Vite dev server (runs as background daemon).

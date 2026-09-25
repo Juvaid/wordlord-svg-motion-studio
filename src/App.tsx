@@ -47,8 +47,11 @@ import {
   PlaybackMode, 
   GeometryMode, 
   BackgroundMode,
-  TimelineTrack 
+  TimelineTrack,
+  BentoConfig 
 } from './types';
+import { MotionGraphicsViewport } from './components/MotionGraphicsViewport';
+import { MotionGraphicsInspector } from './components/MotionGraphicsInspector';
 
 export const App: React.FC = () => {
   // 1. Studio State
@@ -111,10 +114,30 @@ export const App: React.FC = () => {
   const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 3D Studio Workspace State
-  const [studioMode, setStudioMode] = useState<'2d' | '3d'>('2d');
+  // Workspace Mode State (2D Vector Mark vs 3D Extruded Studio vs Motion Graphics)
+  const [studioMode, setStudioMode] = useState<'2d' | '3d' | 'motion-graphics'>('2d');
   const [is3DExportOpen, setIs3DExportOpen] = useState(false);
   const [isCustomSvgOpen, setIsCustomSvgOpen] = useState(false);
+
+  // Motion Graphics (SaaS Notion Bento Card UI Graphic Studio) State
+  const [bentoConfig, setBentoConfig] = useState<BentoConfig>({
+    headlineWord: 'WORD',
+    headlineLord: 'LORD',
+    sublineText: 'MEDIA',
+    docPath: '/workspace/docs/wordlord.motion',
+    tagText: 'Notion Preset v2.4',
+    theme: 'obsidian',
+    cardTiltX: 14,
+    cardTiltY: 0,
+    glassmorphism: true,
+    borderGlow: true,
+    showMark: true,
+    staggerMs: 60,
+    engineSpec: 'Hardware PBR',
+    dynamicsSpec: 'Cubic Hermite',
+    fpsSpec: '60 FPS Lock',
+    resSpec: '4K Vector Master'
+  });
 
   const [threeConfig, setThreeConfig] = useState<ThreeStudioConfig>({
     groupId: 'group-wordlord',
@@ -237,7 +260,8 @@ export const App: React.FC = () => {
       tiltY,
       colors: { ...colors },
       threeConfig: { ...threeConfig },
-      threeParts: threeParts.map(p => ({ ...p }))
+      threeParts: threeParts.map(p => ({ ...p })),
+      bentoConfig: { ...bentoConfig }
     };
   }, [
     studioMode,
@@ -253,12 +277,14 @@ export const App: React.FC = () => {
     tiltY,
     colors,
     threeConfig,
-    threeParts
+    threeParts,
+    bentoConfig
   ]);
 
   const applySnapshot = useCallback((snap: ProjectStateSnapshot) => {
     isRestoringRef.current = true;
     if (snap.studioMode) setStudioMode(snap.studioMode);
+    if (snap.bentoConfig) setBentoConfig(snap.bentoConfig);
     if (snap.activeMotionId) setActiveMotionId(snap.activeMotionId);
     if (snap.activeStyleId) setActiveStyleId(snap.activeStyleId);
     if (typeof snap.duration === 'number') setDuration(snap.duration);
@@ -816,8 +842,14 @@ export const App: React.FC = () => {
       if (e.key === 'Tab') {
         e.preventDefault();
         setStudioMode(prev => {
-          const next = prev === '2d' ? '3d' : '2d';
-          showToast(next === '3d' ? 'Switched to 3D Extruded Studio' : 'Switched to 2D Motion Studio');
+          const next = prev === '2d' ? '3d' : prev === '3d' ? 'motion-graphics' : '2d';
+          showToast(
+            next === '2d' 
+              ? 'Switched to 2D Vector Mark' 
+              : next === '3d' 
+              ? 'Switched to 3D Extruded Studio' 
+              : 'Switched to Motion Graphics Studio'
+          );
           return next;
         });
         return;
@@ -916,8 +948,8 @@ export const App: React.FC = () => {
         return;
       }
 
-      // 2D Timeline scrubbing keys
-      if (studioMode === '2d') {
+      // 2D & Motion Graphics Timeline scrubbing keys
+      if (studioMode === '2d' || studioMode === 'motion-graphics') {
         if (e.code === 'KeyL') {
           e.preventDefault();
           setIsLooping(l => !l);
@@ -1058,7 +1090,7 @@ export const App: React.FC = () => {
       {/* Main Workspace Body (3-Column Layout with Resizable Dividers) */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left Library (2D Preset Engine vs 3D Assets & PBR) */}
-        {studioMode === '2d' ? (
+        {studioMode === '2d' || studioMode === 'motion-graphics' ? (
           <LeftLibrary
             width={leftWidth}
             activeTab={activeTab}
@@ -1092,7 +1124,7 @@ export const App: React.FC = () => {
           title="Drag to resize Library panel"
         />
 
-        {/* Center Stage Viewport (2D CSS Motion Canvas vs 3D WebGL PBR Viewport) */}
+        {/* Center Stage Viewport (2D CSS Motion Canvas vs 3D WebGL PBR Viewport vs Motion Graphics) */}
         {studioMode === '2d' ? (
           <StageViewport
             animKey={animKey}
@@ -1115,13 +1147,24 @@ export const App: React.FC = () => {
             onPanChange={setPan}
             onScaleChange={setScale}
           />
-        ) : (
+        ) : studioMode === '3d' ? (
           <ThreeStageViewport
             config={threeConfig}
             parts={threeParts}
             onUpdateConfig={handleUpdateThreeConfig}
             onSelectPart={(idx) => setThreeConfig(prev => ({ ...prev, selectedPartIndex: idx }))}
             onSetParts={setThreeParts}
+          />
+        ) : (
+          <MotionGraphicsViewport
+            currentProgress={currentProgress}
+            isPlaying={isPlaying}
+            duration={duration}
+            stagger={stagger}
+            easeFormula={easeFormula}
+            bentoConfig={bentoConfig}
+            onUpdateBentoConfig={setBentoConfig}
+            colors={colors}
           />
         )}
 
@@ -1132,7 +1175,7 @@ export const App: React.FC = () => {
           title="Drag to resize Inspector panel"
         />
 
-        {/* Right Inspector (2D Typography Optics vs 3D Extrusion & PBR Lab) */}
+        {/* Right Inspector (2D Typography Optics vs 3D Extrusion & PBR Lab vs Motion Graphics) */}
         {studioMode === '2d' ? (
           <RightInspector
             width={rightWidth}
@@ -1165,7 +1208,7 @@ export const App: React.FC = () => {
             onColorChange={(k, val) => setColors(prev => ({ ...prev, [k]: val }))}
             onPlaySound={() => playTick(soundEnabled, 650, 0.02)}
           />
-        ) : (
+        ) : studioMode === '3d' ? (
           <ThreeRightInspector
             width={rightWidth}
             config={threeConfig}
@@ -1174,6 +1217,16 @@ export const App: React.FC = () => {
             onUpdatePart={handleUpdatePart}
             onResetParts={handleResetParts}
             onResetTransforms={handleResetTransforms}
+          />
+        ) : (
+          <MotionGraphicsInspector
+            width={rightWidth}
+            bentoConfig={bentoConfig}
+            onUpdateBentoConfig={setBentoConfig}
+            duration={duration}
+            onDurationChange={(d) => { setDuration(d); seekToProgress(currentProgress); }}
+            stagger={stagger}
+            onStaggerChange={setStagger}
           />
         )}
       </div>
@@ -1186,7 +1239,15 @@ export const App: React.FC = () => {
       />
 
       {/* Bottom Professional Timeline (2D Multi-Track vs 3D Normalized Scrubber) */}
-      {studioMode === '2d' ? (
+      {studioMode === '3d' ? (
+        <ThreeTimelineFooter
+          height={timelineHeight}
+          config={threeConfig}
+          onUpdateConfig={handleUpdateThreeConfig}
+          onTogglePlay={() => setThreeConfig(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
+          onResetTime={() => setThreeConfig(prev => ({ ...prev, time: 0 }))}
+        />
+      ) : (
         <TimelineFooter
           height={timelineHeight}
           duration={duration}
@@ -1210,14 +1271,6 @@ export const App: React.FC = () => {
           onJumpPrevKeyframe={handleJumpPrevKeyframe}
           onJumpNextKeyframe={handleJumpNextKeyframe}
           onPlaySound={(pitch, dur) => playTick(soundEnabled, pitch, dur)}
-        />
-      ) : (
-        <ThreeTimelineFooter
-          height={timelineHeight}
-          config={threeConfig}
-          onUpdateConfig={handleUpdateThreeConfig}
-          onTogglePlay={() => setThreeConfig(prev => ({ ...prev, isPlaying: !prev.isPlaying }))}
-          onResetTime={() => setThreeConfig(prev => ({ ...prev, time: 0 }))}
         />
       )}
 

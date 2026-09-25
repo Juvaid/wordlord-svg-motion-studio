@@ -8,8 +8,9 @@ WordLord SVG Motion Studio is a dual-engine (2D Kinetic Vector + 3D Extruded Web
 
 | Workspace | Engine | Primary Purpose | Export Formats |
 | :--- | :--- | :--- | :--- |
-| **2D Studio** (`activeMode === '2d'`) | SVG DOM + CSS / WAAPI + Double-buffered Canvas | Sub-pixel kinetic typography, glowing ligatures, stroke animations, easing curation | MP4 (H.264), WebM, SVG Snapshot, JSON Project |
-| **3D Studio** (`activeMode === '3d'`) | Three.js r186 + WebGL + Custom Procedural Shaders | Volumetric bevel extrusion, part decomposition, PBR lighting, procedural textures | WebM (60fps), GLTF / GLB, PNG Sequences, JSON Project |
+| **2D Vector Mark** (`studioMode === '2d'`) | SVG DOM + CSS / WAAPI + Double-buffered Canvas | Sub-pixel kinetic typography, glowing ligatures, stroke animations, easing curation | MP4 (H.264), WebM, SVG Snapshot, JSON Project |
+| **3D Extruded Studio** (`studioMode === '3d'`) | Three.js r186 + WebGL + Custom Procedural Shaders | Volumetric bevel extrusion, part decomposition, PBR lighting, procedural textures | WebM (60fps), GLTF / GLB, PNG Sequences, JSON Project |
+| **Motion Graphics** (`studioMode === 'motion-graphics'`) | React 19 + 3D CSS Matrix + Stagger Dynamics | SaaS Notion Bento Card UI Graphic Studio, dynamic vector typography, telemetry grids | MP4, WebM, Code Snippet, JSON Project |
 
 ---
 
@@ -116,7 +117,32 @@ Procedural bump/roughness maps generated on-the-fly:
 
 ---
 
-## 5. Animation, Timeline & Keyframing
+## 5. Motion Graphics Studio (SaaS Notion Bento UI)
+
+The Motion Graphics workspace provides an editorial and presentation layout engine inspired by modern design engineering (Linear, Notion, Apple):
+- **Interactive Bento Card Root**:
+  - macOS traffic lights (red, amber, emerald) with volumetric optical glow.
+  - Interactive breadcrumb document path (e.g. `/workspace/docs/wordlord.motion`).
+  - Notion preset tag badge (customizable per preset).
+- **Dynamic Typography & Vector Integration**:
+  - Master headline (`WORD \n LORD`) with real-time letter-spacing choreography.
+  - Subline brand mark (`MEDIA`) with laser drop-shadow glow.
+  - Integrated mini SVG vector mark badge.
+- **3D Perspective Tilt Mechanics**:
+  - Responsive 3D transform matrix: `perspective(1200px) rotateX(...) rotateY(...) translateY(...)`.
+  - Micro cursor hover parallax tilt.
+- **Aesthetic Themes**:
+  - `obsidian`: Studio signature void dark + WordLord crimson.
+  - `slate`: Modern Linear/Notion dark blue-slate + cyan.
+  - `cyberpunk`: Electric cyan + deep navy neon glow.
+  - `monochrome`: Stark architectural graphite and pure white.
+  - `gold`: Molten amber and 24K gold flare.
+- **Bento Telemetry Grid**:
+  - 4 customizable stat cards displaying Engine (`Hardware PBR`), Dynamics (`Cubic Hermite`), Framerate (`60 FPS Lock`), and Resolution (`4K Vector`).
+
+---
+
+## 6. Animation, Timeline & Keyframing
 
 - **Double-Buffered Sequencer**: High-precision RAF playback synchronized across 2D CSS/DOM and 3D WebGL meshes.
 - **Transport Controls**: Play/Pause (`Space`), Rewind (`Home`), Step Forward/Backward (`←`/`→`), Loop Toggle (`L`).

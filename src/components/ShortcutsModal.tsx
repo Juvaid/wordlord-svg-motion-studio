@@ -17,7 +17,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({
       title: 'General & Navigation',
       items: [
         { keys: ['Space'], action: 'Play / Pause Timeline' },
-        { keys: ['Tab'], action: 'Toggle 2D Motion / 3D Studio' },
+        { keys: ['Tab'], action: 'Cycle 2D Vector / 3D Extruded / Motion Graphics' },
         { keys: ['Cmd', 'Z'], action: 'Undo Previous Change' },
         { keys: ['Cmd', 'Shift', 'Z'], action: 'Redo Change' },
         { keys: ['Cmd', 'S'], action: 'Save Project Snapshot' },

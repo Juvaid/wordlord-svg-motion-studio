@@ -1,10 +1,11 @@
 import { ThreeStudioConfig, ThreePart } from '../types/threeStudio';
-import { GeometryMode, BackgroundMode } from '../types';
+import { GeometryMode, BackgroundMode, BentoConfig } from '../types';
 
 export interface ProjectStateSnapshot {
   version: string;
   timestamp: number;
-  studioMode: '2d' | '3d';
+  studioMode: '2d' | '3d' | 'motion-graphics';
+  bentoConfig?: BentoConfig;
   // 2D State
   activeMotionId: string;
   activeStyleId: string;
