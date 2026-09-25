@@ -15,6 +15,14 @@ import { ThreeRightInspector } from './components/ThreeRightInspector';
 import { ThreeTimelineFooter } from './components/ThreeTimelineFooter';
 import { ThreeExportModal } from './components/ThreeExportModal';
 import { CustomSvgModal } from './components/CustomSvgModal';
+import { ShortcutsModal } from './components/ShortcutsModal';
+import { 
+  ProjectStateSnapshot, 
+  saveProjectToStorage, 
+  loadProjectFromStorage, 
+  exportProjectToFile, 
+  importProjectFromFile 
+} from './utils/projectState';
 import { 
   ThreeStudioConfig, 
   ThreePart, 
@@ -109,6 +117,10 @@ export const App: React.FC = () => {
   const [isCustomSvgOpen, setIsCustomSvgOpen] = useState(false);
 
   const [threeConfig, setThreeConfig] = useState<ThreeStudioConfig>({
+    groupId: 'group-wordlord',
+    groupName: 'WordLord Core Vector Mark',
+    isGroupLocked: false,
+    isGroupVisible: true,
     depth: 32,
     bevelThickness: 3.5,
     bevelSize: 2.2,
@@ -196,20 +208,177 @@ export const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2000);
   }, []);
 
+  // History & Non-Destructive State Engine
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const undoStackRef = useRef<ProjectStateSnapshot[]>([]);
+  const redoStackRef = useRef<ProjectStateSnapshot[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const isRestoringRef = useRef(false);
+
+  const createStateSnapshot = useCallback((): ProjectStateSnapshot => {
+    return {
+      version: '5.0',
+      timestamp: Date.now(),
+      studioMode,
+      activeMotionId,
+      activeStyleId,
+      duration,
+      stagger,
+      glowRadius,
+      glowIntensity,
+      geometryMode,
+      strokeWidth,
+      tiltX,
+      tiltY,
+      colors: { ...colors },
+      threeConfig: { ...threeConfig },
+      threeParts: threeParts.map(p => ({ ...p }))
+    };
+  }, [
+    studioMode,
+    activeMotionId,
+    activeStyleId,
+    duration,
+    stagger,
+    glowRadius,
+    glowIntensity,
+    geometryMode,
+    strokeWidth,
+    tiltX,
+    tiltY,
+    colors,
+    threeConfig,
+    threeParts
+  ]);
+
+  const applySnapshot = useCallback((snap: ProjectStateSnapshot) => {
+    isRestoringRef.current = true;
+    if (snap.studioMode) setStudioMode(snap.studioMode);
+    if (snap.activeMotionId) setActiveMotionId(snap.activeMotionId);
+    if (snap.activeStyleId) setActiveStyleId(snap.activeStyleId);
+    if (typeof snap.duration === 'number') setDuration(snap.duration);
+    if (typeof snap.stagger === 'number') setStagger(snap.stagger);
+    if (typeof snap.glowRadius === 'number') setGlowRadius(snap.glowRadius);
+    if (typeof snap.glowIntensity === 'number') setGlowIntensity(snap.glowIntensity);
+    if (snap.geometryMode) setGeometryMode(snap.geometryMode);
+    if (typeof snap.strokeWidth === 'number') setStrokeWidth(snap.strokeWidth);
+    if (typeof snap.tiltX === 'number') setTiltX(snap.tiltX);
+    if (typeof snap.tiltY === 'number') setTiltY(snap.tiltY);
+    if (snap.colors) setColors({ ...snap.colors });
+    if (snap.threeConfig) setThreeConfig({ ...snap.threeConfig });
+    if (snap.threeParts && Array.isArray(snap.threeParts)) {
+      setThreeParts(snap.threeParts.map(p => ({ ...p })));
+    }
+    setTimeout(() => {
+      isRestoringRef.current = false;
+    }, 50);
+  }, []);
+
+  const pushUndoSnapshot = useCallback(() => {
+    if (isRestoringRef.current) return;
+    const snap = createStateSnapshot();
+    undoStackRef.current.push(snap);
+    if (undoStackRef.current.length > 40) {
+      undoStackRef.current.shift();
+    }
+    redoStackRef.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  }, [createStateSnapshot]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const currentSnap = createStateSnapshot();
+    redoStackRef.current.push(currentSnap);
+
+    const prevSnap = undoStackRef.current.pop()!;
+    applySnapshot(prevSnap);
+
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+    showToast('Undo change');
+  }, [applySnapshot, createStateSnapshot, showToast]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    const currentSnap = createStateSnapshot();
+    undoStackRef.current.push(currentSnap);
+
+    const nextSnap = redoStackRef.current.pop()!;
+    applySnapshot(nextSnap);
+
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+    showToast('Redo change');
+  }, [applySnapshot, createStateSnapshot, showToast]);
+
+  // Initial load from local storage
+  useEffect(() => {
+    const saved = loadProjectFromStorage();
+    if (saved) {
+      applySnapshot(saved);
+      showToast('Loaded saved project state');
+    }
+  }, [applySnapshot, showToast]);
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (isRestoringRef.current) return;
+    const timer = setTimeout(() => {
+      const snap = createStateSnapshot();
+      saveProjectToStorage(snap);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [createStateSnapshot]);
+
+  const handleSaveProject = useCallback(() => {
+    const snap = createStateSnapshot();
+    saveProjectToStorage(snap);
+    showToast('Project snapshot saved (localStorage)');
+  }, [createStateSnapshot, showToast]);
+
+  const handleExportProject = useCallback(() => {
+    const snap = createStateSnapshot();
+    exportProjectToFile(snap);
+    showToast('Exported project JSON');
+  }, [createStateSnapshot, showToast]);
+
+  const handleImportProject = useCallback(async (file: File) => {
+    try {
+      pushUndoSnapshot();
+      const snap = await importProjectFromFile(file);
+      applySnapshot(snap);
+      showToast(`Imported ${file.name}`);
+    } catch {
+      showToast('Failed to import project file');
+    }
+  }, [applySnapshot, pushUndoSnapshot, showToast]);
+
   const handleUpdateThreeConfig = useCallback((partial: Partial<ThreeStudioConfig>) => {
     setThreeConfig(prev => ({ ...prev, ...partial }));
   }, []);
 
   const handleSelect3DAsset = useCallback((assetId: string) => {
+    pushUndoSnapshot();
     const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
     if (!preset) return;
     const newParts = parseSvgIntoParts(preset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
-    setThreeConfig(prev => ({ ...prev, activeAssetId: assetId, time: 0 }));
-    showToast(`Loaded ${preset.name}`);
-  }, [threeConfig.faceColor, threeConfig.sideColor, showToast]);
+    setThreeConfig(prev => ({ 
+      ...prev, 
+      activeAssetId: assetId,
+      groupId: `group-${assetId}`,
+      groupName: preset.name,
+      isGroupLocked: false,
+      isGroupVisible: true,
+      time: 0 
+    }));
+    showToast(`Loaded ${preset.name} as collective group`);
+  }, [threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
 
   const handleSelect3DPbrPreset = useCallback((presetId: PbrPresetId) => {
+    pushUndoSnapshot();
     const pbr = PBR_PRESETS.find(p => p.id === presetId);
     if (!pbr) return;
     setThreeConfig(prev => ({
@@ -235,9 +404,10 @@ export const App: React.FC = () => {
       transmission: pbr.transmission
     })));
     showToast(`Applied ${pbr.name} PBR`);
-  }, [showToast]);
+  }, [pushUndoSnapshot, showToast]);
 
   const handleSelect3DLightingRig = useCallback((rigId: LightingRigId) => {
+    pushUndoSnapshot();
     const rig = LIGHTING_RIGS.find(r => r.id === rigId);
     if (!rig) return;
     setThreeConfig(prev => ({
@@ -252,7 +422,7 @@ export const App: React.FC = () => {
       ambientIntensity: rig.ambientIntensity
     }));
     showToast(`Switched to ${rig.name}`);
-  }, [showToast]);
+  }, [pushUndoSnapshot, showToast]);
 
   const handleSelect3DMotion = useCallback((motion: ThreeMotionMode) => {
     setThreeConfig(prev => ({ ...prev, motionMode: motion, time: 0, isPlaying: true }));
@@ -270,13 +440,15 @@ export const App: React.FC = () => {
   }, []);
 
   const handleResetParts = useCallback(() => {
+    pushUndoSnapshot();
     const asset = THREE_ASSET_PRESETS.find(a => a.id === threeConfig.activeAssetId) || THREE_ASSET_PRESETS[0];
     const newParts = parseSvgIntoParts(asset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
     showToast('Reset parts geometry & offsets');
-  }, [threeConfig.activeAssetId, threeConfig.faceColor, threeConfig.sideColor, showToast]);
+  }, [threeConfig.activeAssetId, threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
 
   const handleResetTransforms = useCallback(() => {
+    pushUndoSnapshot();
     setThreeConfig(prev => ({
       ...prev,
       posX: 0,
@@ -291,14 +463,24 @@ export const App: React.FC = () => {
       meshScale: 1.0
     }));
     showToast('Reset 3D Transforms (Position, Rotation, Scale)');
-  }, [showToast]);
+  }, [pushUndoSnapshot, showToast]);
 
   const handleImportCustomSvg = useCallback((svgString: string, name?: string) => {
+    pushUndoSnapshot();
     const newParts = parseSvgIntoParts(svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
-    setThreeConfig(prev => ({ ...prev, activeAssetId: 'custom', time: 0 }));
-    showToast(name ? `Imported ${name}` : 'Imported Custom SVG');
-  }, [threeConfig.faceColor, threeConfig.sideColor, showToast]);
+    const assignedName = name || 'Imported Custom Vector Mark';
+    setThreeConfig(prev => ({ 
+      ...prev, 
+      activeAssetId: 'custom',
+      groupId: `group-custom-${Date.now()}`,
+      groupName: assignedName,
+      isGroupLocked: false,
+      isGroupVisible: true,
+      time: 0 
+    }));
+    showToast(`Imported ${assignedName} as collective group`);
+  }, [threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
 
   // Multi-Track Timeline Lanes State
   const [userTracks, setUserTracks] = useState<TimelineTrack[]>([
@@ -580,69 +762,214 @@ export const App: React.FC = () => {
     };
   }, [isPlaying, isLooping, playbackMode, playbackSpeed, duration, currentProgress, restartAnimation, seekToProgress, stopPlayback, soundEnabled]);
 
-  // Keyboard Shortcuts: Space, 0/Home, Escape, R, V, E, J, K, Shift+J, L, M, Arrows
+  // Global Desktop Keyboard Shortcuts: Space, Cmd+Z, Cmd+Shift+Z, Cmd+S, Tab, ?, R, V, E, 1..4, Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
 
+      const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo: Cmd+Z (without shift)
+      if (cmdKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Redo: Cmd+Shift+Z or Cmd+Y
+      if ((cmdKey && e.key.toLowerCase() === 'z' && e.shiftKey) || (cmdKey && e.key.toLowerCase() === 'y')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Save Project: Cmd+S
+      if (cmdKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveProject();
+        return;
+      }
+
+      // Help / Shortcuts: ?
+      if (e.key === '?') {
+        e.preventDefault();
+        setIsShortcutsOpen(prev => !prev);
+        return;
+      }
+
+      // Studio Mode Switcher: Tab
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setStudioMode(prev => {
+          const next = prev === '2d' ? '3d' : '2d';
+          showToast(next === '3d' ? 'Switched to 3D Extruded Studio' : 'Switched to 2D Motion Studio');
+          return next;
+        });
+        return;
+      }
+
+      // Reset 3D Rotation: Alt+R
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        handleResetTransforms();
+        return;
+      }
+
+      // Reset 3D Position: Alt+G
+      if (e.altKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        pushUndoSnapshot();
+        setThreeConfig(prev => ({ ...prev, posX: 0, posY: 0, posZ: 0 }));
+        showToast('Reset 3D Position (Alt+G)');
+        return;
+      }
+
+      // Space: Play / Pause
       if (e.code === 'Space') {
         e.preventDefault();
-        handlePlayPause();
-      } else if (e.code === 'KeyR') {
+        if (studioMode === '2d') {
+          handlePlayPause();
+        } else {
+          setThreeConfig(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+        }
+        return;
+      }
+
+      // Replay: KeyR
+      if (e.code === 'KeyR' && !cmdKey) {
         e.preventDefault();
-        seekToProgress(0);
-        restartAnimation();
-        playTick(soundEnabled, 700, 0.02);
-      } else if (e.code === 'KeyV') {
+        if (studioMode === '2d') {
+          seekToProgress(0);
+          restartAnimation();
+          playTick(soundEnabled, 700, 0.02);
+        } else {
+          setThreeConfig(prev => ({ ...prev, time: 0, isPlaying: true }));
+          showToast('3D Animation Replayed');
+        }
+        return;
+      }
+
+      // Video Export: KeyV
+      if (e.code === 'KeyV' && !cmdKey) {
         e.preventDefault();
         setIsVideoExportOpen(true);
-      } else if (e.code === 'KeyE') {
+        return;
+      }
+
+      // Code / 3D Export: KeyE
+      if (e.code === 'KeyE' && !cmdKey) {
         e.preventDefault();
-        setIsExportOpen(true);
-      } else if (e.code === 'KeyL') {
+        if (studioMode === '2d') {
+          setIsExportOpen(true);
+        } else {
+          setIs3DExportOpen(true);
+        }
+        return;
+      }
+
+      // Escape: Close any open modal or reset playhead
+      if (e.code === 'Escape') {
         e.preventDefault();
-        setIsLooping(l => !l);
-      } else if (e.code === 'KeyM') {
+        if (isExportOpen || isVideoExportOpen || is3DExportOpen || isCustomSvgOpen || isShortcutsOpen) {
+          setIsExportOpen(false);
+          setIsVideoExportOpen(false);
+          setIs3DExportOpen(false);
+          setIsCustomSvgOpen(false);
+          setIsShortcutsOpen(false);
+        } else {
+          handleResetToStart();
+        }
+        return;
+      }
+
+      // Number Keys: 1..4 (Cameras in 3D, Stages in 2D)
+      if (['Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(e.code) && !cmdKey && !e.altKey) {
         e.preventDefault();
-        setSoundEnabled(s => !s);
-      } else if (e.code === 'KeyJ') {
-        e.preventDefault();
-        if (e.shiftKey) handleJumpNextKeyframe();
-        else handleJumpPrevKeyframe();
-      } else if (e.code === 'KeyK') {
-        e.preventDefault();
-        handleAddKeyframe();
-      } else if (e.code === 'Digit1') {
-        setBgMode('dark');
-      } else if (e.code === 'Digit2') {
-        setBgMode('radial');
-      } else if (e.code === 'Digit3') {
-        setBgMode('grid');
-      } else if (e.code === 'Digit0' || e.code === 'Home' || e.code === 'Escape') {
-        e.preventDefault();
-        handleResetToStart();
-      } else if (e.code === 'End') {
-        e.preventDefault();
-        stopPlayback();
-        seekToProgress(1);
-      } else if (e.code === 'ArrowLeft' || e.code === 'Comma') {
-        e.preventDefault();
-        stopPlayback();
-        seekToProgress(Math.max(0, currentProgress - (1/60)/duration));
-      } else if (e.code === 'ArrowRight' || e.code === 'Period') {
-        e.preventDefault();
-        stopPlayback();
-        seekToProgress(Math.min(1, currentProgress + (1/60)/duration));
+        if (studioMode === '3d') {
+          const cameras: ('front' | 'iso' | 'top' | 'side')[] = ['front', 'iso', 'top', 'side'];
+          const idx = parseInt(e.code.replace('Digit', ''), 10) - 1;
+          const chosen = cameras[idx];
+          if (chosen) {
+            setThreeConfig(prev => ({ ...prev, cameraPreset: chosen }));
+            showToast(`Camera: ${chosen.toUpperCase()}`);
+          }
+        } else {
+          if (e.code === 'Digit1') setBgMode('dark');
+          else if (e.code === 'Digit2') setBgMode('radial');
+          else if (e.code === 'Digit3') setBgMode('grid');
+        }
+        return;
+      }
+
+      // 2D Timeline scrubbing keys
+      if (studioMode === '2d') {
+        if (e.code === 'KeyL') {
+          e.preventDefault();
+          setIsLooping(l => !l);
+        } else if (e.code === 'KeyM') {
+          e.preventDefault();
+          setSoundEnabled(s => !s);
+        } else if (e.code === 'KeyJ') {
+          e.preventDefault();
+          if (e.shiftKey) handleJumpNextKeyframe();
+          else handleJumpPrevKeyframe();
+        } else if (e.code === 'KeyK') {
+          e.preventDefault();
+          handleAddKeyframe();
+        } else if (e.code === 'Digit0' || e.code === 'Home') {
+          e.preventDefault();
+          handleResetToStart();
+        } else if (e.code === 'End') {
+          e.preventDefault();
+          stopPlayback();
+          seekToProgress(1);
+        } else if (e.code === 'ArrowLeft' || e.code === 'Comma') {
+          e.preventDefault();
+          stopPlayback();
+          seekToProgress(Math.max(0, currentProgress - (1/60)/duration));
+        } else if (e.code === 'ArrowRight' || e.code === 'Period') {
+          e.preventDefault();
+          stopPlayback();
+          seekToProgress(Math.min(1, currentProgress + (1/60)/duration));
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause, seekToProgress, restartAnimation, stopPlayback, handleResetToStart, handleJumpPrevKeyframe, handleJumpNextKeyframe, handleAddKeyframe, currentProgress, duration, soundEnabled]);
+  }, [
+    handleUndo,
+    handleRedo,
+    handleSaveProject,
+    handleResetTransforms,
+    pushUndoSnapshot,
+    studioMode,
+    handlePlayPause,
+    seekToProgress,
+    restartAnimation,
+    stopPlayback,
+    handleResetToStart,
+    handleJumpPrevKeyframe,
+    handleJumpNextKeyframe,
+    handleAddKeyframe,
+    currentProgress,
+    duration,
+    soundEnabled,
+    isExportOpen,
+    isVideoExportOpen,
+    is3DExportOpen,
+    isCustomSvgOpen,
+    isShortcutsOpen,
+    showToast
+  ]);
 
   // Handle Preset Switching
   const handleSelectMotion = (m: MotionPreset) => {
+    pushUndoSnapshot();
     setActiveMotionId(m.id);
     setDuration(m.defaultDuration);
     setStagger(m.defaultStagger);
@@ -661,6 +988,7 @@ export const App: React.FC = () => {
   };
 
   const handleSelectStyle = (s: StylePreset) => {
+    pushUndoSnapshot();
     setActiveStyleId(s.id);
     setColors({
       word: s.fillWord,
@@ -697,6 +1025,14 @@ export const App: React.FC = () => {
         activeMotionId={activeMotion.id}
         activeMotionName={activeMotion.name}
         activeStyleName={activeStyle.name}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onSaveProject={handleSaveProject}
+        onExportProject={handleExportProject}
+        onImportProject={handleImportProject}
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onZoomIn={() => setScale(s => Math.min(3.5, s * 1.15))}
         onZoomOut={() => setScale(s => Math.max(0.4, s * 0.85))}
         onResetView={() => { setScale(1.0); setPan({ x: 0, y: 0 }); }}
@@ -919,6 +1255,12 @@ export const App: React.FC = () => {
         isOpen={isCustomSvgOpen}
         onClose={() => setIsCustomSvgOpen(false)}
         onImportSvg={handleImportCustomSvg}
+      />
+
+      {/* Keyboard Shortcuts Cheat-sheet Modal */}
+      <ShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
       />
 
       {/* Floating System Toast */}

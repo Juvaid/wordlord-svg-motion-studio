@@ -55,6 +55,23 @@ export type EnvironmentScenePreset =
   | 'obsidian'
   | 'transparent';
 
+export interface AssetGroup {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  posX: number;
+  posY: number;
+  posZ: number;
+  rotX: number;
+  rotY: number;
+  rotZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+  parts: ThreePart[];
+}
+
 export interface StackedEffectsConfig {
   hoverFloat: boolean;
   turntableSpin: boolean;
@@ -65,6 +82,12 @@ export interface StackedEffectsConfig {
 }
 
 export interface ThreeStudioConfig {
+  // Collective Asset Group Meta & Transform
+  groupId: string;
+  groupName: string;
+  isGroupLocked: boolean;
+  isGroupVisible: boolean;
+
   // Geometry
   depth: number;
   bevelThickness: number;
@@ -73,7 +96,7 @@ export interface ThreeStudioConfig {
   meshScale: number;
   autoCenter: boolean;
 
-  // Object Transform (Blender style Position, Rotation, Scale)
+  // Object Collective Transform (Blender style Position, Rotation, Scale)
   posX: number;
   posY: number;
   posZ: number;

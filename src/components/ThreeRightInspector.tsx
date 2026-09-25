@@ -14,7 +14,13 @@ import {
   Globe, 
   Zap, 
   ChevronDown, 
-  ChevronUp 
+  ChevronUp,
+  Lock,
+  Unlock,
+  Folder,
+  Edit3,
+  Check,
+  Scale
 } from 'lucide-react';
 import { 
   InspectorSection, 
@@ -47,6 +53,8 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   onResetTransforms
 }) => {
   const [expandedPartIdx, setExpandedPartIdx] = useState<number | null>(null);
+  const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
+  const [groupNameInput, setGroupNameInput] = useState<string>(config.groupName || 'Asset Group');
 
   const envOptions: { id: EnvironmentScenePreset; label: string }[] = [
     { id: 'studio', label: 'Studio Dark' },
@@ -74,6 +82,23 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
     });
   };
 
+  const handleSaveGroupName = () => {
+    if (groupNameInput.trim()) {
+      onUpdateConfig({ groupName: groupNameInput.trim() });
+    }
+    setIsEditingGroupName(false);
+  };
+
+  const handleUniformScale = (val: number) => {
+    onUpdateConfig({
+      scaleX: val,
+      scaleY: val,
+      scaleZ: val
+    });
+  };
+
+  const uniformScaleValue = Number(((config.scaleX + config.scaleY + config.scaleZ) / 3).toFixed(2)) || 1.0;
+
   return (
     <aside 
       className="h-full bg-[#0d1017] border-l border-[#1f2430] flex flex-col z-30 select-none overflow-hidden transition-all duration-75"
@@ -98,13 +123,122 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
       {/* Inspector Scroll Area */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 custom-scrollbar">
         
-        {/* SECTION 1: BLENDER OBJECT TRANSFORMS (Position, Rotation, Scale) */}
-        <InspectorSection id="3d-transforms" title="Object Transform (Blender N-Panel)" icon={<Move size={12} className="text-[#ff4e2e]" />}>
-          {/* Location / Position */}
-          <div className="flex flex-col gap-1.5 pb-1 border-b border-white/5">
-            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-              Location / Position (X, Y, Z)
+        {/* COLLECTIVE ASSET GROUP CARD (Spline / Blender Outliner Header) */}
+        <div className="bg-[#121622] border border-[#22283a] rounded-xl p-2.5 flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Folder size={13} className="text-[#ff4e2e] flex-shrink-0" />
+              {isEditingGroupName ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={groupNameInput}
+                    onChange={(e) => setGroupNameInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveGroupName()}
+                    className="bg-black/60 border border-[#ff4e2e] rounded px-1.5 py-0.5 text-xs font-mono text-white outline-none w-32"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveGroupName}
+                    className="p-1 bg-[#ff4e2e] text-white rounded hover:bg-[#ff6144]"
+                  >
+                    <Check size={11} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-mono font-bold text-slate-100 truncate">
+                    {config.groupName || 'Asset Group'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setGroupNameInput(config.groupName || 'Asset Group');
+                      setIsEditingGroupName(true);
+                    }}
+                    title="Rename Asset Group"
+                    className="p-0.5 text-slate-500 hover:text-slate-300 rounded"
+                  >
+                    <Edit3 size={11} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Group Lock & Eye Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => onUpdateConfig({ isGroupLocked: !config.isGroupLocked })}
+                title={config.isGroupLocked ? 'Group is Locked (Click to Unlock)' : 'Lock Group Transforms'}
+                className={`p-1.5 rounded transition-colors ${
+                  config.isGroupLocked
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {config.isGroupLocked ? <Lock size={12} /> : <Unlock size={12} />}
+              </button>
+
+              <button
+                onClick={() => onUpdateConfig({ isGroupVisible: config.isGroupVisible === false ? true : false })}
+                title={config.isGroupVisible === false ? 'Show Asset Group' : 'Hide Asset Group'}
+                className={`p-1.5 rounded transition-colors ${
+                  config.isGroupVisible === false
+                    ? 'text-slate-600 hover:text-slate-400'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {config.isGroupVisible === false ? <EyeOff size={12} /> : <Eye size={12} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 border-t border-white/5 pt-1.5">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e2e]" />
+              <span>Collective Unit</span>
             </span>
+            <span className="text-slate-400 font-semibold">
+              {parts.length} Glyphs Contained
+            </span>
+          </div>
+        </div>
+
+        {/* SECTION 1: COLLECTIVE OBJECT TRANSFORMS (Blender N-Panel) */}
+        <InspectorSection id="3d-transforms" title="Collective Transforms (N-Panel)" icon={<Move size={12} className="text-[#ff4e2e]" />}>
+          {config.isGroupLocked && (
+            <div className="flex items-center gap-1.5 p-2 bg-amber-950/40 border border-amber-500/30 rounded-lg text-[10px] font-mono text-amber-300">
+              <Lock size={11} className="flex-shrink-0" />
+              <span>Group locked. Unlock above to modify collective position, rotation, or scale.</span>
+            </div>
+          )}
+
+          {/* Uniform Scale Slider */}
+          <div className={`flex flex-col gap-1 pb-1.5 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            <SliderField
+              label="Uniform Scale (All Axes)"
+              value={uniformScaleValue}
+              min={0.2}
+              max={3.0}
+              step={0.05}
+              unit="x"
+              onChange={handleUniformScale}
+            />
+          </div>
+
+          {/* Location / Position */}
+          <div className={`flex flex-col gap-1.5 pb-1 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                Location / Position (X, Y, Z)
+              </span>
+              <button
+                onClick={() => onUpdateConfig({ posX: 0, posY: 0, posZ: 0 })}
+                title="Reset Position (Alt+G)"
+                className="text-[9px] font-mono text-slate-500 hover:text-slate-300"
+              >
+                Alt+G
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <SliderField
                 label="Pos X"
@@ -137,10 +271,19 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           </div>
 
           {/* Rotation / Angle */}
-          <div className="flex flex-col gap-1.5 pb-1 border-b border-white/5">
-            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-              Rotation / Angle (X, Y, Z)
-            </span>
+          <div className={`flex flex-col gap-1.5 pb-1 border-b border-white/5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                Rotation / Angle (X, Y, Z)
+              </span>
+              <button
+                onClick={() => onUpdateConfig({ rotX: 0, rotY: 0, rotZ: 0 })}
+                title="Reset Rotation (Alt+R)"
+                className="text-[9px] font-mono text-slate-500 hover:text-slate-300"
+              >
+                Alt+R
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <SliderField
                 label="Rot X"
@@ -172,10 +315,10 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             </div>
           </div>
 
-          {/* Scale */}
-          <div className="flex flex-col gap-1.5">
+          {/* Discrete Scale Axes */}
+          <div className={`flex flex-col gap-1.5 ${config.isGroupLocked ? 'opacity-40 pointer-events-none' : ''}`}>
             <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-              Scale Dimensions (X, Y, Z)
+              Individual Scale Dimensions
             </span>
             <div className="grid grid-cols-3 gap-2">
               <SliderField

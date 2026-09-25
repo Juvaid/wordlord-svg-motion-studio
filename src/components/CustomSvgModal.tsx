@@ -13,6 +13,7 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
   onImportSvg
 }) => {
   const [svgCode, setSvgCode] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('Custom Vector Mark');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -20,6 +21,9 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const baseName = file.name.replace(/\.svg$/i, '');
+    setFileName(baseName);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -54,7 +58,7 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
         return;
       }
 
-      onImportSvg(svgCode, 'Custom Imported SVG');
+      onImportSvg(svgCode, fileName || 'Custom Vector Mark');
       onClose();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Error parsing SVG markup.');
@@ -114,7 +118,7 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
         {/* Footer */}
         <div className="h-14 px-5 bg-[#090b10] border-t border-[#1f2430] flex items-center justify-between">
           <span className="text-[10px] font-mono text-slate-500">
-            Automatically decomposes paths into 3D extruded parts
+            Automatically decomposes paths into 3D collective group
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -128,7 +132,7 @@ export const CustomSvgModal: React.FC<CustomSvgModalProps> = ({
               className="px-4 py-1.5 bg-[#ff4e2e] hover:bg-[#ff6144] text-white rounded text-xs font-semibold shadow-lg shadow-[#ff4e2e]/25 transition-all flex items-center gap-1.5"
             >
               <Sparkles size={13} />
-              <span>Extrude into 3D</span>
+              <span>Extrude into 3D Group</span>
             </button>
           </div>
         </div>

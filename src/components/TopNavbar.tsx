@@ -7,12 +7,18 @@ import {
   Code2, 
   Grid, 
   Monitor, 
-  Sparkles,
-  Film,
-  Layers,
-  Box,
-  Camera,
-  Download
+  Sparkles, 
+  Film, 
+  Layers, 
+  Box, 
+  Camera, 
+  Download,
+  Undo2,
+  Redo2,
+  Save,
+  FileDown,
+  FileUp,
+  HelpCircle
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
@@ -26,6 +32,14 @@ interface TopNavbarProps {
   activeMotionId: string;
   activeMotionName: string;
   activeStyleName: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onSaveProject?: () => void;
+  onExportProject?: () => void;
+  onImportProject?: (file: File) => void;
+  onOpenShortcuts?: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetView: () => void;
@@ -45,6 +59,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   activeMotionId,
   activeMotionName,
   activeStyleName,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+  onSaveProject,
+  onExportProject,
+  onImportProject,
+  onOpenShortcuts,
   onZoomIn,
   onZoomOut,
   onResetView,
@@ -89,30 +111,102 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </div>
       </div>
 
-      {/* Center: Studio Workspace Mode Switcher (2D Vector Motion vs 3D Extruded Studio) */}
-      <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
-        <button
-          onClick={() => onSetStudioMode('2d')}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
-            studioMode === '2d'
-              ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Layers size={13} />
-          <span>2D Motion Studio</span>
-        </button>
-        <button
-          onClick={() => onSetStudioMode('3d')}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
-            studioMode === '3d'
-              ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Box size={13} />
-          <span>3D Extruded Studio</span>
-        </button>
+      {/* Center: Studio Switcher & History / Project Controls */}
+      <div className="flex items-center gap-2">
+        {/* Studio Workspace Mode Switcher (2D Vector Motion vs 3D Extruded Studio) */}
+        <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+          <button
+            onClick={() => onSetStudioMode('2d')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
+              studioMode === '2d'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers size={13} />
+            <span>2D Motion Studio</span>
+          </button>
+          <button
+            onClick={() => onSetStudioMode('3d')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-all ${
+              studioMode === '3d'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/25'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Box size={13} />
+            <span>3D Extruded Studio</span>
+          </button>
+        </div>
+
+        {/* Undo / Redo History Buttons */}
+        <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+          <Tooltip content="Undo change" shortcut="Cmd+Z" side="bottom">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              aria-label="Undo"
+              className={`p-1.5 rounded transition-all ${
+                canUndo 
+                  ? 'text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer' 
+                  : 'text-slate-600 cursor-not-allowed opacity-40'
+              }`}
+            >
+              <Undo2 size={13} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Redo change" shortcut="Cmd+Shift+Z" side="bottom">
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              aria-label="Redo"
+              className={`p-1.5 rounded transition-all ${
+                canRedo 
+                  ? 'text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer' 
+                  : 'text-slate-600 cursor-not-allowed opacity-40'
+              }`}
+            >
+              <Redo2 size={13} />
+            </button>
+          </Tooltip>
+        </div>
+
+        {/* Project State Actions: Save Snapshot, Export JSON, Import JSON */}
+        <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+          <Tooltip content="Save Project Snapshot" shortcut="Cmd+S" side="bottom">
+            <button
+              onClick={onSaveProject}
+              aria-label="Save Project Snapshot"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-all"
+            >
+              <Save size={13} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Export Project State (JSON)" side="bottom">
+            <button
+              onClick={onExportProject}
+              aria-label="Export Project JSON"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-all"
+            >
+              <FileDown size={13} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Import Project State (JSON)" side="bottom">
+            <label className="p-1.5 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-all cursor-pointer">
+              <FileUp size={13} />
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onImportProject) onImportProject(file);
+                  e.target.value = '';
+                }}
+                className="hidden"
+              />
+            </label>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Right Actions & Canvas Stage Modes */}
@@ -250,6 +344,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             </button>
           </>
         )}
+
+        {/* Global Keyboard Shortcuts Help Button */}
+        <Tooltip content="Keyboard Shortcuts (?)" shortcut="?" side="bottom">
+          <button
+            onClick={onOpenShortcuts}
+            aria-label="Shortcuts"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-md border border-[#222736] transition-all ml-1"
+          >
+            <HelpCircle size={14} />
+          </button>
+        </Tooltip>
       </div>
     </header>
   );
