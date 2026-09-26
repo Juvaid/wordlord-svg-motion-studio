@@ -25,6 +25,7 @@ interface ThreeExportModalProps {
   onClose: () => void;
   onSwitchTo2DExport?: () => void;
   config: ThreeStudioConfig;
+  onUpdateConfig?: (partial: Partial<ThreeStudioConfig>) => void;
   canvas: HTMLCanvasElement | null;
 }
 
@@ -33,6 +34,7 @@ export const ThreeExportModal: React.FC<ThreeExportModalProps> = ({
   onClose,
   onSwitchTo2DExport,
   config,
+  onUpdateConfig,
   canvas
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'model' | 'snapshot' | 'code'>('video');
@@ -429,6 +431,172 @@ scene.add(rimLight);
                     <span>Aspect Ratio: <strong className="text-white">{targetRes.ratio}</strong></span>
                     <span>FPS: <strong className="text-emerald-400">{fps} Studio</strong></span>
                   </div>
+
+                  {/* Camera Framing & Trajectory Overrides */}
+                  <div className="flex flex-col gap-2 bg-[#090b11] border border-[#1e2332] rounded-lg p-2.5 mt-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[9.5px] font-mono font-bold text-slate-300 uppercase">
+                        <Camera size={11} className="text-[#ff4e2e]" />
+                        <span>Camera Framing & Trajectory</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onUpdateConfig?.({
+                          cameraDistance: 560,
+                          cameraElevation: 12,
+                          cameraAzimuth: 0,
+                          cameraPosY: 0,
+                          cameraRoll: 0,
+                          cameraMotion: 'none',
+                          cameraViewMode: 'camera'
+                        })}
+                        className="text-[8.5px] font-mono text-slate-500 hover:text-white flex items-center gap-0.5"
+                      >
+                        <RefreshCw size={8} />
+                        <span>Reset</span>
+                      </button>
+                    </div>
+
+                    {/* Camera Distance */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between text-[9px] font-mono">
+                        <span className="text-slate-400">Distance:</span>
+                        <span className="text-[#ff4e2e] font-bold">{config.cameraDistance || 560}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={180}
+                        max={1200}
+                        step={10}
+                        value={config.cameraDistance || 560}
+                        onChange={(e) => onUpdateConfig?.({
+                          cameraDistance: Number(e.target.value),
+                          cameraPosZ: Number(e.target.value),
+                          cameraViewMode: 'camera'
+                        })}
+                        className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                      />
+                      <div className="grid grid-cols-4 gap-1">
+                        {[
+                          { label: 'Tight', dist: 380 },
+                          { label: 'Hero', dist: 560 },
+                          { label: 'Wide', dist: 740 },
+                          { label: 'Cinema', dist: 960 }
+                        ].map(c => (
+                          <button
+                            key={c.dist}
+                            type="button"
+                            onClick={() => onUpdateConfig?.({
+                              cameraDistance: c.dist,
+                              cameraPosZ: c.dist,
+                              cameraViewMode: 'camera'
+                            })}
+                            className={`py-0.5 px-0.5 rounded text-[8px] font-mono border text-center transition-all ${
+                              config.cameraDistance === c.dist
+                                ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                                : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pitch Tilt & Orbit Rotation */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between text-[8.5px] font-mono">
+                          <span className="text-slate-400">Tilt:</span>
+                          <span className="text-white font-bold">{config.cameraElevation ?? 12}°</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-45}
+                          max={75}
+                          step={1}
+                          value={config.cameraElevation ?? 12}
+                          onChange={(e) => onUpdateConfig?.({
+                            cameraElevation: Number(e.target.value),
+                            cameraViewMode: 'camera'
+                          })}
+                          className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between text-[8.5px] font-mono">
+                          <span className="text-slate-400">Orbit:</span>
+                          <span className="text-white font-bold">{config.cameraAzimuth ?? 0}°</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-180}
+                          max={180}
+                          step={1}
+                          value={config.cameraAzimuth ?? 0}
+                          onChange={(e) => onUpdateConfig?.({
+                            cameraAzimuth: Number(e.target.value),
+                            cameraViewMode: 'camera'
+                          })}
+                          className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Camera Height Up/Down */}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between text-[8.5px] font-mono">
+                        <span className="text-slate-400">Height:</span>
+                        <span className="text-white font-bold">{config.cameraPosY || 0}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-200}
+                        max={200}
+                        step={5}
+                        value={config.cameraPosY || 0}
+                        onChange={(e) => onUpdateConfig?.({
+                          cameraPosY: Number(e.target.value),
+                          cameraViewMode: 'camera'
+                        })}
+                        className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Camera Trajectory Select */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between text-[8.5px] font-mono">
+                        <span className="text-slate-400">Trajectory:</span>
+                        <span className="text-[#ff4e2e] font-bold uppercase">{config.cameraMotion || 'none'}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {[
+                          { id: 'none', label: 'Static' },
+                          { id: 'orbit', label: 'Orbit' },
+                          { id: 'dolly', label: 'Dolly' },
+                          { id: 'crane', label: 'Crane' },
+                          { id: 'corkscrew', label: 'Spiral' },
+                          { id: 'pan', label: 'Pan' },
+                          { id: 'rise', label: 'Rise' },
+                          { id: 'shake', label: 'Shake' }
+                        ].map(t => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => onUpdateConfig?.({ cameraMotion: t.id as any })}
+                            className={`py-1 px-0.5 rounded text-[8px] font-mono border text-center transition-all ${
+                              (config.cameraMotion || 'none') === t.id
+                                ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold shadow-sm'
+                                : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right Column: Resolution & Backdrop Options */}
@@ -685,6 +853,82 @@ scene.add(rimLight);
               <span className="text-xs text-slate-300">
                 Capture an instant high-resolution transparent or opaque PNG image of the current 3D viewport orientation.
               </span>
+
+              {/* Quick Framing Adjuster for Snapshot */}
+              <div className="flex flex-col gap-2 bg-[#090b11] border border-[#1e2332] rounded-lg p-3">
+                <div className="flex items-center justify-between text-[10px] font-mono font-bold text-slate-300 uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <Camera size={12} className="text-[#ff4e2e]" />
+                    <span>Snapshot Framing Controls</span>
+                  </div>
+                  <span className="text-[#ff4e2e] font-mono">{config.cameraDistance || 560}px • {config.cameraElevation ?? 12}°</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-[9px] font-mono">
+                      <span className="text-slate-400">Camera Distance:</span>
+                      <span className="text-white font-bold">{config.cameraDistance || 560}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={180}
+                      max={1200}
+                      step={10}
+                      value={config.cameraDistance || 560}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraDistance: Number(e.target.value),
+                        cameraPosZ: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-[9px] font-mono">
+                      <span className="text-slate-400">Pitch Tilt:</span>
+                      <span className="text-white font-bold">{config.cameraElevation ?? 12}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-45}
+                      max={75}
+                      step={1}
+                      value={config.cameraElevation ?? 12}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraElevation: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  {[
+                    { label: 'Tight 380px', dist: 380, elev: 0 },
+                    { label: 'Hero 560px', dist: 560, elev: 12 },
+                    { label: 'Wide 740px', dist: 740, elev: 20 },
+                    { label: 'Top View', dist: 600, elev: 75 }
+                  ].map(p => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => onUpdateConfig?.({
+                        cameraDistance: p.dist,
+                        cameraPosZ: p.dist,
+                        cameraElevation: p.elev,
+                        cameraViewMode: 'camera'
+                      })}
+                      className="py-1 px-1 rounded text-[8.5px] font-mono border bg-[#141722] border-[#222736] text-slate-300 hover:text-white hover:border-[#ff4e2e]/50 text-center transition-all"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 onClick={handleExportSnapshot}
                 className="py-3 bg-[#ff4e2e] hover:bg-[#ff6144] text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-[#ff4e2e]/25 transition-all flex items-center justify-center gap-2"

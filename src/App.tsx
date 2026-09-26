@@ -171,14 +171,18 @@ export const App: React.FC = () => {
     scaleY: 1.0,
     scaleZ: 1.0,
     fov: 45,
-    cameraDistance: 420,
+    cameraDistance: 560,
     cameraViewMode: 'camera',
     cameraPosX: 0,
     cameraPosY: 0,
-    cameraPosZ: 420,
+    cameraPosZ: 560,
     cameraTargetX: 0,
     cameraTargetY: 0,
     cameraTargetZ: 0,
+    cameraElevation: 12,
+    cameraAzimuth: 0,
+    cameraRoll: 0,
+    cameraMotion: 'none',
     envPreset: 'studio',
     envRotation: 0,
     fogDensity: 0.0016,
@@ -1749,6 +1753,7 @@ export const App: React.FC = () => {
           setIsVideoExportOpen(true);
         }}
         config={threeConfig}
+        onUpdateConfig={handleUpdateThreeConfig}
         canvas={document.getElementById('three-stage-canvas') as HTMLCanvasElement | null}
       />
 

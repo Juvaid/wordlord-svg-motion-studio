@@ -35,6 +35,9 @@ export type ThreeMotionMode =
   | 'camera-dolly'
   | 'camera-crane'
   | 'camera-corkscrew'
+  | 'camera-pan'
+  | 'camera-rise'
+  | 'camera-shake'
   | 'sync2d'
   | 'typewriter'
   | 'wiredraw'
@@ -155,7 +158,10 @@ export interface ThreeStudioConfig {
   cameraTargetX?: number;
   cameraTargetY?: number;
   cameraTargetZ?: number;
-  cameraMotion?: 'none' | 'orbit' | 'dolly' | 'crane' | 'corkscrew';
+  cameraElevation?: number; // Pitch tilt angle in degrees (-45° looking up to +75° looking down)
+  cameraAzimuth?: number; // Azimuth orbit angle in degrees (0° to 360°)
+  cameraRoll?: number; // Dutch angle roll (-30° to +30°)
+  cameraMotion?: 'none' | 'orbit' | 'dolly' | 'crane' | 'corkscrew' | 'pan' | 'rise' | 'shake';
 
   // Environment & Scene Settings
   envPreset: EnvironmentScenePreset;

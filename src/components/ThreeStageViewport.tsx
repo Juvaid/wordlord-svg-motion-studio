@@ -492,17 +492,40 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       cameraRef.current.updateProjectionMatrix();
     }
 
-    // If in camera view mode, position camera and target according to config coordinates
-    if (config.cameraViewMode === 'camera' && cameraRef.current && controlsRef.current) {
-      const px = config.cameraPosX ?? 0;
-      const py = config.cameraPosY ?? 0;
-      const pz = config.cameraPosZ ?? config.cameraDistance ?? 420;
-      cameraRef.current.position.set(px, py, pz);
+    // If in camera view mode, position camera and target according to spherical coordinates and config
+    if (cameraRef.current && controlsRef.current) {
+      const dist = Math.max(160, config.cameraDistance ?? 560);
       const tx = config.cameraTargetX ?? 0;
       const ty = config.cameraTargetY ?? 0;
       const tz = config.cameraTargetZ ?? 0;
-      controlsRef.current.target.set(tx, ty, tz);
-      controlsRef.current.update();
+
+      if (config.cameraViewMode === 'camera') {
+        const elRad = ((config.cameraElevation ?? 12) * Math.PI) / 180;
+        const azRad = ((config.cameraAzimuth ?? 0) * Math.PI) / 180;
+
+        const cx = tx + (config.cameraPosX ?? 0) + dist * Math.cos(elRad) * Math.sin(azRad);
+        const cy = ty + (config.cameraPosY ?? 0) + dist * Math.sin(elRad);
+        const cz = tz + dist * Math.cos(elRad) * Math.cos(azRad);
+
+        cameraRef.current.position.set(cx, cy, cz);
+        controlsRef.current.target.set(tx, ty, tz);
+        cameraRef.current.lookAt(tx, ty, tz);
+        if (config.cameraRoll !== undefined) {
+          cameraRef.current.rotation.z = (config.cameraRoll * Math.PI) / 180;
+        }
+        controlsRef.current.update();
+      } else {
+        // Free Orbit Mode: Sync distance seamlessly while preserving user's manual orbit angle
+        const target = controlsRef.current.target;
+        const offset = cameraRef.current.position.clone().sub(target);
+        if (offset.lengthSq() < 0.001) offset.set(0, 0, 1);
+        const curDist = offset.length();
+        if (Math.abs(curDist - dist) > 0.5) {
+          offset.setLength(dist);
+          cameraRef.current.position.copy(target).add(offset);
+          controlsRef.current.update();
+        }
+      }
     }
   }, [
     config.keyColor, 
@@ -523,6 +546,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     config.bloomThreshold, 
     config.shadingMode,
     config.fov,
+    config.cameraDistance,
+    config.cameraElevation,
+    config.cameraAzimuth,
+    config.cameraRoll,
+    config.cameraMotion,
     config.cameraViewMode,
     config.cameraPosX,
     config.cameraPosY,
@@ -693,15 +721,6 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     if (!cameraRef.current || !controlsRef.current) return;
 
     if (preset === 'camera') {
-      const px = config.cameraPosX ?? 0;
-      const py = config.cameraPosY ?? 0;
-      const pz = config.cameraPosZ ?? config.cameraDistance ?? 420;
-      cameraRef.current.position.set(px, py, pz);
-      const tx = config.cameraTargetX ?? 0;
-      const ty = config.cameraTargetY ?? 0;
-      const tz = config.cameraTargetZ ?? 0;
-      controlsRef.current.target.set(tx, ty, tz);
-      controlsRef.current.update();
       onUpdateConfig({ cameraPreset: 'camera', cameraViewMode: 'camera' });
       return;
     }
@@ -711,24 +730,46 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       return;
     }
 
-    onUpdateConfig({ cameraPreset: preset, cameraViewMode: 'free' });
-
     switch (preset) {
       case 'front':
-        cameraRef.current.position.set(0, 0, config.cameraDistance || 420);
+        onUpdateConfig({ 
+          cameraPreset: 'front', 
+          cameraViewMode: 'camera', 
+          cameraElevation: 0, 
+          cameraAzimuth: 0, 
+          cameraRoll: 0,
+          cameraPosY: 0,
+          cameraPosX: 0
+        });
         break;
       case 'iso':
-        cameraRef.current.position.set(240, 180, 300);
+        onUpdateConfig({ 
+          cameraPreset: 'iso', 
+          cameraViewMode: 'camera', 
+          cameraElevation: 25, 
+          cameraAzimuth: 40, 
+          cameraRoll: 0 
+        });
         break;
       case 'top':
-        cameraRef.current.position.set(0, 440, 40);
+        onUpdateConfig({ 
+          cameraPreset: 'top', 
+          cameraViewMode: 'camera', 
+          cameraElevation: 75, 
+          cameraAzimuth: 0, 
+          cameraRoll: 0 
+        });
         break;
       case 'side':
-        cameraRef.current.position.set(440, 0, 40);
+        onUpdateConfig({ 
+          cameraPreset: 'side', 
+          cameraViewMode: 'camera', 
+          cameraElevation: 0, 
+          cameraAzimuth: 90, 
+          cameraRoll: 0 
+        });
         break;
     }
-    controlsRef.current.target.set(0, 0, 0);
-    controlsRef.current.update();
   };
 
   // Blender-style Keyboard Shortcuts: 0/C toggle Cam, 1 Front, 3 Side, 7 Top, [ and ] rotate Light Rig

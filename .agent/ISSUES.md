@@ -27,6 +27,7 @@
 | **ISS-014** | Inspector & Optics | High | Monolithic Hardcoded Glow Target & Missing Section Focus Selection | **RESOLVED** | Working Tree |
 | **ISS-015** | Undo / Redo History | High | Parameter Dragging & Color Picking Bypassing History Undo Stack | **RESOLVED** | Working Tree |
 | **ISS-016** | 3D Environment | High | 3D Lighting Rig Orientation & Blender Camera Navigation Controls | **RESOLVED** | Working Tree |
+| **ISS-017** | 3D Camera & Export | Critical | Camera Distance Synchronization, Spherical Framing Controls & Autonomous Trajectories | **RESOLVED** | Working Tree |
 
 ---
 
@@ -251,6 +252,36 @@
     - `7` / `Numpad 7`: Top Down Aerial View
     - `[` / `]`: Rotate lighting rig azimuth in $15^\circ$ increments
   - Added floating HUD controls for Camera/Free toggle and live sun azimuth angle on the 3D stage.
+
+---
+
+### ISS-017: Camera Distance Synchronization, Spherical Framing Controls & Autonomous Trajectories
+* **Location**: `src/components/ThreeStageViewport.tsx`, `src/components/ThreeRightInspector.tsx`, `src/components/ThreeExportModal.tsx`, `src/utils/threeEngine.ts`.
+* **Symptom**: Camera framing in newly added camera animations was uncomfortably close and clipped wide typography marks; adjusting the `cameraDistance` slider in the inspector failed to update the camera if the user had touched the viewport; no granular controls existed for camera elevation (pitch tilt), azimuth (orbit), vertical height (up/down), or pre-export framing adjustments.
+* **Root Cause**:
+  1. `config.cameraDistance` was missing from the dependency array of the camera synchronization `useEffect` in `ThreeStageViewport.tsx`, preventing updates when dragging the distance slider.
+  2. The position update in `ThreeStageViewport.tsx` was strictly guarded by `if (config.cameraViewMode === 'camera')`. When the user clicked or dragged inside the canvas, `OrbitControls.start` dispatched a switch to `'free'` mode, which permanently ignored slider inputs.
+  3. In free orbit mode, `OrbitControls.update()` computes camera coordinates from its internal spherical angles, ignoring direct Cartesian sets unless the camera-to-target offset vector length is scaled explicitly:
+     ```ts
+     const offset = camera.position.clone().sub(controls.target);
+     offset.setLength(targetDist);
+     camera.position.copy(controls.target).add(offset);
+     controls.update();
+     ```
+  4. Base camera distances in `threeEngine.ts` were hardcoded to 380–420px, causing multi-letter marks with bevels to clip at the frame edges on 16:9, 1:1, and 9:16 aspect ratios.
+* **Resolution**:
+  - Implemented unified spherical coordinate positioning `(dist, azimuth, elevation, posX, posY, posZ)` in `ThreeStageViewport.tsx` and tracked all camera properties in the `useEffect` dependency array.
+  - Implemented seamless distance scaling in Free Orbit mode (`offset.setLength(targetDist)`), ensuring the distance slider functions reliably across both Camera Mode and Free Orbit mode.
+  - Increased base camera distance from cramped 420px to **560px**, scaling all 7 camera trajectories directly with `config.cameraDistance`.
+  - Expanded Section 5 ("Camera Optics & Framing") in `ThreeRightInspector.tsx`:
+    - **Camera Distance** slider ($180$–$1200\text{px}$) with quick chips: `Tight 380px`, `Hero 560px`, `Wide 740px`, `Cinema 960px`.
+    - **Camera Pitch Tilt (Elevation)** slider ($-45^\circ$ to $+75^\circ$) with quick chips: `Low -15°`, `Level 0°`, `High +25°`, `Top +60°`.
+    - **Camera Orbit Rotation (Azimuth)** slider ($-180^\circ$ to $+180^\circ$) with quick chips: `Front 0°`, `3/4 R +45°`, `Side +90°`, `3/4 L -45°`.
+    - **Camera Height (Up / Down)** slider ($-250\text{px}$ to $+250\text{px}$) with quick chips: `Floor -80px`, `Center 0px`, `Sky +80px`.
+    - **Dutch Angle (Roll)** slider ($-30^\circ$ to $+30^\circ$) and **Lens FOV** slider ($20^\circ$ to $85^\circ$).
+    - **Autonomous Camera Flight Trajectory** 8-option grid with Lucide icons: `Static`, `Orbit`, `Dolly`, `Crane`, `Spiral`, `Pan`, `Rise`, `Shake`.
+  - Added live **Camera & Framing Controls** cards to `ThreeExportModal.tsx` in both the 60 FPS Video Export and 4K PNG Snapshot tabs, with direct `onUpdateConfig` synchronization and framing reset.
+  - Locked static camera framing inside `evaluate3DMotion` so that frame-by-frame video rendering accurately captures the exact user-configured distance, tilt, and height.
 
 ---
 

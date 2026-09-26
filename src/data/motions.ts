@@ -352,5 +352,53 @@ export const MOTIONS: MotionPreset[] = [
       complexity: 'Combined XYZ orbital spiral with Z-rotation',
       staggerScale: 'Helical tracking'
     }
+  },
+  {
+    id: 'camera-pan',
+    name: 'Cinematic Dolly Track',
+    badge: '3D',
+    animClass: 'anim-camera-pan',
+    defaultDuration: 2.2,
+    defaultEase: 'cubic-bezier(0.3, 0, 0.2, 1)',
+    defaultStagger: 0,
+    desc: 'Smooth lateral dolly track gliding horizontally across typography with focal distance tracking.',
+    fps: 60,
+    specs: {
+      interpolator: 'Linear lateral camera glide',
+      complexity: 'Horizontal tracking shot across X-axis',
+      staggerScale: 'Continuous sweep'
+    }
+  },
+  {
+    id: 'camera-rise',
+    name: 'Vertical Ascension Rise',
+    badge: '3D',
+    animClass: 'anim-camera-rise',
+    defaultDuration: 1.9,
+    defaultEase: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    defaultStagger: 0,
+    desc: 'Vertical helicopter ascension rising from baseline into vast panoramic aerial perspective.',
+    fps: 60,
+    specs: {
+      interpolator: 'Exponential vertical rise',
+      complexity: 'Ascending Y-flight with widening horizon',
+      staggerScale: 'Smooth lift'
+    }
+  },
+  {
+    id: 'camera-shake',
+    name: 'Impact Trauma Decoupling',
+    badge: '3D',
+    animClass: 'anim-camera-shake',
+    defaultDuration: 1.2,
+    defaultEase: 'cubic-bezier(0.1, 0.9, 0.2, 1)',
+    defaultStagger: 0,
+    desc: 'Cinematic high-frequency camera trauma jitter decaying into dead-still monolithic lockup.',
+    fps: 60,
+    specs: {
+      interpolator: 'Damped harmonic camera oscillation',
+      complexity: 'Multi-axis rotational camera trauma',
+      staggerScale: 'Instantaneous impact'
+    }
   }
 ];

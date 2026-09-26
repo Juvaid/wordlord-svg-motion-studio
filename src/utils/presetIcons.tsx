@@ -24,7 +24,10 @@ import {
   Orbit,
   Video,
   Compass,
-  ZoomIn
+  ZoomIn,
+  MoveHorizontal,
+  ArrowUpFromLine,
+  Vibrate
 } from 'lucide-react';
 
 /**
@@ -64,6 +67,12 @@ export const getMotionIcon = (id: string, size = 12): React.ReactNode => {
       return <Compass size={size} className="text-[#a855f7]" />;
     case 'camera-corkscrew':
       return <Video size={size} className="text-[#10b981]" />;
+    case 'camera-pan':
+      return <MoveHorizontal size={size} className="text-[#38bdf8]" />;
+    case 'camera-rise':
+      return <ArrowUpFromLine size={size} className="text-[#eab308]" />;
+    case 'camera-shake':
+      return <Vibrate size={size} className="text-[#ec4899]" />;
     default:
       return <Clapperboard size={size} className="text-[#ff4e2e]" />;
   }

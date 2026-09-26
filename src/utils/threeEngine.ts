@@ -515,10 +515,12 @@ export function evaluate3DMotion(
     case 'camera-orbit': {
       if (camera) {
         const angle = t * Math.PI * 2;
-        const dist = config.cameraDistance || 420;
+        const dist = Math.max(340, config.cameraDistance || 560);
+        const elev = config.cameraElevation ?? 25;
+        const basePosY = config.cameraPosY || 0;
         camera.position.x = Math.sin(angle) * dist;
         camera.position.z = Math.cos(angle) * dist;
-        camera.position.y = (config.cameraPosY || 0) + 25 + Math.sin(t * Math.PI * 4) * 45 * amp;
+        camera.position.y = basePosY + elev + Math.sin(t * Math.PI * 4) * 45 * amp;
         camera.lookAt(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
         if (controls) {
           controls.target.set(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
@@ -533,12 +535,14 @@ export function evaluate3DMotion(
       if (camera) {
         const p = Math.max(0, Math.min(1, t / 0.85));
         const ease = 1 - Math.pow(1 - p, 4);
-        const startDist = 720;
-        const targetDist = config.cameraDistance || 380;
+        const targetDist = Math.max(340, config.cameraDistance || 540);
+        const startDist = targetDist * 1.75;
         const curDist = startDist - (startDist - targetDist) * ease;
-        camera.position.set(0, (config.cameraPosY || 0) + (1 - ease) * 35, curDist);
+        const basePosY = config.cameraPosY || 0;
+        const elev = config.cameraElevation ?? 20;
+        camera.position.set(0, basePosY + elev + (1 - ease) * 35, curDist);
         if (camera.isPerspectiveCamera) {
-          camera.fov = (config.fov || 45) + (1 - ease) * 16;
+          camera.fov = (config.fov || 45) + (1 - ease) * 12;
           camera.updateProjectionMatrix();
         }
         camera.lookAt(0, 0, 0);
@@ -556,13 +560,13 @@ export function evaluate3DMotion(
       if (camera) {
         const p = Math.max(0, Math.min(1, t / 0.9));
         const ease = 1 - Math.pow(1 - p, 3);
-        const startY = -120;
-        const targetY = (config.cameraPosY || 0) + 30;
-        const startZ = 340;
-        const targetZ = config.cameraDistance || 420;
+        const targetZ = Math.max(340, config.cameraDistance || 560);
+        const startZ = targetZ * 0.85;
+        const targetY = (config.cameraPosY || 0) + (config.cameraElevation ?? 30);
+        const startY = targetY - 180;
         const curY = startY + (targetY - startY) * ease;
         const curZ = startZ + (targetZ - startZ) * ease;
-        const curX = Math.sin((1 - ease) * 0.6) * 60;
+        const curX = Math.sin((1 - ease) * 0.6) * (targetZ * 0.15);
         camera.position.set(curX, curY, curZ);
         camera.lookAt(0, (1 - ease) * 25, 0);
         if (controls) controls.target.set(0, (1 - ease) * 25, 0);
@@ -573,12 +577,53 @@ export function evaluate3DMotion(
     case 'camera-corkscrew': {
       if (camera) {
         const spiralAngle = (1 - t) * Math.PI * 1.6;
-        const radius = (config.cameraDistance || 420) * (0.85 + 0.35 * (1 - t));
+        const baseDist = Math.max(340, config.cameraDistance || 560);
+        const radius = baseDist * (0.95 + 0.35 * (1 - t));
         camera.position.x = Math.sin(spiralAngle) * radius;
         camera.position.z = Math.cos(spiralAngle) * radius;
         camera.position.y = (config.cameraPosY || 0) + 80 - t * 65;
         camera.lookAt(0, 0, 0);
         camera.rotation.z = Math.sin(t * Math.PI) * 0.15 * amp;
+        if (controls) controls.target.set(0, 0, 0);
+      }
+      break;
+    }
+
+    case 'camera-pan': {
+      if (camera) {
+        const dist = Math.max(340, config.cameraDistance || 540);
+        const span = dist * 0.55;
+        const panX = (t - 0.5) * span * 2 * amp;
+        camera.position.set(panX, (config.cameraPosY || 0) + (config.cameraElevation ?? 20), dist);
+        camera.lookAt(panX * 0.3, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+        if (controls) controls.target.set(panX * 0.3, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+      }
+      break;
+    }
+
+    case 'camera-rise': {
+      if (camera) {
+        const p = Math.max(0, Math.min(1, t / 0.85));
+        const ease = 1 - Math.pow(1 - p, 3);
+        const targetDist = Math.max(340, config.cameraDistance || 560);
+        const startY = -120;
+        const targetY = (config.cameraPosY || 0) + 140;
+        camera.position.set(0, startY + (targetY - startY) * ease, targetDist * (0.85 + 0.25 * ease));
+        camera.lookAt(0, (1 - ease) * 40, 0);
+        if (controls) controls.target.set(0, (1 - ease) * 40, 0);
+      }
+      break;
+    }
+
+    case 'camera-shake': {
+      if (camera) {
+        const dist = Math.max(340, config.cameraDistance || 540);
+        const decay = Math.exp(-4 * t);
+        const shakeFreq = t * Math.PI * 24;
+        const shakeX = Math.sin(shakeFreq) * 18 * decay * amp;
+        const shakeY = Math.cos(shakeFreq * 1.3) * 14 * decay * amp;
+        camera.position.set((config.cameraPosX || 0) + shakeX, (config.cameraPosY || 0) + (config.cameraElevation ?? 25) + shakeY, dist);
+        camera.lookAt(0, 0, 0);
         if (controls) controls.target.set(0, 0, 0);
       }
       break;
@@ -905,37 +950,78 @@ export function evaluate3DMotion(
 
   // 3. Layer on Stacked Camera Motion (if enabled in config and not already in a camera mode)
   if (camera && config.cameraMotion && config.cameraMotion !== 'none' && !mode.startsWith('camera')) {
+    const baseDist = Math.max(340, config.cameraDistance || 560);
+    const basePosY = config.cameraPosY || 0;
+    const elev = config.cameraElevation ?? 25;
+
     if (config.cameraMotion === 'orbit') {
       const angle = t * Math.PI * 2;
-      const dist = config.cameraDistance || 420;
-      camera.position.x = Math.sin(angle) * dist;
-      camera.position.z = Math.cos(angle) * dist;
-      camera.position.y = (config.cameraPosY || 0) + 25 + Math.sin(t * Math.PI * 4) * 40 * amp;
+      camera.position.x = Math.sin(angle) * baseDist;
+      camera.position.z = Math.cos(angle) * baseDist;
+      camera.position.y = basePosY + elev + Math.sin(t * Math.PI * 4) * 45 * amp;
       camera.lookAt(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
       if (controls) controls.target.set(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
     } else if (config.cameraMotion === 'dolly') {
       const p = Math.max(0, Math.min(1, t / 0.85));
       const ease = 1 - Math.pow(1 - p, 4);
-      const startDist = 720;
-      const targetDist = config.cameraDistance || 380;
-      camera.position.set(0, (config.cameraPosY || 0) + (1 - ease) * 30, startDist - (startDist - targetDist) * ease);
+      const targetDist = baseDist;
+      const startDist = targetDist * 1.75;
+      camera.position.set(0, basePosY + elev + (1 - ease) * 30, startDist - (startDist - targetDist) * ease);
       camera.lookAt(0, 0, 0);
       if (controls) controls.target.set(0, 0, 0);
     } else if (config.cameraMotion === 'crane') {
       const p = Math.max(0, Math.min(1, t / 0.9));
       const ease = 1 - Math.pow(1 - p, 3);
-      camera.position.set(0, -100 + (130 * ease), 360 + (60 * ease));
+      camera.position.set(0, (basePosY + elev - 160) + 160 * ease, baseDist * (0.85 + 0.15 * ease));
       camera.lookAt(0, (1 - ease) * 20, 0);
       if (controls) controls.target.set(0, (1 - ease) * 20, 0);
     } else if (config.cameraMotion === 'corkscrew') {
       const spiralAngle = (1 - t) * Math.PI * 1.5;
-      const radius = (config.cameraDistance || 420) * (0.9 + 0.3 * (1 - t));
+      const radius = baseDist * (0.95 + 0.35 * (1 - t));
       camera.position.x = Math.sin(spiralAngle) * radius;
       camera.position.z = Math.cos(spiralAngle) * radius;
-      camera.position.y = (config.cameraPosY || 0) + 60 - t * 50;
+      camera.position.y = basePosY + 80 - t * 65;
+      camera.lookAt(0, 0, 0);
+      if (controls) controls.target.set(0, 0, 0);
+    } else if (config.cameraMotion === 'pan') {
+      const span = baseDist * 0.55;
+      const panX = (t - 0.5) * span * 2 * amp;
+      camera.position.set(panX, basePosY + elev, baseDist);
+      camera.lookAt(panX * 0.3, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+      if (controls) controls.target.set(panX * 0.3, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+    } else if (config.cameraMotion === 'rise') {
+      const p = Math.max(0, Math.min(1, t / 0.85));
+      const ease = 1 - Math.pow(1 - p, 3);
+      camera.position.set(0, -120 + 240 * ease, baseDist * (0.85 + 0.25 * ease));
+      camera.lookAt(0, (1 - ease) * 35, 0);
+      if (controls) controls.target.set(0, (1 - ease) * 35, 0);
+    } else if (config.cameraMotion === 'shake') {
+      const decay = Math.exp(-4 * t);
+      const shakeFreq = t * Math.PI * 24;
+      camera.position.set((config.cameraPosX || 0) + Math.sin(shakeFreq) * 16 * decay * amp, basePosY + elev + Math.cos(shakeFreq * 1.3) * 12 * decay * amp, baseDist);
       camera.lookAt(0, 0, 0);
       if (controls) controls.target.set(0, 0, 0);
     }
+  }
+
+  // 4. In Static Camera Mode (no camera motion & not in a camera preset), ensure camera strictly respects spherical coordinates
+  if (camera && config.cameraViewMode === 'camera' && !mode.startsWith('camera') && (!config.cameraMotion || config.cameraMotion === 'none')) {
+    const dist = Math.max(160, config.cameraDistance ?? 560);
+    const elRad = ((config.cameraElevation ?? 12) * Math.PI) / 180;
+    const azRad = ((config.cameraAzimuth ?? 0) * Math.PI) / 180;
+    const tx = config.cameraTargetX ?? 0;
+    const ty = config.cameraTargetY ?? 0;
+    const tz = config.cameraTargetZ ?? 0;
+    camera.position.set(
+      tx + (config.cameraPosX ?? 0) + dist * Math.cos(elRad) * Math.sin(azRad),
+      ty + (config.cameraPosY ?? 0) + dist * Math.sin(elRad),
+      tz + dist * Math.cos(elRad) * Math.cos(azRad)
+    );
+    camera.lookAt(tx, ty, tz);
+    if (config.cameraRoll !== undefined && config.cameraRoll !== 0) {
+      camera.rotation.z = (config.cameraRoll * Math.PI) / 180;
+    }
+    if (controls) controls.target.set(tx, ty, tz);
   }
 }
 

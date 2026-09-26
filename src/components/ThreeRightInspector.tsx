@@ -33,7 +33,12 @@ import {
   Search,
   X,
   Copy,
-  ClipboardPaste
+  ClipboardPaste,
+  ZoomIn,
+  ArrowUpRight,
+  Compass,
+  MoveHorizontal,
+  ArrowUp
 } from 'lucide-react';
 import { 
   InspectorSection, 
@@ -977,7 +982,7 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
 
         {/* SECTION 5: CAMERA OPTICS */}
         {matchesSection('3d-camera') && (
-          <InspectorSection id="3d-camera" title="Camera Optics (Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+          <InspectorSection id="3d-camera" title="Camera Optics & Framing" icon={<Camera size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
             {/* Camera View Mode */}
             <div className="flex flex-col gap-1.5 pb-1">
               <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
@@ -1011,96 +1016,258 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
               </div>
             </div>
 
-            <SliderField
-              label="Field of View (FOV)"
-              value={config.fov || 45}
-              min={20}
-              max={85}
-              step={1}
-              unit="°"
-              onChange={(val) => onUpdateConfig({ fov: val })}
-            />
-            <SliderField
-              label="Camera Distance"
-              value={config.cameraDistance || 420}
-              min={180}
-              max={850}
-              step={10}
-              unit="px"
-              onChange={(val) => onUpdateConfig({ cameraDistance: val, cameraPosZ: val })}
-            />
+            {/* Camera Distance with Quick Chips */}
+            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+              <SliderField
+                label="Camera Distance"
+                value={config.cameraDistance || 560}
+                min={180}
+                max={1200}
+                step={10}
+                unit="px"
+                onChange={(val) => onUpdateConfig({ cameraDistance: val, cameraPosZ: val, cameraViewMode: 'camera' })}
+              />
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Tight', dist: 380 },
+                  { label: 'Hero', dist: 560 },
+                  { label: 'Wide', dist: 740 },
+                  { label: 'Cinema', dist: 960 }
+                ].map(chip => (
+                  <button
+                    key={chip.dist}
+                    type="button"
+                    onClick={() => onUpdateConfig({ cameraDistance: chip.dist, cameraPosZ: chip.dist, cameraViewMode: 'camera' })}
+                    className={`py-0.5 px-1 rounded text-[8.5px] font-mono border transition-all text-center ${
+                      config.cameraDistance === chip.dist
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Camera Pitch Tilt (Elevation) with Quick Chips */}
+            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+              <SliderField
+                label="Pitch Tilt (Elevation)"
+                value={config.cameraElevation ?? 12}
+                min={-45}
+                max={75}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ cameraElevation: val, cameraViewMode: 'camera' })}
+              />
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Low -15°', elev: -15 },
+                  { label: 'Level 0°', elev: 0 },
+                  { label: 'High +25°', elev: 25 },
+                  { label: 'Top +60°', elev: 60 }
+                ].map(chip => (
+                  <button
+                    key={chip.elev}
+                    type="button"
+                    onClick={() => onUpdateConfig({ cameraElevation: chip.elev, cameraViewMode: 'camera' })}
+                    className={`py-0.5 px-1 rounded text-[8.5px] font-mono border transition-all text-center ${
+                      config.cameraElevation === chip.elev
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Camera Orbit Rotation (Azimuth) with Quick Chips */}
+            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+              <SliderField
+                label="Orbit Rotation (Azimuth)"
+                value={config.cameraAzimuth ?? 0}
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ cameraAzimuth: val, cameraViewMode: 'camera' })}
+              />
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Front 0°', az: 0 },
+                  { label: '3/4 R +45°', az: 45 },
+                  { label: 'Side +90°', az: 90 },
+                  { label: '3/4 L -45°', az: -45 }
+                ].map(chip => (
+                  <button
+                    key={chip.az}
+                    type="button"
+                    onClick={() => onUpdateConfig({ cameraAzimuth: chip.az, cameraViewMode: 'camera' })}
+                    className={`py-0.5 px-1 rounded text-[8.5px] font-mono border transition-all text-center ${
+                      config.cameraAzimuth === chip.az
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Camera Height Up/Down with Quick Chips */}
+            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+              <SliderField
+                label="Height (Up / Down)"
+                value={config.cameraPosY || 0}
+                min={-250}
+                max={250}
+                step={5}
+                unit="px"
+                onChange={(val) => onUpdateConfig({ cameraPosY: val, cameraViewMode: 'camera' })}
+              />
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { label: 'Floor -80px', y: -80 },
+                  { label: 'Center 0px', y: 0 },
+                  { label: 'Sky +80px', y: 80 }
+                ].map(chip => (
+                  <button
+                    key={chip.y}
+                    type="button"
+                    onClick={() => onUpdateConfig({ cameraPosY: chip.y, cameraViewMode: 'camera' })}
+                    className={`py-0.5 px-1 rounded text-[8.5px] font-mono border transition-all text-center ${
+                      config.cameraPosY === chip.y
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dutch Roll & FOV */}
+            <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5">
+              <SliderField
+                label="Dutch Roll"
+                value={config.cameraRoll || 0}
+                min={-30}
+                max={30}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ cameraRoll: val, cameraViewMode: 'camera' })}
+              />
+              <SliderField
+                label="Lens FOV"
+                value={config.fov || 45}
+                min={20}
+                max={85}
+                step={1}
+                unit="°"
+                onChange={(val) => onUpdateConfig({ fov: val })}
+              />
+            </div>
+
+            {/* Dynamic Camera Trajectory Motion */}
+            <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                  Autonomous Camera Flight
+                </span>
+                <span className="text-[8.5px] font-mono text-[#ff4e2e] uppercase font-bold">
+                  {config.cameraMotion || 'none'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { id: 'none', label: 'Static', icon: <Camera size={11} /> },
+                  { id: 'orbit', label: 'Orbit', icon: <RotateCcw size={11} /> },
+                  { id: 'dolly', label: 'Dolly', icon: <ZoomIn size={11} /> },
+                  { id: 'crane', label: 'Crane', icon: <ArrowUpRight size={11} /> },
+                  { id: 'corkscrew', label: 'Spiral', icon: <Compass size={11} /> },
+                  { id: 'pan', label: 'Pan', icon: <MoveHorizontal size={11} /> },
+                  { id: 'rise', label: 'Rise', icon: <ArrowUp size={11} /> },
+                  { id: 'shake', label: 'Shake', icon: <Activity size={11} /> },
+                ].map(traj => (
+                  <button
+                    key={traj.id}
+                    type="button"
+                    onClick={() => onUpdateConfig({ cameraMotion: traj.id as any })}
+                    className={`py-1.5 px-1 rounded border text-[9px] font-mono flex flex-col items-center justify-center gap-1 transition-all ${
+                      (config.cameraMotion || 'none') === traj.id
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold shadow-sm'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span className={(config.cameraMotion || 'none') === traj.id ? 'text-[#ff4e2e]' : 'text-slate-500'}>
+                      {traj.icon}
+                    </span>
+                    <span className="leading-tight">{traj.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Precision Camera Coordinates */}
             <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-                  Camera Position
+                  Target Look-At Coordinates
                 </span>
                 <button
                   type="button"
                   onClick={() => onUpdateConfig({ 
                     cameraPosX: 0, 
                     cameraPosY: 0, 
-                    cameraPosZ: config.cameraDistance || 420,
+                    cameraPosZ: config.cameraDistance || 560,
+                    cameraElevation: 12,
+                    cameraAzimuth: 0,
+                    cameraRoll: 0,
                     cameraTargetX: 0,
                     cameraTargetY: 0,
-                    cameraTargetZ: 0
+                    cameraTargetZ: 0,
+                    cameraViewMode: 'camera'
                   })}
                   className="text-[9px] font-mono text-slate-500 hover:text-white flex items-center gap-0.5"
                 >
                   <RotateCcw size={9} />
-                  <span>Reset</span>
+                  <span>Reset Center</span>
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 <SliderField
-                  label="Pos X"
-                  value={config.cameraPosX || 0}
-                  min={-400}
-                  max={400}
+                  label="Target X"
+                  value={config.cameraTargetX || 0}
+                  min={-200}
+                  max={200}
                   step={5}
                   unit="px"
-                  onChange={(val) => onUpdateConfig({ cameraPosX: val })}
+                  onChange={(val) => onUpdateConfig({ cameraTargetX: val })}
                 />
                 <SliderField
-                  label="Pos Y"
-                  value={config.cameraPosY || 0}
-                  min={-300}
-                  max={300}
+                  label="Target Y"
+                  value={config.cameraTargetY || 0}
+                  min={-200}
+                  max={200}
                   step={5}
                   unit="px"
-                  onChange={(val) => onUpdateConfig({ cameraPosY: val })}
+                  onChange={(val) => onUpdateConfig({ cameraTargetY: val })}
                 />
                 <SliderField
-                  label="Pos Z"
-                  value={config.cameraPosZ || config.cameraDistance || 420}
-                  min={120}
-                  max={900}
-                  step={10}
+                  label="Target Z"
+                  value={config.cameraTargetZ || 0}
+                  min={-200}
+                  max={200}
+                  step={5}
                   unit="px"
-                  onChange={(val) => onUpdateConfig({ cameraPosZ: val, cameraDistance: val })}
+                  onChange={(val) => onUpdateConfig({ cameraTargetZ: val })}
                 />
               </div>
-            </div>
-
-            {/* Dynamic Camera Trajectory Motion */}
-            <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5">
-              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-                Dynamic Camera Trajectory Motion
-              </span>
-              <SegmentedField
-                label="Trajectory Flight"
-                tooltip="Autonomous camera flight path stacked across 3D playback"
-                value={config.cameraMotion || 'none'}
-                onChange={(val: string) => onUpdateConfig({ cameraMotion: val as any })}
-                options={[
-                  { value: 'none', label: 'Static', tooltip: 'Camera stays at fixed coordinates' },
-                  { value: 'orbit', label: 'Orbit', tooltip: 'Autonomous 360-degree orbital drone' },
-                  { value: 'dolly', label: 'Dolly', tooltip: 'Vertigo plunge from depth with FOV zoom' },
-                  { value: 'crane', label: 'Crane', tooltip: 'Low-angle swoop ascending to hero eye-level' },
-                  { value: 'corkscrew', label: 'Spiral', tooltip: 'Spiral helical flyby with banking roll' }
-                ]}
-              />
             </div>
           </InspectorSection>
         )}
