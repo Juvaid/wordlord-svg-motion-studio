@@ -22,6 +22,9 @@ interface StageViewportProps {
   stagger: number;
   glowRadius: number;
   glowIntensity: number;
+  glowTarget?: 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected';
+  selectedSection?: string | null;
+  onSelectSection?: (sectionId: string | null) => void;
   geometryMode: 'fill' | 'stroke' | 'hybrid';
   strokeWidth: number;
   tiltX: number;
@@ -60,6 +63,9 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   stagger,
   glowRadius,
   glowIntensity,
+  glowTarget = 'media',
+  selectedSection = null,
+  onSelectSection,
   geometryMode,
   strokeWidth,
   tiltX,
@@ -226,6 +232,25 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   const stageHeight = isWordLordMark ? 332 : Math.min(420, Math.max(160, Math.round((vbH / vbW) * 340)));
   const currentViewBox = isWordLordMark ? "0 0 25 26" : (activeAssetViewBox || `0 0 ${vbW} ${vbH}`);
 
+  // Helper to compute ultra-crisp CSS multi-tier optical drop-shadow aura
+  // Guarantees ZERO pixelation under any CSS 3D perspective or tilt angle
+  const getGlowFilter = (targetKey: 'word' | 'lord' | 'ligature' | 'media' | string, color: string) => {
+    if (!layerVisibility.glow || glowRadius <= 0 || glowIntensity <= 0) return undefined;
+    
+    const isTargeted = 
+      glowTarget === 'all' || 
+      glowTarget === targetKey || 
+      (glowTarget === 'selected' && selectedSection === targetKey);
+      
+    if (!isTargeted) return undefined;
+
+    const factor = glowIntensity / 100;
+    const r1 = Math.max(1, (glowRadius * 0.25) * factor).toFixed(1);
+    const r2 = Math.max(2, (glowRadius * 0.7) * factor).toFixed(1);
+    const r3 = Math.max(4, (glowRadius * 1.5) * factor).toFixed(1);
+    return `drop-shadow(0 0 ${r1}px ${color}) drop-shadow(0 0 ${r2}px ${color}) drop-shadow(0 0 ${r3}px ${color})`;
+  };
+
   return (
     <main
       ref={containerRef}
@@ -344,6 +369,14 @@ export const StageViewport: React.FC<StageViewportProps> = ({
           </span>
           <span className="text-slate-500">•</span>
           <span>{currentViewBox}</span>
+          {selectedSection && (
+            <>
+              <span className="text-slate-500">•</span>
+              <span className="text-[#ff4e2e] font-semibold uppercase">
+                Section: {selectedSection}
+              </span>
+            </>
+          )}
           {!isWordLordMark && (
             <>
               <span className="text-slate-500">•</span>
@@ -383,239 +416,334 @@ export const StageViewport: React.FC<StageViewportProps> = ({
           visibility: layerVisibility.master ? 'visible' : 'hidden'
         }}
       >
-        {/* Master Stage SVG (Unclipped Guaranteed) */}
-        <svg
-          id="main-stage-svg"
-          width={stageWidth}
-          height={stageHeight}
-          viewBox={currentViewBox}
-          fill="none"
-          className="block overflow-visible"
+        {/* 3D Spatial Perspective Rig (Zero-Pixelation Hardware Vector Projection) */}
+        <div
+          id="stage-3d-perspective-rig"
           style={{
-            transform: `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
-            transformOrigin: 'center center',
-            transition: 'transform 0.05s ease-out'
+            perspective: 1200,
+            perspectiveOrigin: '50% 50%',
+            transformStyle: 'preserve-3d',
+            display: 'inline-block'
           }}
         >
-          <defs>
-            {/* Safe 600% Unclipped Volumetric Glow Filter */}
-            <filter id="unclipped-media-glow" x="-250%" y="-250%" width="600%" height="600%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.045} result="blur1" />
-              <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.1} result="blur2" />
-              <feColorMatrix
-                in="blur1"
-                type="matrix"
-                values={`
-                  1 0 0 0 1
-                  0 0.31 0 0 0.31
-                  0 0 0.18 0 0.18
-                  0 0 0 ${((glowIntensity / 100) * 1.6).toFixed(2)} 0`}
-                result="col1"
-              />
-              <feColorMatrix
-                in="blur2"
-                type="matrix"
-                values={`
-                  1 0 0 0 1
-                  0 0.31 0 0 0.31
-                  0 0 0.18 0 0.18
-                  0 0 0 ${((glowIntensity / 100) * 0.9).toFixed(2)} 0`}
-                result="col2"
-              />
-              <feMerge>
-                <feMergeNode in="col2" />
-                <feMergeNode in="col1" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+          <div
+            id="stage-3d-gimbal"
+            style={{
+              transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
+              transformStyle: 'preserve-3d',
+              transformOrigin: 'center center',
+              transition: 'transform 0.08s cubic-bezier(0.16, 1, 0.3, 1)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              willChange: (tiltX !== 0 || tiltY !== 0) ? 'transform' : 'auto'
+            }}
+          >
+            {/* Master Stage SVG (Unclipped Guaranteed) */}
+            <svg
+              id="main-stage-svg"
+              width={stageWidth}
+              height={stageHeight}
+              viewBox={currentViewBox}
+              fill="none"
+              className="block overflow-visible"
+              style={{
+                shapeRendering: 'geometricPrecision',
+                textRendering: 'geometricPrecision'
+              }}
+            >
+              <defs>
+                {/* Safe 600% Unclipped Volumetric Glow Filter */}
+                <filter id="unclipped-media-glow" x="-250%" y="-250%" width="600%" height="600%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.045} result="blur1" />
+                  <feGaussianBlur in="SourceGraphic" stdDeviation={glowRadius * 0.1} result="blur2" />
+                  <feColorMatrix
+                    in="blur1"
+                    type="matrix"
+                    values={`
+                      1 0 0 0 1
+                      0 0.31 0 0 0.31
+                      0 0 0.18 0 0.18
+                      0 0 0 ${((glowIntensity / 100) * 1.6).toFixed(2)} 0`}
+                    result="col1"
+                  />
+                  <feColorMatrix
+                    in="blur2"
+                    type="matrix"
+                    values={`
+                      1 0 0 0 1
+                      0 0.31 0 0 0.31
+                      0 0 0.18 0 0.18
+                      0 0 0 ${((glowIntensity / 100) * 0.9).toFixed(2)} 0`}
+                    result="col2"
+                  />
+                  <feMerge>
+                    <feMergeNode in="col2" />
+                    <feMergeNode in="col1" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
 
-            <linearGradient id="laser-gleam-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-              <stop offset="45%" stopColor="#ffffff" stopOpacity="0" />
-              <stop offset="50%" stopColor="#ffffff" stopOpacity="0.95" />
-              <stop offset="55%" stopColor="#ff4e2e" stopOpacity="0.9" />
-              <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-            </linearGradient>
-          </defs>
+                <linearGradient id="laser-gleam-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+                  <stop offset="45%" stopColor="#ffffff" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#ffffff" stopOpacity="0.95" />
+                  <stop offset="55%" stopColor="#ff4e2e" stopOpacity="0.9" />
+                  <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                </linearGradient>
+              </defs>
 
-          {!isWordLordMark ? (
-            /* Custom Vector Asset Decomposed Layers */
-            <g id="group-custom-asset">
-              {parts && parts.length > 0 ? (
-                parts.map((part, pIdx) => {
-                  if (!part.visible) return null;
-                  const partDelay = ((part.phaseDelay ?? (pIdx * 0.08)) * (duration / 1.0)).toFixed(3);
-                  return (
+              {!isWordLordMark ? (
+                /* Custom Vector Asset Decomposed Layers */
+                <g id="group-custom-asset">
+                  {parts && parts.length > 0 ? (
+                    parts.map((part, pIdx) => {
+                      if (!part.visible) return null;
+                      const partKey = part.id || `part-${pIdx}`;
+                      const isSel = selectedSection === partKey;
+                      const partDelay = ((part.phaseDelay ?? (pIdx * 0.08)) * (duration / 1.0)).toFixed(3);
+                      return (
+                        <path
+                          key={part.id || pIdx}
+                          id={`glyph-custom-${pIdx}`}
+                          data-glyph={part.name || `part-${pIdx}`}
+                          d={part.pathD}
+                          fill={part.faceColor || colors.word}
+                          stroke={strokeAttr.stroke}
+                          strokeWidth={strokeAttr.strokeWidth}
+                          fillOpacity={strokeAttr.fillOpacity}
+                          onClick={(e) => {
+                            if (activeTool === 'select') {
+                              e.stopPropagation();
+                              onSelectSection?.(isSel ? null : partKey);
+                            }
+                          }}
+                          style={{
+                            transformOrigin: 'center center',
+                            animationDelay: `${partDelay}s`,
+                            filter: getGlowFilter(partKey, part.faceColor || colors.word),
+                            outline: isSel ? '1.5px dashed rgba(255, 78, 46, 0.7)' : undefined,
+                            outlineOffset: '2px',
+                            cursor: activeTool === 'select' ? 'pointer' : 'default',
+                            transition: 'fill 0.2s ease, opacity 0.2s ease, filter 0.2s ease'
+                          }}
+                          className="custom-part-glyph"
+                        />
+                      );
+                    })
+                  ) : (
+                    <text x="50" y="50" fill="#ffffff" fontSize="6" textAnchor="middle" opacity="0.6">
+                      Loading Vector Asset...
+                    </text>
+                  )}
+                </g>
+              ) : (
+                <>
+                  {/* Group: WORD */}
+                  <g 
+                    id="group-word" 
+                    onClick={(e) => {
+                      if (activeTool === 'select') {
+                        e.stopPropagation();
+                        onSelectSection?.(selectedSection === 'word' ? null : 'word');
+                      }
+                    }}
+                    className={activeTool === 'select' ? 'cursor-pointer' : undefined}
+                    style={{ 
+                      visibility: layerVisibility.word ? 'visible' : 'hidden',
+                      filter: getGlowFilter('word', colors.word),
+                      outline: selectedSection === 'word' ? '1.5px dashed rgba(255, 78, 46, 0.7)' : undefined,
+                      outlineOffset: '2px',
+                      transition: 'filter 0.2s ease, opacity 0.2s ease'
+                    }}
+                  >
                     <path
-                      key={part.id || pIdx}
-                      id={`glyph-custom-${pIdx}`}
-                      data-glyph={part.name || `part-${pIdx}`}
-                      d={part.pathD}
-                      fill={part.faceColor || colors.word}
+                      id="glyph-word-w"
+                      data-glyph="W"
+                      d={GLYPH_PATHS.wordW}
+                      fill={colors.word}
                       stroke={strokeAttr.stroke}
                       strokeWidth={strokeAttr.strokeWidth}
                       fillOpacity={strokeAttr.fillOpacity}
-                      style={{
-                        transformOrigin: 'center center',
-                        animationDelay: `${partDelay}s`,
-                        transition: 'fill 0.2s ease, opacity 0.2s ease'
-                      }}
-                      className="custom-part-glyph"
                     />
-                  );
-                })
-              ) : (
-                <text x="50" y="50" fill="#ffffff" fontSize="6" textAnchor="middle" opacity="0.6">
-                  Loading Vector Asset...
-                </text>
+                    <path
+                      id="glyph-word-o"
+                      data-glyph="O"
+                      d={GLYPH_PATHS.wordO}
+                      fill={colors.word}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-word-r"
+                      data-glyph="R"
+                      d={GLYPH_PATHS.wordR}
+                      fill={colors.word}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                  </g>
+
+                  {/* Group: LORD */}
+                  <g 
+                    id="group-lord" 
+                    onClick={(e) => {
+                      if (activeTool === 'select') {
+                        e.stopPropagation();
+                        onSelectSection?.(selectedSection === 'lord' ? null : 'lord');
+                      }
+                    }}
+                    className={activeTool === 'select' ? 'cursor-pointer' : undefined}
+                    style={{ 
+                      visibility: layerVisibility.lord ? 'visible' : 'hidden',
+                      filter: getGlowFilter('lord', colors.lord),
+                      outline: selectedSection === 'lord' ? '1.5px dashed rgba(255, 78, 46, 0.7)' : undefined,
+                      outlineOffset: '2px',
+                      transition: 'filter 0.2s ease, opacity 0.2s ease'
+                    }}
+                  >
+                    <path
+                      id="glyph-lord-l"
+                      data-glyph="L"
+                      d={GLYPH_PATHS.lordL}
+                      fill={colors.lord}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-lord-o"
+                      data-glyph="O"
+                      d={GLYPH_PATHS.lordO}
+                      fill={colors.lord}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-lord-r"
+                      data-glyph="R"
+                      d={GLYPH_PATHS.lordR}
+                      fill={colors.lord}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                  </g>
+
+                  {/* Group: Monolithic Ligature D */}
+                  <g 
+                    id="group-ligature" 
+                    onClick={(e) => {
+                      if (activeTool === 'select') {
+                        e.stopPropagation();
+                        onSelectSection?.(selectedSection === 'ligature' ? null : 'ligature');
+                      }
+                    }}
+                    className={activeTool === 'select' ? 'cursor-pointer' : undefined}
+                    style={{ 
+                      visibility: layerVisibility.ligature ? 'visible' : 'hidden',
+                      filter: getGlowFilter('ligature', colors.ligature),
+                      outline: selectedSection === 'ligature' ? '1.5px dashed rgba(255, 78, 46, 0.7)' : undefined,
+                      outlineOffset: '2px',
+                      transition: 'filter 0.2s ease, opacity 0.2s ease'
+                    }}
+                  >
+                    <path
+                      id="glyph-ligature-d"
+                      data-glyph="D"
+                      d={GLYPH_PATHS.ligatureD}
+                      fill={colors.ligature}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                  </g>
+
+                  {/* Group: MEDIA (with Volumetric Glow) */}
+                  <g
+                    id="group-media"
+                    onClick={(e) => {
+                      if (activeTool === 'select') {
+                        e.stopPropagation();
+                        onSelectSection?.(selectedSection === 'media' ? null : 'media');
+                      }
+                    }}
+                    className={activeTool === 'select' ? 'cursor-pointer' : undefined}
+                    style={{ 
+                      visibility: layerVisibility.media ? 'visible' : 'hidden',
+                      filter: getGlowFilter('media', colors.media),
+                      outline: selectedSection === 'media' ? '1.5px dashed rgba(255, 78, 46, 0.7)' : undefined,
+                      outlineOffset: '2px',
+                      transition: 'filter 0.2s ease, opacity 0.2s ease'
+                    }}
+                  >
+                    <path
+                      id="glyph-media-m"
+                      data-glyph="M"
+                      d={GLYPH_PATHS.mediaM}
+                      fill={colors.media}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-media-e"
+                      data-glyph="E"
+                      d={GLYPH_PATHS.mediaE}
+                      fill={colors.media}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-media-d"
+                      data-glyph="D"
+                      d={GLYPH_PATHS.mediaD}
+                      fill={colors.media}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-media-i"
+                      data-glyph="I"
+                      d={GLYPH_PATHS.mediaI}
+                      fill={colors.media}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                    <path
+                      id="glyph-media-a"
+                      data-glyph="A"
+                      d={GLYPH_PATHS.mediaA}
+                      fill={colors.media}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                    />
+                  </g>
+                </>
               )}
-            </g>
-          ) : (
-            <>
-              {/* Group: WORD */}
-              <g id="group-word" style={{ visibility: layerVisibility.word ? 'visible' : 'hidden' }}>
-                <path
-                  id="glyph-word-w"
-                  data-glyph="W"
-                  d={GLYPH_PATHS.wordW}
-                  fill={colors.word}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-word-o"
-                  data-glyph="O"
-                  d={GLYPH_PATHS.wordO}
-                  fill={colors.word}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-word-r"
-                  data-glyph="R"
-                  d={GLYPH_PATHS.wordR}
-                  fill={colors.word}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-              </g>
 
-              {/* Group: LORD */}
-              <g id="group-lord" style={{ visibility: layerVisibility.lord ? 'visible' : 'hidden' }}>
-                <path
-                  id="glyph-lord-l"
-                  data-glyph="L"
-                  d={GLYPH_PATHS.lordL}
-                  fill={colors.lord}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-lord-o"
-                  data-glyph="O"
-                  d={GLYPH_PATHS.lordO}
-                  fill={colors.lord}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-lord-r"
-                  data-glyph="R"
-                  d={GLYPH_PATHS.lordR}
-                  fill={colors.lord}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-              </g>
-
-              {/* Group: Monolithic Ligature D */}
-              <g id="group-ligature" style={{ visibility: layerVisibility.ligature ? 'visible' : 'hidden' }}>
-                <path
-                  id="glyph-ligature-d"
-                  data-glyph="D"
-                  d={GLYPH_PATHS.ligatureD}
-                  fill={colors.ligature}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-              </g>
-
-              {/* Group: MEDIA (with Volumetric Glow) */}
-              <g
-                id="group-media"
-                filter={layerVisibility.glow && glowIntensity > 0 && glowRadius > 0 ? "url(#unclipped-media-glow)" : undefined}
-                style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}
-              >
-                <path
-                  id="glyph-media-m"
-                  data-glyph="M"
-                  d={GLYPH_PATHS.mediaM}
-                  fill={colors.media}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-media-e"
-                  data-glyph="E"
-                  d={GLYPH_PATHS.mediaE}
-                  fill={colors.media}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-media-d"
-                  data-glyph="D"
-                  d={GLYPH_PATHS.mediaD}
-                  fill={colors.media}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-media-i"
-                  data-glyph="I"
-                  d={GLYPH_PATHS.mediaI}
-                  fill={colors.media}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-                <path
-                  id="glyph-media-a"
-                  data-glyph="A"
-                  d={GLYPH_PATHS.mediaA}
-                  fill={colors.media}
-                  stroke={strokeAttr.stroke}
-                  strokeWidth={strokeAttr.strokeWidth}
-                  fillOpacity={strokeAttr.fillOpacity}
-                />
-              </g>
-            </>
-          )}
-
-          {/* Laser Specular Sweep Overlay */}
-          <rect
-            id="laser-sweep-rect"
-            x="-20"
-            y="-20"
-            width="65"
-            height="65"
-            fill="url(#laser-gleam-grad)"
-            pointerEvents="none"
-            className="hidden"
-            style={{ mixBlendMode: 'overlay' }}
-          />
-        </svg>
+              {/* Laser Specular Sweep Overlay */}
+              <rect
+                id="laser-sweep-rect"
+                x="-20"
+                y="-20"
+                width="65"
+                height="65"
+                fill="url(#laser-gleam-grad)"
+                pointerEvents="none"
+                className="hidden"
+                style={{ mixBlendMode: 'overlay' }}
+              />
+            </svg>
+          </div>
+        </div>
       </div>
     </main>
   );

@@ -24,7 +24,7 @@ import {
   X
 } from 'lucide-react';
 import { BezierGraph } from './BezierGraph';
-import { BezierPoints, PlaybackMode, GeometryMode } from '../types';
+import { BezierPoints, PlaybackMode, GeometryMode, GlowTarget } from '../types';
 import { ALL_ASSETS } from '../data/assetLibrary';
 import { STYLES } from '../data/styles';
 import { Tooltip } from './Tooltip';
@@ -47,6 +47,8 @@ interface RightInspectorProps {
   playbackMode: PlaybackMode;
   glowRadius: number;
   glowIntensity: number;
+  glowTarget?: GlowTarget;
+  selectedSection?: string | null;
   geometryMode: GeometryMode;
   strokeWidth: number;
   tiltX: number;
@@ -72,6 +74,8 @@ interface RightInspectorProps {
   onPlaybackModeChange: (mode: PlaybackMode) => void;
   onGlowRadiusChange: (rad: number) => void;
   onGlowIntensityChange: (intensity: number) => void;
+  onGlowTargetChange?: (target: GlowTarget) => void;
+  onSelectSection?: (sectionId: string | null) => void;
   onGeometryModeChange: (mode: GeometryMode) => void;
   onStrokeWidthChange: (w: number) => void;
   onTiltXChange: (x: number) => void;
@@ -125,6 +129,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   playbackMode,
   glowRadius,
   glowIntensity,
+  glowTarget = 'media',
+  selectedSection = null,
   geometryMode,
   strokeWidth,
   tiltX,
@@ -145,6 +151,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onPlaybackModeChange,
   onGlowRadiusChange,
   onGlowIntensityChange,
+  onGlowTargetChange,
+  onSelectSection,
   onGeometryModeChange,
   onStrokeWidthChange,
   onTiltXChange,
@@ -690,6 +698,21 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             />
 
             <SegmentedField
+              label="Glow Target Mark"
+              tooltip="Select which typography layer receives optical aura bloom"
+              value={glowTarget || 'media'}
+              onChange={(val) => onGlowTargetChange?.(val as GlowTarget)}
+              options={[
+                { value: 'media', label: 'Media', tooltip: 'Volumetric glow on MEDIA sub-brand' },
+                { value: 'word', label: 'Word', tooltip: 'Volumetric glow on WORD line 1' },
+                { value: 'lord', label: 'Lord', tooltip: 'Volumetric glow on LORD line 2' },
+                { value: 'ligature', label: 'Tall D', tooltip: 'Volumetric glow on Monolith Tall D' },
+                { value: 'all', label: 'All', tooltip: 'Volumetric glow on entire mark' },
+                { value: 'selected', label: 'Active', tooltip: 'Volumetric glow on active selected section' }
+              ]}
+            />
+
+            <SegmentedField
               label="Geometry Render Mode"
               tooltip="SVG path drawing style: solid fill, contour outline, or layered hybrid"
               value={geometryMode}
@@ -769,16 +792,58 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         {matchesSection('palette') && (
           <InspectorSection
             id="palette"
-            title="Brand Palette"
+            title="Brand Palette & Focus"
             icon={<Palette size={12} className="text-[#ff4e2e]" />}
             isOpen={isSearching ? true : openSections.palette}
             onToggle={(open) => toggleSection('palette', open)}
+            action={
+              selectedSection ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectSection?.(null)}
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-[#181c28] hover:bg-[#222738] border border-[#2b3245] text-[9px] font-mono text-slate-300 rounded transition-colors"
+                >
+                  <X size={9} />
+                  <span>Deselect</span>
+                </button>
+              ) : null
+            }
           >
+            {/* Quick Section Focus Chips */}
+            <div className="flex flex-col gap-1.5 mb-2">
+              <span className="text-[9px] font-mono text-slate-400">Interactive Section Selection</span>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { id: 'word', label: 'WORD' },
+                  { id: 'lord', label: 'LORD' },
+                  { id: 'ligature', label: 'TALL D' },
+                  { id: 'media', label: 'MEDIA' }
+                ].map(s => {
+                  const isSel = selectedSection === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onSelectSection?.(isSel ? null : s.id)}
+                      className={`py-1 rounded text-[9.5px] font-mono font-bold transition-all text-center border ${
+                        isSel
+                          ? 'bg-[#ff4e2e] text-white border-[#ff4e2e] shadow-sm shadow-[#ff4e2e]/30'
+                          : 'bg-[#151822] hover:bg-[#1f2434] text-slate-400 hover:text-slate-200 border-[#222736]'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <ColorSwatchField
                 label="WORD"
                 sublabel="Line 1"
                 value={colors.word}
+                className={selectedSection === 'word' ? 'ring-2 ring-[#ff4e2e] border-[#ff4e2e]' : ''}
                 tooltip="Change hex color for WORD (Line 1)"
                 onChange={(val) => onColorChange('word', val)}
               />
@@ -786,6 +851,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 label="LORD"
                 sublabel="Line 2"
                 value={colors.lord}
+                className={selectedSection === 'lord' ? 'ring-2 ring-[#ff4e2e] border-[#ff4e2e]' : ''}
                 tooltip="Change hex color for LORD (Line 2)"
                 onChange={(val) => onColorChange('lord', val)}
               />
@@ -793,6 +859,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 label="TALL D"
                 sublabel="Monolith"
                 value={colors.ligature}
+                className={selectedSection === 'ligature' ? 'ring-2 ring-[#ff4e2e] border-[#ff4e2e]' : ''}
                 tooltip="Change hex color for TALL D (Monolith)"
                 onChange={(val) => onColorChange('ligature', val)}
               />
@@ -800,6 +867,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 label="MEDIA"
                 sublabel="Sub-brand"
                 value={colors.media}
+                className={selectedSection === 'media' ? 'ring-2 ring-[#ff4e2e] border-[#ff4e2e]' : ''}
                 tooltip="Change hex color for MEDIA (Sub-brand)"
                 onChange={(val) => onColorChange('media', val)}
               />

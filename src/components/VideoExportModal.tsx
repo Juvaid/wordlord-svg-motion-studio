@@ -20,6 +20,7 @@ interface VideoExportModalProps {
   };
   glowRadius: number;
   glowIntensity: number;
+  glowTarget?: 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected';
   geometryMode: 'fill' | 'stroke' | 'hybrid';
   strokeWidth: number;
   tiltX: number;
@@ -46,6 +47,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   colors,
   glowRadius,
   glowIntensity,
+  glowTarget = 'media',
   geometryMode,
   strokeWidth,
   tiltX,
@@ -98,6 +100,7 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         colors,
         glowRadius,
         glowIntensity,
+        glowTarget,
         geometryMode,
         strokeWidth,
         tiltX,
@@ -272,7 +275,12 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                         className="w-full h-full object-contain filter drop-shadow-md"
                         style={{
                           filter: glowIntensity > 0 
-                            ? `drop-shadow(0 0 ${(glowRadius * 0.4).toFixed(1)}px ${colors.media})` 
+                            ? `drop-shadow(0 0 ${(glowRadius * 0.4).toFixed(1)}px ${
+                                glowTarget === 'word' ? colors.word :
+                                glowTarget === 'lord' ? colors.lord :
+                                glowTarget === 'ligature' ? colors.ligature :
+                                colors.media
+                              })` 
                             : 'none'
                         }}
                       >

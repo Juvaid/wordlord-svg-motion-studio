@@ -49,7 +49,8 @@ import {
   BackgroundMode,
   TimelineTrack,
   WorkArea,
-  BentoConfig 
+  BentoConfig,
+  GlowTarget 
 } from './types';
 import { MotionGraphicsViewport } from './components/MotionGraphicsViewport';
 import { MotionGraphicsInspector } from './components/MotionGraphicsInspector';
@@ -77,6 +78,8 @@ export const App: React.FC = () => {
   // Optics & 3D
   const [glowRadius, setGlowRadius] = useState<number>(20);
   const [glowIntensity, setGlowIntensity] = useState<number>(100);
+  const [glowTarget, setGlowTarget] = useState<GlowTarget>('media');
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [geometryMode, setGeometryMode] = useState<GeometryMode>('fill');
   const [strokeWidth, setStrokeWidth] = useState<number>(1.0);
   const [tiltX, setTiltX] = useState<number>(0);
@@ -169,7 +172,15 @@ export const App: React.FC = () => {
     scaleZ: 1.0,
     fov: 45,
     cameraDistance: 420,
+    cameraViewMode: 'camera',
+    cameraPosX: 0,
+    cameraPosY: 0,
+    cameraPosZ: 420,
+    cameraTargetX: 0,
+    cameraTargetY: 0,
+    cameraTargetZ: 0,
     envPreset: 'studio',
+    envRotation: 0,
     fogDensity: 0.0016,
     floorRoughness: 0.65,
     floorMetalness: 0.35,
@@ -191,6 +202,8 @@ export const App: React.FC = () => {
     fillColor: '#ff8877',
     fillIntensity: 0.9,
     ambientIntensity: 0.5,
+    lightRotation: 35,
+    lightElevation: 35,
     showFloor: true,
     showLightHelpers: false,
     transparentBg: false,
@@ -278,6 +291,7 @@ export const App: React.FC = () => {
       stagger,
       glowRadius,
       glowIntensity,
+      glowTarget,
       geometryMode,
       strokeWidth,
       tiltX,
@@ -297,6 +311,7 @@ export const App: React.FC = () => {
     stagger,
     glowRadius,
     glowIntensity,
+    glowTarget,
     geometryMode,
     strokeWidth,
     tiltX,
@@ -319,6 +334,7 @@ export const App: React.FC = () => {
     if (typeof snap.stagger === 'number') setStagger(snap.stagger);
     if (typeof snap.glowRadius === 'number') setGlowRadius(snap.glowRadius);
     if (typeof snap.glowIntensity === 'number') setGlowIntensity(snap.glowIntensity);
+    if (snap.glowTarget) setGlowTarget(snap.glowTarget);
     if (snap.geometryMode) setGeometryMode(snap.geometryMode);
     if (typeof snap.strokeWidth === 'number') setStrokeWidth(snap.strokeWidth);
     if (typeof snap.tiltX === 'number') setTiltX(snap.tiltX);
@@ -345,6 +361,34 @@ export const App: React.FC = () => {
     setRedoStackList([]);
     setCanUndo(true);
     setCanRedo(false);
+  }, [createStateSnapshot]);
+
+  const isTweakSessionRef = useRef(false);
+  const tweakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Intelligently records a single pre-edit snapshot before a continuous tweak session (slider scrub, color pick)
+   * Prevents flooding the undo stack while guaranteeing 1-click Cmd+Z undo for any color or property change.
+   */
+  const recordContinuousTweak = useCallback((actionName = 'Edit Parameter') => {
+    if (isRestoringRef.current) return;
+    if (!isTweakSessionRef.current) {
+      const snap = createStateSnapshot(actionName);
+      undoStackRef.current.push(snap);
+      if (undoStackRef.current.length > 60) {
+        undoStackRef.current.shift();
+      }
+      redoStackRef.current = [];
+      setUndoStackList([...undoStackRef.current]);
+      setRedoStackList([]);
+      setCanUndo(true);
+      setCanRedo(false);
+      isTweakSessionRef.current = true;
+    }
+    if (tweakTimerRef.current) clearTimeout(tweakTimerRef.current);
+    tweakTimerRef.current = setTimeout(() => {
+      isTweakSessionRef.current = false;
+    }, 600);
   }, [createStateSnapshot]);
 
   const handleUndo = useCallback(() => {
@@ -473,8 +517,12 @@ export const App: React.FC = () => {
   }, [applySnapshot, pushUndoSnapshot, showToast]);
 
   const handleUpdateThreeConfig = useCallback((partial: Partial<ThreeStudioConfig>) => {
+    const isPlaybackOnly = Object.keys(partial).every(k => k === 'time' || k === 'isPlaying');
+    if (!isPlaybackOnly) {
+      recordContinuousTweak('3D Parameter Edit');
+    }
     setThreeConfig(prev => ({ ...prev, ...partial }));
-  }, []);
+  }, [recordContinuousTweak]);
 
   const handleSelectAsset = useCallback((assetId: string) => {
     const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
@@ -563,6 +611,7 @@ export const App: React.FC = () => {
   }, [soundEnabled, showToast]);
 
   const handleUpdatePart = useCallback((idx: number, partial: Partial<ThreePart>) => {
+    recordContinuousTweak('Part Parameter Edit');
     setThreeParts(prev => {
       const next = [...prev];
       if (next[idx]) {
@@ -570,7 +619,7 @@ export const App: React.FC = () => {
       }
       return next;
     });
-  }, []);
+  }, [recordContinuousTweak]);
 
   const handleResetParts = useCallback(() => {
     pushUndoSnapshot('Reset Parts Offsets');
@@ -1413,6 +1462,9 @@ export const App: React.FC = () => {
             stagger={stagger}
             glowRadius={glowRadius}
             glowIntensity={glowIntensity}
+            glowTarget={glowTarget}
+            selectedSection={selectedSection}
+            onSelectSection={setSelectedSection}
             geometryMode={geometryMode}
             strokeWidth={strokeWidth}
             tiltX={tiltX}
@@ -1473,6 +1525,13 @@ export const App: React.FC = () => {
             playbackMode={playbackMode}
             glowRadius={glowRadius}
             glowIntensity={glowIntensity}
+            glowTarget={glowTarget}
+            selectedSection={selectedSection}
+            onGlowTargetChange={(target) => {
+              pushUndoSnapshot(`Glow Target: ${target}`);
+              setGlowTarget(target);
+            }}
+            onSelectSection={setSelectedSection}
             geometryMode={geometryMode}
             strokeWidth={strokeWidth}
             tiltX={tiltX}
@@ -1487,20 +1546,62 @@ export const App: React.FC = () => {
             onOpenCodeExport={() => setIsExportOpen(true)}
             onSelectStyleById={(styleId) => {
               const s = STYLES.find(st => st.id === styleId);
-              if (s) handleSelectStyle(s);
+              if (s) {
+                pushUndoSnapshot(`Style: ${s.name}`);
+                handleSelectStyle(s);
+              }
             }}
-            onDurationChange={(d) => { setDuration(d); seekToProgress(currentProgress); }}
-            onStaggerChange={setStagger}
-            onBezierChange={setBezier}
-            onPlaybackModeChange={setPlaybackMode}
-            onGlowRadiusChange={setGlowRadius}
-            onGlowIntensityChange={setGlowIntensity}
-            onGeometryModeChange={setGeometryMode}
-            onStrokeWidthChange={setStrokeWidth}
-            onTiltXChange={setTiltX}
-            onTiltYChange={setTiltY}
-            onResetTilt={() => { setTiltX(0); setTiltY(0); showToast('3D Tilt Reset'); }}
-            onColorChange={(k, val) => setColors(prev => ({ ...prev, [k]: val }))}
+            onDurationChange={(d) => {
+              recordContinuousTweak('Adjust Duration');
+              setDuration(d);
+              seekToProgress(currentProgress);
+            }}
+            onStaggerChange={(s) => {
+              recordContinuousTweak('Adjust Stagger');
+              setStagger(s);
+            }}
+            onBezierChange={(b) => {
+              recordContinuousTweak('Adjust Bézier');
+              setBezier(b);
+            }}
+            onPlaybackModeChange={(m) => {
+              pushUndoSnapshot(`Playback: ${m}`);
+              setPlaybackMode(m);
+            }}
+            onGlowRadiusChange={(r) => {
+              recordContinuousTweak('Adjust Glow Radius');
+              setGlowRadius(r);
+            }}
+            onGlowIntensityChange={(i) => {
+              recordContinuousTweak('Adjust Glow Intensity');
+              setGlowIntensity(i);
+            }}
+            onGeometryModeChange={(m) => {
+              pushUndoSnapshot(`Geometry Mode: ${m}`);
+              setGeometryMode(m);
+            }}
+            onStrokeWidthChange={(w) => {
+              recordContinuousTweak('Adjust Stroke Width');
+              setStrokeWidth(w);
+            }}
+            onTiltXChange={(x) => {
+              recordContinuousTweak('Adjust 3D Tilt X');
+              setTiltX(x);
+            }}
+            onTiltYChange={(y) => {
+              recordContinuousTweak('Adjust 3D Tilt Y');
+              setTiltY(y);
+            }}
+            onResetTilt={() => {
+              pushUndoSnapshot('Reset 3D Tilt');
+              setTiltX(0);
+              setTiltY(0);
+              showToast('3D Tilt Reset');
+            }}
+            onColorChange={(k, val) => {
+              recordContinuousTweak(`Change Color ${k.toUpperCase()}`);
+              setColors(prev => ({ ...prev, [k]: val }));
+            }}
             onPlaySound={() => playTick(soundEnabled, 650, 0.02)}
           />
         ) : studioMode === '3d' ? (
@@ -1627,6 +1728,7 @@ export const App: React.FC = () => {
         colors={colors}
         glowRadius={glowRadius}
         glowIntensity={glowIntensity}
+        glowTarget={glowTarget}
         geometryMode={geometryMode}
         strokeWidth={strokeWidth}
         tiltX={tiltX}

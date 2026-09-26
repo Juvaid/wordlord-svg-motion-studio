@@ -19,7 +19,9 @@ import {
   Lightbulb,
   Check,
   Eye,
-  Upload
+  Upload,
+  Camera,
+  Globe
 } from 'lucide-react';
 import { 
   ThreeStudioConfig, 
@@ -33,6 +35,25 @@ import {
   evaluate3DMotion,
   flashMeshHighlight 
 } from '../utils/threeEngine';
+
+/**
+ * Computes 3D directional coordinates for Key, Rim, and Fill lights
+ * based on Blender-style azimuth rotation (0-360°) and pitch elevation (10-80°).
+ * At lightRotation = 0°, Key Light shines directly into the front face of the model (+Z).
+ */
+function computeLightPositions(lightRotation: number = 35, lightElevation: number = 35) {
+  const rotRad = (lightRotation * Math.PI) / 180;
+  const elevRad = (lightElevation * Math.PI) / 180;
+  const dist = 380;
+  const yKey = dist * Math.sin(elevRad);
+  const rKey = dist * Math.cos(elevRad);
+
+  return {
+    key: new THREE.Vector3(rKey * Math.sin(rotRad), yKey, rKey * Math.cos(rotRad)),
+    rim: new THREE.Vector3(dist * 0.85 * Math.sin(rotRad + Math.PI - 0.4), dist * 0.5, dist * 0.85 * Math.cos(rotRad + Math.PI - 0.4)),
+    fill: new THREE.Vector3(dist * 0.7 * Math.sin(rotRad - 1.2), -dist * 0.2, dist * 0.7 * Math.cos(rotRad - 1.2))
+  };
+}
 
 interface ThreeStageViewportProps {
   config: ThreeStudioConfig;
@@ -134,9 +155,13 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Camera (with FOV from config)
+    // Camera (with FOV and initial coordinates from config)
     const camera = new THREE.PerspectiveCamera(config.fov || 45, width / height, 1, 3500);
-    camera.position.set(0, 0, config.cameraDistance || 420);
+    camera.position.set(
+      config.cameraPosX || 0,
+      config.cameraPosY || 0,
+      config.cameraPosZ || config.cameraDistance || 420
+    );
     cameraRef.current = camera;
 
     // WebGL Renderer
@@ -161,6 +186,16 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     controls.dampingFactor = 0.06;
     controls.maxDistance = 1400;
     controls.minDistance = 60;
+    controls.target.set(
+      config.cameraTargetX || 0,
+      config.cameraTargetY || 0,
+      config.cameraTargetZ || 0
+    );
+    controls.addEventListener('start', () => {
+      if (configRef.current.cameraViewMode === 'camera') {
+        onUpdateConfigRef.current({ cameraViewMode: 'free', cameraPreset: 'free' });
+      }
+    });
     controlsRef.current = controls;
 
     // TransformControls (Interactive 3D Gizmo from Prototypes)
@@ -176,8 +211,10 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     const ambientLight = new THREE.AmbientLight(0xffffff, config.ambientIntensity);
     scene.add(ambientLight);
 
+    const initPos = computeLightPositions(config.lightRotation ?? 35, config.lightElevation ?? 35);
+
     const keyLight = new THREE.DirectionalLight(new THREE.Color(config.keyColor), config.keyIntensity);
-    keyLight.position.set(220, 260, 280);
+    keyLight.position.copy(initPos.key);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 2048;
     keyLight.shadow.mapSize.height = 2048;
@@ -187,11 +224,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     scene.add(keyLight);
 
     const rimLight = new THREE.DirectionalLight(new THREE.Color(config.rimColor), config.rimIntensity);
-    rimLight.position.set(-260, 200, -220);
+    rimLight.position.copy(initPos.rim);
     scene.add(rimLight);
 
     const fillLight = new THREE.DirectionalLight(new THREE.Color(config.fillColor), config.fillIntensity);
-    fillLight.position.set(0, -180, 150);
+    fillLight.position.copy(initPos.fill);
     scene.add(fillLight);
 
     lightsRef.current = { keyLight, rimLight, fillLight, ambientLight };
@@ -411,7 +448,7 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     }
   }, [config.envPreset]);
 
-  // 5. Update Lights & Bloom Settings
+  // 5. Update Lights, Bloom & Camera Coordinates
   useEffect(() => {
     if (!lightsRef.current) return;
     const { keyLight, rimLight, fillLight, ambientLight } = lightsRef.current;
@@ -427,9 +464,18 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
     ambientLight.intensity = config.ambientIntensity;
 
+    // Reposition Key, Rim, and Fill lights according to Blender-style Azimuth & Elevation
+    const lightPos = computeLightPositions(config.lightRotation ?? 35, config.lightElevation ?? 35);
+    keyLight.position.copy(lightPos.key);
+    rimLight.position.copy(lightPos.rim);
+    fillLight.position.copy(lightPos.fill);
+
     if (floorRef.current) {
       floorRef.current.mesh.visible = config.showFloor && config.envPreset !== 'transparent';
       floorRef.current.grid.visible = config.showFloor && config.envPreset !== 'transparent';
+      const envRotRad = ((config.envRotation || 0) * Math.PI) / 180;
+      floorRef.current.mesh.rotation.y = envRotRad;
+      floorRef.current.grid.rotation.y = envRotRad;
     }
 
     if (bloomPassRef.current) {
@@ -443,6 +489,19 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       cameraRef.current.fov = config.fov;
       cameraRef.current.updateProjectionMatrix();
     }
+
+    // If in camera view mode, position camera and target according to config coordinates
+    if (config.cameraViewMode === 'camera' && cameraRef.current && controlsRef.current) {
+      const px = config.cameraPosX ?? 0;
+      const py = config.cameraPosY ?? 0;
+      const pz = config.cameraPosZ ?? config.cameraDistance ?? 420;
+      cameraRef.current.position.set(px, py, pz);
+      const tx = config.cameraTargetX ?? 0;
+      const ty = config.cameraTargetY ?? 0;
+      const tz = config.cameraTargetZ ?? 0;
+      controlsRef.current.target.set(tx, ty, tz);
+      controlsRef.current.update();
+    }
   }, [
     config.keyColor, 
     config.keyIntensity, 
@@ -450,7 +509,10 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     config.rimIntensity, 
     config.fillColor, 
     config.fillIntensity, 
-    config.ambientIntensity, 
+    config.ambientIntensity,
+    config.lightRotation,
+    config.lightElevation,
+    config.envRotation,
     config.showFloor, 
     config.envPreset, 
     config.bloomEnabled, 
@@ -458,7 +520,14 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     config.bloomRadius, 
     config.bloomThreshold, 
     config.shadingMode,
-    config.fov
+    config.fov,
+    config.cameraViewMode,
+    config.cameraPosX,
+    config.cameraPosY,
+    config.cameraPosZ,
+    config.cameraTargetX,
+    config.cameraTargetY,
+    config.cameraTargetZ
   ]);
 
   // 6. Update Viewport Shading Mode (Solid / Wireframe / PBR / Bloom)
@@ -618,7 +687,27 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   // Camera angle presets
   const handleSetCameraPreset = (preset: CameraAnglePreset) => {
     if (!cameraRef.current || !controlsRef.current) return;
-    onUpdateConfig({ cameraPreset: preset });
+
+    if (preset === 'camera') {
+      const px = config.cameraPosX ?? 0;
+      const py = config.cameraPosY ?? 0;
+      const pz = config.cameraPosZ ?? config.cameraDistance ?? 420;
+      cameraRef.current.position.set(px, py, pz);
+      const tx = config.cameraTargetX ?? 0;
+      const ty = config.cameraTargetY ?? 0;
+      const tz = config.cameraTargetZ ?? 0;
+      controlsRef.current.target.set(tx, ty, tz);
+      controlsRef.current.update();
+      onUpdateConfig({ cameraPreset: 'camera', cameraViewMode: 'camera' });
+      return;
+    }
+
+    if (preset === 'free') {
+      onUpdateConfig({ cameraPreset: 'free', cameraViewMode: 'free' });
+      return;
+    }
+
+    onUpdateConfig({ cameraPreset: preset, cameraViewMode: 'free' });
 
     switch (preset) {
       case 'front':
@@ -637,6 +726,45 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     controlsRef.current.target.set(0, 0, 0);
     controlsRef.current.update();
   };
+
+  // Blender-style Keyboard Shortcuts: 0/C toggle Cam, 1 Front, 3 Side, 7 Top, [ and ] rotate Light Rig
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) {
+        return;
+      }
+
+      if (e.code === 'Numpad0' || (e.key === '0' && !e.ctrlKey && !e.metaKey && !e.altKey) || e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        if (config.cameraViewMode === 'camera') {
+          handleSetCameraPreset('free');
+        } else {
+          handleSetCameraPreset('camera');
+        }
+      } else if (e.code === 'Numpad1' || e.key === '1') {
+        e.preventDefault();
+        handleSetCameraPreset('front');
+      } else if (e.code === 'Numpad3' || e.key === '3') {
+        e.preventDefault();
+        handleSetCameraPreset('side');
+      } else if (e.code === 'Numpad7' || e.key === '7') {
+        e.preventDefault();
+        handleSetCameraPreset('top');
+      } else if (e.key === '[') {
+        e.preventDefault();
+        const currentRot = config.lightRotation ?? 35;
+        onUpdateConfig({ lightRotation: (currentRot - 15 + 360) % 360 });
+      } else if (e.key === ']') {
+        e.preventDefault();
+        const currentRot = config.lightRotation ?? 35;
+        onUpdateConfig({ lightRotation: (currentRot + 15) % 360 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [config.cameraViewMode, config.lightRotation, onUpdateConfig]);
 
   // Social Framing overlay dimensions
   const getFramingStyles = () => {
@@ -781,21 +909,81 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
 
         <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
 
+        {/* Camera View Mode Switcher (Active Framed Camera vs Free Orbit) */}
+        <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
+          <button
+            onClick={() => handleSetCameraPreset('camera')}
+            title="Lock to Framed Camera View (0 / C)"
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase transition-all ${
+              config.cameraViewMode === 'camera'
+                ? 'bg-[#ff4e2e] text-white font-bold shadow-md shadow-[#ff4e2e]/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Camera size={11} />
+            <span>CAM (0)</span>
+          </button>
+          <button
+            onClick={() => handleSetCameraPreset('free')}
+            title="Free Orbit Perspective"
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase transition-all ${
+              config.cameraViewMode === 'free'
+                ? 'bg-white/15 text-white font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Globe size={11} />
+            <span>FREE</span>
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
         {/* Quick Camera Angles */}
         <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
-          {(['front', 'iso', 'top', 'side'] as const).map(angle => (
+          {[
+            { id: 'front' as const, label: 'Front' },
+            { id: 'iso' as const, label: 'ISO' },
+            { id: 'top' as const, label: 'Top' },
+            { id: 'side' as const, label: 'Side' }
+          ].map(angle => (
             <button
-              key={angle}
-              onClick={() => handleSetCameraPreset(angle)}
-              className={`px-2 py-1 rounded text-[10px] font-mono uppercase transition-all ${
-                config.cameraPreset === angle
+              key={angle.id}
+              onClick={() => handleSetCameraPreset(angle.id)}
+              className={`px-1.5 py-1 rounded text-[9.5px] font-mono uppercase transition-all ${
+                config.cameraPreset === angle.id
                   ? 'bg-white/15 text-white font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {angle}
+              {angle.label}
             </button>
           ))}
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+        {/* Studio Light Rig Azimuth Control & Quick Front Lighting */}
+        <div className="flex items-center bg-black/40 rounded p-0.5 border border-white/5">
+          <button
+            onClick={() => onUpdateConfig({ lightRotation: ((config.lightRotation ?? 35) + 30) % 360 })}
+            title="Rotate Studio Lighting Rig ([ and ])"
+            className="flex items-center gap-1 px-1.5 py-1 rounded text-[9.5px] font-mono text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all"
+          >
+            <Sun size={11} />
+            <span>{config.lightRotation ?? 35}°</span>
+          </button>
+          <button
+            onClick={() => onUpdateConfig({ lightRotation: 0, lightElevation: 30 })}
+            title="Aim Key Light directly at Front Face (0°)"
+            className={`px-1.5 py-1 rounded text-[9px] font-mono uppercase transition-all ${
+              (config.lightRotation ?? 35) === 0
+                ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Front
+          </button>
         </div>
 
         <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
@@ -902,9 +1090,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
           <span className="text-slate-500">•</span>
           <span>{fps} FPS</span>
           <span className="text-slate-500">•</span>
-          <span>{polyCount.toLocaleString()} Polys</span>
+          <span className="text-amber-400">Sun {config.lightRotation ?? 35}°</span>
           <span className="text-slate-500">•</span>
-          <span className="text-cyan-400 truncate max-w-[120px]">{selectedPartName}</span>
+          <span className="text-cyan-400">{config.cameraViewMode === 'camera' ? 'Cam (0)' : 'Free'}</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-slate-400 truncate max-w-[120px]">{selectedPartName}</span>
         </div>
       </div>
 

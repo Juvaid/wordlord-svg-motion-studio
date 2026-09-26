@@ -116,6 +116,7 @@ test('validateProjectSnapshot supplies safe defaults for empty object', () => {
   assert.strictEqual(result.activeStyleId, 'signature');
   assert.strictEqual(result.duration, 1.0);
   assert.strictEqual(result.geometryMode, 'fill');
+  assert.strictEqual(result.glowTarget, 'media');
   assert.strictEqual(result.colors.word, '#ffffff');
   assert.strictEqual(result.colors.media, '#ff4e2e');
   assert.ok(Array.isArray(result.threeParts));
@@ -140,6 +141,7 @@ test('validateProjectSnapshot preserves valid custom snapshot', () => {
     stagger: 45,
     glowRadius: 28,
     glowIntensity: 90,
+    glowTarget: 'all',
     geometryMode: 'stroke',
     strokeWidth: 2.5,
     tiltX: 12,
@@ -160,6 +162,7 @@ test('validateProjectSnapshot preserves valid custom snapshot', () => {
   assert.strictEqual(result.activeAssetId, 'tech-react');
   assert.strictEqual(result.activeMotionId, 'depth-slam');
   assert.strictEqual(result.duration, 3.5);
+  assert.strictEqual(result.glowTarget, 'all');
   assert.strictEqual(result.geometryMode, 'stroke');
   assert.strictEqual(result.colors.word, '#ffcc00');
   assert.strictEqual(result.colors.media, '#00ccff');

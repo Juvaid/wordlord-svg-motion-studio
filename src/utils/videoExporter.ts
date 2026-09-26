@@ -17,6 +17,7 @@ export interface VideoExportOptions {
   };
   glowRadius?: number;
   glowIntensity?: number;
+  glowTarget?: 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected';
   geometryMode?: 'fill' | 'stroke' | 'hybrid';
   strokeWidth?: number;
   tiltX?: number;
@@ -71,6 +72,7 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
     colors,
     glowRadius = 20,
     glowIntensity = 100,
+    glowTarget = 'media',
     geometryMode = 'fill',
     strokeWidth = 1.0,
     tiltX = 0,
@@ -329,7 +331,11 @@ export async function renderAnimationToVideo(options: VideoExportOptions): Promi
       // 5. Render volumetric glow layer with scratch buffer
       if (layerVisibility.glow && glowIntensity > 0 && glowRadius > 0) {
         bCtx.save();
-        bCtx.shadowColor = colors.media;
+        let glowColor = colors.media;
+        if (glowTarget === 'word') glowColor = colors.word;
+        else if (glowTarget === 'lord') glowColor = colors.lord;
+        else if (glowTarget === 'ligature') glowColor = colors.ligature;
+        bCtx.shadowColor = glowColor;
         bCtx.shadowBlur = Math.min(100, (glowRadius * (width / 1920) * (glowIntensity / 100)) * 2.2);
         bCtx.shadowOffsetX = 0;
         bCtx.shadowOffsetY = 0;

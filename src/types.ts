@@ -79,6 +79,9 @@ export interface TimelineTrack {
   keyframes: TimelineKeyframe[];
 }
 
+export type GlowTarget = 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected';
+export type VectorSectionId = 'word' | 'lord' | 'ligature' | 'media' | string;
+
 export interface StudioState {
   activeMotionId: string;
   activeStyleId: string;
@@ -94,6 +97,8 @@ export interface StudioState {
   currentProgress: number;
   glowRadius: number;
   glowIntensity: number;
+  glowTarget?: GlowTarget;
+  selectedSection?: string | null;
   geometryMode: GeometryMode;
   strokeWidth: number;
   tiltX: number;

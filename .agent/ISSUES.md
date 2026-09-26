@@ -23,6 +23,10 @@
 | **ISS-010** | UX / Ergonomics | Medium | High Cognitive Load in Inspector Due to Lack of Express Presets | **RESOLVED** | Working Tree |
 | **ISS-011** | Asset Ecosystem | Medium | Lack of Universal Vector Asset Ingestion & Single-Logo Limitation | **RESOLVED** | Working Tree |
 | **ISS-012** | Inspector & Motion | Medium | Properties Search Bar & Kinetic Motion Library Expansion | **RESOLVED** | Working Tree |
+| **ISS-013** | 2D Optics / 3D Tilt | Critical | 3D Spatial Perspective Pixelation Due to Blink Non-Affine Filter Fallback | **RESOLVED** | Working Tree |
+| **ISS-014** | Inspector & Optics | High | Monolithic Hardcoded Glow Target & Missing Section Focus Selection | **RESOLVED** | Working Tree |
+| **ISS-015** | Undo / Redo History | High | Parameter Dragging & Color Picking Bypassing History Undo Stack | **RESOLVED** | Working Tree |
+| **ISS-016** | 3D Environment | High | 3D Lighting Rig Orientation & Blender Camera Navigation Controls | **RESOLVED** | Working Tree |
 
 ---
 
@@ -181,6 +185,72 @@
     6. `velocity-drift`: Supersonic Velocity Streaks (extreme lateral speed blur lines settling with skew decay).
   - Implemented 60 FPS CSS keyframes with `.custom-part-glyph` fallback for custom SVG uploads.
   - Implemented WebGL evaluation branches in `evaluate3DMotion` for all 6 new presets.
+
+---
+
+### ISS-013: 3D Spatial Perspective Pixelation Due to Blink Non-Affine Filter Fallback
+* **Location**: `src/components/StageViewport.tsx`
+* **Symptom**: In the 2D Vector Mark Studio, adding even 1 degree of 3D spatial perspective (`tiltX`, `tiltY`) caused the logo "MEDIA" sub-brand to pixelate into giant rectangular pixel blocks (resembling an 8-bit mosaic).
+* **Root Cause**:
+  1. The SVG root had a viewBox of `0 0 25 26`.
+  2. When CSS 3D transforms (`perspective(800px) rotateX(...) rotateY(...)`) were applied directly to the `<svg id="main-stage-svg">` element, Chromium/Blink's SVG rendering pipeline (`RenderSVGResourceFilter`) encountered a non-affine transformation matrix.
+  3. Blink cannot compute a 2D affine scale from a 3D projection matrix. Consequently, it logs a non-affine transform fallback warning and allocates a tiny off-screen rasterization buffer in unscaled user units ($25 \times 26$ pixels).
+  4. The SVG `<feGaussianBlur>` filter inside `<filter id="unclipped-media-glow">` rasterized the MEDIA glyphs at $25 \times 26$ resolution. The browser then GPU-upscaled that 25-pixel buffer $13\times$ to fit the 320px viewport, producing coarse, giant pixel blocks.
+* **Resolution**:
+  - Decoupled 3D perspective from the SVG DOM element: created an outer `#stage-3d-perspective-rig` (`perspective: 1200px`) and `#stage-3d-gimbal` (`rotateX(${tiltX}deg) rotateY(${tiltY}deg)`), allowing `<svg>` to retain pure vector geometry (`shapeRendering: geometricPrecision`).
+  - Replaced the user-space SVG filter with a multi-tier hardware-accelerated CSS `drop-shadow` aura (`getGlowFilter`). CSS `drop-shadow` is computed in device/screen pixels and maintains sharp vector fidelity under arbitrary 3D angles without buffer downsampling.
+
+---
+
+### ISS-014: Monolithic Hardcoded Glow Target & Missing Section Focus Selection
+* **Location**: `src/components/RightInspector.tsx`, `src/components/StageViewport.tsx`, `src/types.ts`, `src/utils/videoExporter.ts`
+* **Symptom**: The optical aura bloom was hardcoded exclusively to the MEDIA glyphs. Users could not apply glow to WORD, LORD, TALL D, or custom SVG parts, and there was no way to select individual sections interactively.
+* **Root Cause**:
+  1. `StageViewport.tsx` only applied the glow filter to `<g id="group-media">`.
+  2. No state variable existed for targeting individual glyph groups or user selections.
+  3. No click event handlers were attached to glyph groups on the 2D stage.
+* **Resolution**:
+  - Added `GlowTarget = 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected'` to `StudioState` and project snapshots.
+  - Implemented interactive canvas selection: clicking any vector group on the 2D stage highlights that section with a dashed focus indicator and updates `selectedSection`.
+  - Added a segmented `Glow Target Mark` selector in Section 3 ("Optics") and interactive section focus chips (`[ WORD ] [ LORD ] [ TALL D ] [ MEDIA ]`) with active swatch rings in Section 5 ("Brand Palette").
+  - Updated both double-buffered 2D canvas video export and live SVG preview to faithfully render glow on the configured target layer.
+
+---
+
+### ISS-015: Parameter Dragging & Color Picking Bypassing History Undo Stack
+* **Location**: `src/App.tsx`
+* **Symptom**: Tweaking colors via color pickers or scrubbing sliders in the Right Inspector did not record history states, making it impossible to undo (`Cmd+Z`) color changes or slider adjustments.
+* **Root Cause**:
+  1. Calling `pushUndoSnapshot` on every `onChange` event during slider dragging flooded the 60-step undo stack with hundreds of tiny intermediate values.
+  2. To avoid flooding, slider and color callbacks bypassed the undo stack entirely, leaving them untracked.
+* **Resolution**:
+  - Implemented `recordContinuousTweak(actionName)` with an intelligent pre-edit debounced session lock (600ms):
+    - On the very first touch/scrub of a slider or color picker, it immediately captures the pre-edit snapshot before any modification occurs.
+    - Live slider drags and color updates fire smoothly at 60 FPS without pushing redundant frames.
+    - 600ms after the user releases the slider or picker, the session lock resets.
+    - A single press of `Cmd+Z` instantly reverts the entire scrub or color adjustment to its original value.
+  - Wired `recordContinuousTweak` into all 2D and 3D parameter handlers (`duration`, `stagger`, `strokeWidth`, `tiltX`, `tiltY`, `glowRadius`, `glowIntensity`, `palette colors`, and `handleUpdateThreeConfig`).
+
+---
+
+### ISS-016: 3D Studio Lighting Rig Orientation & Blender Camera Navigation Controls
+* **Location**: `src/components/ThreeStageViewport.tsx`, `src/components/ThreeRightInspector.tsx`, `src/types/threeStudio.ts`
+* **Symptom**: In the 3D studio, lighting was statically locked relative to the world origin with no control over rig azimuth or pitch. There was no toggle between fixed camera framing and free exploration, and no camera position readouts.
+* **Root Cause**:
+  1. Key, Fill, and Rim lights had hardcoded Cartesian coordinates in `threeEngine.ts`.
+  2. Camera mode was implicitly free orbit with no camera view lock or Blender-standard numpad shortcuts.
+* **Resolution**:
+  - Added spherical azimuth ($0^\circ$–$360^\circ$) and pitch elevation ($10^\circ$–$80^\circ$) rotation controls for the 3-point studio lighting rig (`computeLightPositions`).
+  - Added quick-direction chips in Section 8: `Front 0°` (direct front-face illumination), `Right 45°`, `Side 90°`, and `Back 180°`.
+  - Added environment HDR map azimuth rotation slider ($0^\circ$–$360^\circ$).
+  - Added camera view mode switcher (`camera` vs `free`) and exact Cartesian coordinates (`cameraPosX`, `cameraPosY`, `cameraPosZ`) in Section 5.
+  - Implemented Blender-standard keyboard shortcuts in the 3D viewport:
+    - `0` / `Numpad 0`: Toggle Camera View vs Free Orbit
+    - `1` / `Numpad 1`: Front Ortho/Perspective View
+    - `3` / `Numpad 3`: Right Profile View
+    - `7` / `Numpad 7`: Top Down Aerial View
+    - `[` / `]`: Rotate lighting rig azimuth in $15^\circ$ increments
+  - Added floating HUD controls for Camera/Free toggle and live sun azimuth angle on the 3D stage.
 
 ---
 

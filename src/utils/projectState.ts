@@ -16,6 +16,7 @@ export interface ProjectStateSnapshot {
   stagger: number;
   glowRadius: number;
   glowIntensity: number;
+  glowTarget?: 'all' | 'media' | 'word' | 'lord' | 'ligature' | 'selected';
   geometryMode: GeometryMode;
   strokeWidth: number;
   tiltX: number;
@@ -66,6 +67,7 @@ export function validateProjectSnapshot(data: any): ProjectStateSnapshot {
     stagger: typeof data.stagger === 'number' ? data.stagger : 60,
     glowRadius: typeof data.glowRadius === 'number' ? data.glowRadius : 20,
     glowIntensity: typeof data.glowIntensity === 'number' ? data.glowIntensity : 100,
+    glowTarget: ['all', 'media', 'word', 'lord', 'ligature', 'selected'].includes(data.glowTarget) ? data.glowTarget : 'media',
     geometryMode: ['fill', 'stroke', 'hybrid'].includes(data.geometryMode) ? data.geometryMode : 'fill',
     strokeWidth: typeof data.strokeWidth === 'number' ? data.strokeWidth : 1.0,
     tiltX: typeof data.tiltX === 'number' ? data.tiltX : 0,

@@ -21,7 +21,8 @@ export interface ThreePart {
 }
 
 export type ViewportShadingMode = 'rendered' | 'bloom' | 'solid' | 'wireframe';
-export type CameraAnglePreset = 'front' | 'iso' | 'top' | 'side';
+export type CameraAnglePreset = 'camera' | 'front' | 'iso' | 'top' | 'side' | 'free';
+export type CameraViewMode = 'camera' | 'free';
 
 export type ThreeMotionMode = 
   | 'reveal' 
@@ -143,9 +144,17 @@ export interface ThreeStudioConfig {
   // Camera Settings
   fov: number; // 25 to 90 degrees
   cameraDistance: number;
+  cameraViewMode?: CameraViewMode;
+  cameraPosX?: number;
+  cameraPosY?: number;
+  cameraPosZ?: number;
+  cameraTargetX?: number;
+  cameraTargetY?: number;
+  cameraTargetZ?: number;
 
   // Environment & Scene Settings
   envPreset: EnvironmentScenePreset;
+  envRotation?: number; // 0 to 360 degrees
   fogDensity: number;
   floorRoughness: number;
   floorMetalness: number;
@@ -171,6 +180,8 @@ export interface ThreeStudioConfig {
   fillColor: string;
   fillIntensity: number;
   ambientIntensity: number;
+  lightRotation?: number; // 0 to 360 degrees (Blender style light rig azimuth)
+  lightElevation?: number; // 10 to 80 degrees (pitch above horizon)
   showFloor: boolean;
   showLightHelpers: boolean;
   transparentBg: boolean;

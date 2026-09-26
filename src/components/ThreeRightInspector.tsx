@@ -942,6 +942,17 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
               </div>
             </div>
 
+            <SliderField
+              label="Environment & Floor Rotation"
+              value={config.envRotation || 0}
+              min={0}
+              max={360}
+              step={5}
+              unit="°"
+              tooltip="Rotate studio floor grid and environment azimuth"
+              onChange={(val) => onUpdateConfig({ envRotation: val })}
+            />
+
             <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2 pt-1`}>
               <SliderField
                 label="Floor Roughness"
@@ -966,6 +977,39 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
         {/* SECTION 5: CAMERA OPTICS */}
         {matchesSection('3d-camera') && (
           <InspectorSection id="3d-camera" title="Camera Optics (Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            {/* Camera View Mode */}
+            <div className="flex flex-col gap-1.5 pb-1">
+              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                Active Camera Framing
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onUpdateConfig({ cameraViewMode: 'camera', cameraPreset: 'camera' })}
+                  className={`py-1.5 px-2 rounded border text-[9.5px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    config.cameraViewMode === 'camera'
+                      ? 'bg-[#ff4e2e] border-[#ff4e2e] text-white shadow-sm shadow-[#ff4e2e]/30'
+                      : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Camera size={11} />
+                  <span>Camera View (0)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateConfig({ cameraViewMode: 'free', cameraPreset: 'free' })}
+                  className={`py-1.5 px-2 rounded border text-[9.5px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    config.cameraViewMode === 'free'
+                      ? 'bg-white/15 border-white/20 text-white'
+                      : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Globe size={11} />
+                  <span>Free Orbit</span>
+                </button>
+              </div>
+            </div>
+
             <SliderField
               label="Field of View (FOV)"
               value={config.fov || 45}
@@ -982,8 +1026,61 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
               max={850}
               step={10}
               unit="px"
-              onChange={(val) => onUpdateConfig({ cameraDistance: val })}
+              onChange={(val) => onUpdateConfig({ cameraDistance: val, cameraPosZ: val })}
             />
+
+            {/* Precision Camera Coordinates */}
+            <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                  Camera Position
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onUpdateConfig({ 
+                    cameraPosX: 0, 
+                    cameraPosY: 0, 
+                    cameraPosZ: config.cameraDistance || 420,
+                    cameraTargetX: 0,
+                    cameraTargetY: 0,
+                    cameraTargetZ: 0
+                  })}
+                  className="text-[9px] font-mono text-slate-500 hover:text-white flex items-center gap-0.5"
+                >
+                  <RotateCcw size={9} />
+                  <span>Reset</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <SliderField
+                  label="Pos X"
+                  value={config.cameraPosX || 0}
+                  min={-400}
+                  max={400}
+                  step={5}
+                  unit="px"
+                  onChange={(val) => onUpdateConfig({ cameraPosX: val })}
+                />
+                <SliderField
+                  label="Pos Y"
+                  value={config.cameraPosY || 0}
+                  min={-300}
+                  max={300}
+                  step={5}
+                  unit="px"
+                  onChange={(val) => onUpdateConfig({ cameraPosY: val })}
+                />
+                <SliderField
+                  label="Pos Z"
+                  value={config.cameraPosZ || config.cameraDistance || 420}
+                  min={120}
+                  max={900}
+                  step={10}
+                  unit="px"
+                  onChange={(val) => onUpdateConfig({ cameraPosZ: val, cameraDistance: val })}
+                />
+              </div>
+            </div>
           </InspectorSection>
         )}
 
@@ -1114,6 +1211,66 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
         {/* SECTION 8: STUDIO LIGHTING */}
         {matchesSection('3d-lighting') && (
           <InspectorSection id="3d-lighting" title="Studio Lighting Rig" icon={<Sun size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            {/* Blender-style Lighting Rig Azimuth & Elevation */}
+            <div className="flex flex-col gap-2 p-2 bg-[#10131d] border border-white/5 rounded-lg mb-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Sun size={11} />
+                  <span>Lighting Rig Orientation</span>
+                </span>
+                <span className="text-[9.5px] font-mono text-slate-400">
+                  {config.lightRotation ?? 35}° Azimuth
+                </span>
+              </div>
+
+              {/* Quick Direction Chips */}
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Front 0°', rot: 0, elev: 30 },
+                  { label: 'Right 45°', rot: 45, elev: 35 },
+                  { label: 'Side 90°', rot: 90, elev: 35 },
+                  { label: 'Back 180°', rot: 180, elev: 45 }
+                ].map(chip => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => onUpdateConfig({ lightRotation: chip.rot, lightElevation: chip.elev })}
+                    className={`py-1 rounded text-[9px] font-mono font-bold transition-all text-center border ${
+                      (config.lightRotation ?? 35) === chip.rot
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                        : 'bg-[#151822] hover:bg-[#1f2434] text-slate-400 hover:text-slate-200 border-[#222736]'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              <SliderField
+                label="Rig Azimuth Rotation"
+                value={config.lightRotation ?? 35}
+                min={0}
+                max={360}
+                step={5}
+                unit="°"
+                accentColor="#f59e0b"
+                tooltip="Orbit studio lights 360° around the model (0° = front face)"
+                onChange={(val) => onUpdateConfig({ lightRotation: val })}
+              />
+
+              <SliderField
+                label="Rig Elevation / Pitch"
+                value={config.lightElevation ?? 35}
+                min={10}
+                max={80}
+                step={2}
+                unit="°"
+                accentColor="#f59e0b"
+                tooltip="Pitch angle of key lights above the ground plane"
+                onChange={(val) => onUpdateConfig({ lightElevation: val })}
+              />
+            </div>
+
             <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
               <ColorSwatchField
                 label="Key Light"
