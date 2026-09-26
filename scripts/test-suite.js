@@ -34,8 +34,8 @@ console.log('======================================================\n');
 
 // 1. Motion Presets Integrity
 console.log('--- Suite 1: 2D Kinetic Motion Presets ---');
-test('All 12 motion presets exist and have valid IDs', () => {
-  assert.ok(MOTIONS.length >= 12, `Expected >= 12 motions, got ${MOTIONS.length}`);
+test('All 18 motion presets exist and have valid IDs', () => {
+  assert.ok(MOTIONS.length >= 18, `Expected >= 18 motions, got ${MOTIONS.length}`);
   const ids = new Set();
   for (const m of MOTIONS) {
     assert.ok(m.id && typeof m.id === 'string', 'Motion id must be string');
@@ -214,7 +214,8 @@ await test('evaluate3DMotion computes valid finite transforms for all 17 presets
     'typewriter', 'reveal', 'depth-slam', 'ligature-clamp', 'origami', 
     'wiredraw', 'liquid-wipe', 'laser-sweep', 'sweep', 'cyber-glitch', 
     'pulse-glow', 'split-converge', 'matrix-rain', 'elastic-pop', 
-    'turntable', 'wave', 'explode', 'camera', 'sync2d'
+    'turntable', 'wave', 'explode', 'camera', 'sync2d',
+    'vortex-spin', 'neon-breathe', 'magnetic-snap', 'slice-blind', 'wave-flow', 'velocity-drift'
   ];
 
   const testTimestamps = [0.0, 0.25, 0.5, 0.75, 1.0];

@@ -712,6 +712,86 @@ export function evaluate3DMotion(
       break;
     }
 
+    case 'vortex-spin': {
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.35 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.55));
+        const ease = 1 - Math.pow(1 - partT, 3);
+        const spin = (1 - ease) * Math.PI * 4 * amp;
+        mesh.rotation.z = spin;
+        mesh.rotation.y = (1 - ease) * Math.PI * amp;
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -180 * amp;
+        mesh.scale.setScalar(Math.max(0.001, ease));
+      });
+      break;
+    }
+
+    case 'neon-breathe': {
+      const breath = Math.sin(t * Math.PI * 2) * 0.5 + 0.5;
+      const flutter = Math.sin(t * 30) * 0.15;
+      meshes.forEach((mesh) => {
+        mesh.position.z = (mesh.userData.baseZ || 0) + (breath + flutter) * 12 * amp;
+        mesh.scale.set(1 + breath * 0.05 * amp, 1 + breath * 0.05 * amp, 1 + breath * 0.2 * amp);
+      });
+      lights.rimLight.intensity = config.rimIntensity * (0.8 + (breath + flutter) * 0.8);
+      lights.keyLight.intensity = config.keyIntensity * (0.9 + breath * 0.4);
+      break;
+    }
+
+    case 'magnetic-snap': {
+      meshes.forEach((mesh, idx) => {
+        const angle = (idx / Math.max(1, meshes.length)) * Math.PI * 2;
+        const partT = Math.max(0, Math.min(1, (t - idx * 0.03) / 0.45));
+        const snap = partT === 1 ? 1 : 1 - Math.pow(2, -8 * partT) * Math.cos(partT * Math.PI * 3.5);
+        const inv = (1 - snap);
+        mesh.position.x = (mesh.userData.baseX || 0) + Math.cos(angle) * 160 * inv * amp;
+        mesh.position.y = (mesh.userData.baseY || 0) + Math.sin(angle) * 120 * inv * amp;
+        mesh.position.z = (mesh.userData.baseZ || 0) + inv * -90 * amp;
+        mesh.rotation.z = inv * Math.PI * 0.5 * amp;
+        mesh.scale.setScalar(Math.max(0.001, snap));
+      });
+      break;
+    }
+
+    case 'slice-blind': {
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.3 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.4));
+        const ease = 1 - Math.pow(1 - partT, 3);
+        const dir = idx % 2 === 0 ? 1 : -1;
+        mesh.rotation.y = (1 - ease) * dir * (Math.PI * 0.5) * amp;
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -40 * amp;
+        mesh.scale.setScalar(Math.max(0.001, ease));
+      });
+      break;
+    }
+
+    case 'wave-flow': {
+      meshes.forEach((mesh, idx) => {
+        const phase = idx * 0.5;
+        const wave = Math.sin(t * Math.PI * 3 - phase);
+        mesh.position.y = (mesh.userData.baseY || 0) + wave * 16 * amp;
+        mesh.position.z = (mesh.userData.baseZ || 0) + Math.cos(t * Math.PI * 3 - phase) * 14 * amp;
+        mesh.rotation.x = wave * 0.12 * amp;
+      });
+      break;
+    }
+
+    case 'velocity-drift': {
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.2 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.4));
+        const ease = 1 - Math.pow(1 - partT, 4);
+        const driftX = (1 - ease) * -220 * amp;
+        mesh.position.x = (mesh.userData.baseX || 0) + driftX;
+        mesh.rotation.y = (1 - ease) * 0.35 * amp;
+        mesh.scale.x = 1 + (1 - ease) * 1.5 * amp;
+        mesh.scale.y = Math.max(0.001, ease);
+        mesh.scale.z = Math.max(0.001, ease);
+      });
+      break;
+    }
+
     case 'sync2d':
     default: {
       // Direct 2D Motion Keyframe Synchronizer into 3D Space

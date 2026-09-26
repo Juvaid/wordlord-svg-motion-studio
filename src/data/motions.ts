@@ -192,5 +192,101 @@ export const MOTIONS: MotionPreset[] = [
       complexity: 'Dual-frequency spring damping',
       staggerScale: 'Harmonic glyph sequence'
     }
+  },
+  {
+    id: 'vortex-spin',
+    name: 'Hypnotic Vortex Spiral',
+    badge: '3D',
+    animClass: 'anim-vortex-spin',
+    defaultDuration: 1.25,
+    defaultEase: 'cubic-bezier(0.25, 1, 0.5, 1)',
+    defaultStagger: 40,
+    desc: 'Angular velocity spiral collapse unwinding from 720 degrees with progressive centrifugal glyph expansion and center focus.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.25, 1, 0.5, 1)',
+      complexity: 'Double 360-degree rotational collapse',
+      staggerScale: 'Centrifugal cascade'
+    }
+  },
+  {
+    id: 'neon-breathe',
+    name: 'Cyberpunk Neon Shimmer',
+    badge: 'Optics',
+    animClass: 'anim-neon-breathe',
+    defaultDuration: 1.8,
+    defaultEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    defaultStagger: 50,
+    desc: 'Bioluminescent high-voltage phosphor resonance with chromatic frequency drift and pulsating dual-hue drop-shadow aura.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      complexity: 'Chromatic shimmer + dual aura resonance',
+      staggerScale: 'Continuous harmonic loop'
+    }
+  },
+  {
+    id: 'magnetic-snap',
+    name: 'Magnetic Zero-G Snap',
+    badge: 'Kinetic',
+    animClass: 'anim-magnetic-snap',
+    defaultDuration: 0.95,
+    defaultEase: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    defaultStagger: 35,
+    desc: 'Dispersed anti-gravity floating fragments captured by high-tension electromagnetic center field with micro-elastic lock.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      complexity: 'Radial dispersion + magnetic clamp',
+      staggerScale: 'Cluster synchronized'
+    }
+  },
+  {
+    id: 'slice-blind',
+    name: 'Shutter Blind Venetian',
+    badge: 'Reveal',
+    animClass: 'anim-slice-blind',
+    defaultDuration: 1.15,
+    defaultEase: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    defaultStagger: 35,
+    desc: 'Alternating mechanical 90-degree raster pivots turning like precision louver blinds into full frontal illumination.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      complexity: 'Perspective rotateY alternating flip',
+      staggerScale: 'Alternating parity stagger'
+    }
+  },
+  {
+    id: 'wave-flow',
+    name: 'Fluid Kinetic Sine Wave',
+    badge: 'Kinetic',
+    animClass: 'anim-wave-flow',
+    defaultDuration: 1.5,
+    defaultEase: 'cubic-bezier(0.45, 0, 0.55, 1)',
+    defaultStagger: 60,
+    desc: 'Harmonic undulating crest-and-trough wave ripple propagating across glyph baselines with phase-delayed vertical displacement.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.45, 0, 0.55, 1)',
+      complexity: 'Sinusoidal phase propagation',
+      staggerScale: 'Harmonic wave sequence'
+    }
+  },
+  {
+    id: 'velocity-drift',
+    name: 'Supersonic Velocity Streaks',
+    badge: 'Kinetic',
+    animClass: 'anim-velocity-drift',
+    defaultDuration: 0.85,
+    defaultEase: 'cubic-bezier(0.05, 0.95, 0.2, 1)',
+    defaultStagger: 25,
+    desc: 'Extreme lateral speed streaks decelerating from 200px offset with motion-blur skew settling into razor-sharp typographic alignment.',
+    fps: 60,
+    specs: {
+      interpolator: 'cubic-bezier(0.05, 0.95, 0.2, 1)',
+      complexity: 'High-velocity lateral drift + skew decay',
+      staggerScale: 'Supersonic tight stagger'
+    }
   }
 ];

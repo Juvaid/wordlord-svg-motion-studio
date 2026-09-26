@@ -29,7 +29,11 @@ import {
   Activity,
   Layers2,
   Upload,
-  Film
+  Film,
+  Search,
+  X,
+  Copy,
+  ClipboardPaste
 } from 'lucide-react';
 import { 
   InspectorSection, 
@@ -48,6 +52,59 @@ import {
   LightingRigId
 } from '../types/threeStudio';
 import { PBR_PRESETS, LIGHTING_RIGS } from '../data/threePresets';
+
+const THREE_SECTION_KEYWORDS: Record<string, { id: string; title: string; keywords: string[] }> = {
+  '3d-transforms': {
+    id: '3d-transforms',
+    title: 'Collective Transforms (N-Panel)',
+    keywords: ['transforms', 'position', 'rotation', 'scale', 'uniform scale', 'pos', 'rot', 'pitch', 'yaw', 'roll', 'blender', 'n-panel', 'translate', 'coordinates', 'lock', 'reset']
+  },
+  '3d-framing': {
+    id: '3d-framing',
+    title: 'Social Video Framing & Guides',
+    keywords: ['framing', 'aspect', 'social', 'guides', '16:9', '9:16', '1:1', '21:9', 'youtube', 'tiktok', 'reels', 'cinema', 'mask', 'overlay', 'ratio']
+  },
+  '3d-effect-stack': {
+    id: '3d-effect-stack',
+    title: 'Effect Stacking & 2D Sync',
+    keywords: ['stack', 'effects', 'turntable', 'hover', 'wave', 'sweep', 'gyro', 'sync2d', 'stagger', 'motion', 'physics', 'amplitude', 'spin']
+  },
+  '3d-environment': {
+    id: '3d-environment',
+    title: 'Environment & Scene',
+    keywords: ['environment', 'scene', 'background', 'shadow', 'grid', 'floor', 'studio', 'spotlight', 'cyber', 'sunset', 'oled', 'alpha', 'transparent']
+  },
+  '3d-camera': {
+    id: '3d-camera',
+    title: 'Camera Optics (Lens)',
+    keywords: ['camera', 'fov', 'lens', 'focal', 'zoom', 'angle', 'front', 'iso', 'top', 'side', 'ortho', 'perspective', 'view']
+  },
+  '3d-geometry': {
+    id: '3d-geometry',
+    title: 'Extrusion & Bevel',
+    keywords: ['geometry', 'depth', 'bevel', 'thickness', 'extrude', 'extrusion', 'mesh scale', 'fillet', 'radius', 'segments', 'scale']
+  },
+  '3d-pbr': {
+    id: '3d-pbr',
+    title: 'PBR Surface & Textures',
+    keywords: ['pbr', 'material', 'surface', 'roughness', 'metalness', 'transmission', 'fluted', 'texture', 'bump', 'brushed', 'carbon', 'diamond', 'noise', 'swatch', 'preset', 'gold', 'chrome', 'glass', 'neon', 'clay', 'color', 'shading']
+  },
+  '3d-lighting': {
+    id: '3d-lighting',
+    title: 'Studio Lighting Rig',
+    keywords: ['lighting', 'light', 'rig', 'studio', 'key', 'fill', 'rim', 'ambient', 'intensity', 'color', 'warm', 'cool', 'cyberpunk', 'volumetric', 'sun']
+  },
+  '3d-bloom': {
+    id: '3d-bloom',
+    title: 'Unreal Bloom Post-Processing',
+    keywords: ['bloom', 'post-processing', 'unreal', 'glow', 'threshold', 'strength', 'radius', 'emission', 'luminous', 'aura', 'post']
+  },
+  '3d-parts': {
+    id: '3d-parts',
+    title: 'Parts Breakdown',
+    keywords: ['parts', 'breakdown', 'sub-part', 'glyphs', 'individual', 'path', 'isolate', 'offset', 'stagger', 'face', 'side', 'mesh', 'layers']
+  }
+};
 
 interface ThreeRightInspectorProps {
   width: number;
@@ -83,6 +140,70 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   const [expandedPartIdx, setExpandedPartIdx] = useState<number | null>(null);
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
   const [groupNameInput, setGroupNameInput] = useState<string>(config.groupName || 'Asset Group');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [copiedConfig, setCopiedConfig] = useState<boolean>(false);
+  const [pastedConfigStatus, setPastedConfigStatus] = useState<string | null>(null);
+
+  const isSearching = searchQuery.trim().length > 0;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const matchesSection = (sectionId: string) => {
+    if (!isSearching) return true;
+    const meta = THREE_SECTION_KEYWORDS[sectionId];
+    if (!meta) return true;
+    if (meta.title.toLowerCase().includes(normalizedQuery)) return true;
+    if (meta.id.toLowerCase().includes(normalizedQuery)) return true;
+    return meta.keywords.some(kw => kw.includes(normalizedQuery) || normalizedQuery.includes(kw));
+  };
+
+  const matchingSectionCount = Object.keys(THREE_SECTION_KEYWORDS).filter(matchesSection).length;
+
+  const handleCopy3DConfig = () => {
+    const configSnapshot = {
+      depth: config.depth,
+      bevelThickness: config.bevelThickness,
+      meshScale: config.meshScale,
+      roughness: config.roughness,
+      metalness: config.metalness,
+      transmission: config.transmission,
+      faceColor: config.faceColor,
+      sideColor: config.sideColor,
+      proceduralTexture: config.proceduralTexture,
+      activePbrId: config.activePbrId,
+      activeRigId: config.activeRigId,
+      keyIntensity: config.keyIntensity,
+      fillIntensity: config.fillIntensity,
+      rimIntensity: config.rimIntensity,
+      ambientIntensity: config.ambientIntensity,
+      keyColor: config.keyColor,
+      fillColor: config.fillColor,
+      rimColor: config.rimColor,
+      bloomEnabled: config.bloomEnabled,
+      bloomStrength: config.bloomStrength,
+      bloomRadius: config.bloomRadius,
+      bloomThreshold: config.bloomThreshold,
+      fov: config.fov,
+      cameraPreset: config.cameraPreset,
+      envPreset: config.envPreset
+    };
+    navigator.clipboard.writeText(JSON.stringify(configSnapshot, null, 2));
+    setCopiedConfig(true);
+    setTimeout(() => setCopiedConfig(false), 1500);
+  };
+
+  const handlePaste3DConfig = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const parsed = JSON.parse(text);
+      if (typeof parsed === 'object' && parsed !== null) {
+        onUpdateConfig(parsed);
+        setPastedConfigStatus('Pasted!');
+        setTimeout(() => setPastedConfigStatus(null), 1500);
+      }
+    } catch {
+      // Ignore clipboard format errors
+    }
+  };
 
   const isNarrow = width < 305;
 
@@ -433,14 +554,73 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
           <Box size={13} className="text-[#ff4e2e]" />
           <span>{isNarrow ? '3D Props' : '3D Properties & PBR'}</span>
         </div>
-        <button
-          onClick={onResetTransforms}
-          title="Reset Blender Transforms (Alt+G / Alt+R)"
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono"
-        >
-          <RotateCcw size={11} />
-          {!isNarrow && <span>Reset</span>}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleCopy3DConfig}
+            title="Copy 3D PBR Material & Lighting Setup (JSON)"
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono"
+          >
+            {copiedConfig ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+            {!isNarrow && <span>{copiedConfig ? 'Copied' : 'Copy'}</span>}
+          </button>
+          <button
+            onClick={handlePaste3DConfig}
+            title="Paste 3D PBR Material & Lighting Setup from Clipboard"
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono"
+          >
+            {pastedConfigStatus ? <Check size={11} className="text-emerald-400" /> : <ClipboardPaste size={11} />}
+            {!isNarrow && <span>{pastedConfigStatus || 'Paste'}</span>}
+          </button>
+          <button
+            onClick={onResetTransforms}
+            title="Reset Blender Transforms (Alt+G / Alt+R)"
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1 text-[9.5px] font-mono ml-0.5 border-l border-white/10 pl-1.5"
+          >
+            <RotateCcw size={11} />
+            {!isNarrow && <span>Reset</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Properties Search Bar */}
+      <div className="px-2.5 py-1.5 border-b border-[#1f2430] bg-[#0a0c10] flex items-center gap-1.5 flex-shrink-0">
+        <div className="relative flex-1 flex items-center">
+          <Search 
+            size={12} 
+            className={`absolute left-2.5 pointer-events-none transition-colors duration-150 ${
+              isSearching ? 'text-[#ff4e2e]' : 'text-slate-500'
+            }`} 
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearchQuery('');
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder={width < 290 ? "Search 3D props..." : "Search 3D properties (e.g. bloom, light, depth)..."}
+            className="w-full h-7 pl-7 pr-7 bg-[#12151e] border border-[#232736] focus:border-[#ff4e2e]/60 focus:bg-[#151926] rounded-md text-[11px] font-mono text-slate-200 placeholder-slate-500 outline-none transition-colors duration-150"
+          />
+          {isSearching && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              title="Clear search (Esc)"
+              className="absolute right-1.5 p-0.5 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+
+        {isSearching && (
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 whitespace-nowrap">
+            {matchingSectionCount} {matchingSectionCount === 1 ? 'match' : 'matches'}
+          </span>
+        )}
       </div>
 
       {/* Inspector Scroll Area */}
@@ -527,8 +707,9 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
         </div>
 
         {/* SECTION 1: COLLECTIVE OBJECT TRANSFORMS (Blender N-Panel) */}
-        <InspectorSection id="3d-transforms" title={isNarrow ? "Transforms" : "Collective Transforms (N-Panel)"} icon={<Move size={12} className="text-[#ff4e2e]" />}>
-          {config.isGroupLocked && (
+        {matchesSection('3d-transforms') && (
+          <InspectorSection id="3d-transforms" title={isNarrow ? "Transforms" : "Collective Transforms (N-Panel)"} icon={<Move size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            {config.isGroupLocked && (
             <div className="flex items-center gap-1.5 p-2 bg-amber-950/40 border border-amber-500/30 rounded-lg text-[10px] font-mono text-amber-300">
               <Lock size={11} className="flex-shrink-0" />
               <span>Group locked. Unlock above to modify collective position, rotation, or scale.</span>
@@ -671,426 +852,467 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
             </div>
           </div>
         </InspectorSection>
+        )}
 
         {/* SECTION 2: SOCIAL FRAMING & VIEWPORT MASKS */}
-        <InspectorSection id="3d-framing" title={isNarrow ? "Social Framing" : "Social Video Framing & Guides"} icon={<Ratio size={12} className="text-[#ff4e2e]" />}>
-          <DropdownField<SocialFramingAspect>
-            label="Aspect Ratio"
-            value={config.framingAspect || 'free'}
-            options={framingOptions}
-            onChange={(val) => onUpdateConfig({ 
-              framingAspect: val, 
-              showFramingMask: val !== 'free' 
-            })}
-          />
-          <ToggleField
-            label="Show Framing Overlay Mask"
-            checked={config.showFramingMask || false}
-            onChange={(checked) => onUpdateConfig({ showFramingMask: checked })}
-          />
-        </InspectorSection>
-
-        {/* SECTION 3: EFFECT STACKING & 2D MOTION SYNCHRONIZER */}
-        <InspectorSection id="3d-effect-stack" title={isNarrow ? "Effect Stack" : "Effect Stacking & 2D Sync"} icon={<Zap size={12} className="text-[#ff4e2e]" />}>
-          <div className="flex flex-col gap-1.5">
-            {[
-              { key: 'sync2dMotion' as const, label: 'Sync 2D Motion', desc: `Follows 2D timing (${config.active2dMotionId || 'Typewriter'})` },
-              { key: 'turntableSpin' as const, label: 'Turntable 360° Spin', desc: 'Smooth continuous luxury turntable rotation' },
-              { key: 'harmonicWave' as const, label: 'Harmonic Z-Wave', desc: 'Phase-offset undulating wave across glyphs' },
-              { key: 'hoverFloat' as const, label: 'Organic Hover Float', desc: 'Natural vertical breathing buoyancy' },
-              { key: 'lightSweep' as const, label: 'Orbiting Light Sweep', desc: 'Dynamic rotating key & rim specular glints' },
-              { key: 'gyroTilt' as const, label: 'Cursor Gyro Tracking', desc: 'Perspective tilts towards mouse cursor' }
-            ].map(eff => {
-              const active = config.stackedEffects ? config.stackedEffects[eff.key] : false;
-              return (
-                <button
-                  key={eff.key}
-                  type="button"
-                  onClick={() => handleToggleStackEffect(eff.key)}
-                  className={`flex flex-col p-2 rounded-lg border text-left transition-all ${
-                    active
-                      ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] shadow-sm'
-                      : 'bg-[#121520] border-[#22283a] hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className={`text-[10.5px] font-bold ${active ? 'text-white' : 'text-slate-300'}`}>
-                      {eff.label}
-                    </span>
-                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${active ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-500'}`}>
-                      {active ? 'ON' : 'OFF'}
-                    </span>
-                  </div>
-                  {!isNarrow && (
-                    <span className="text-[8.5px] text-slate-400 mt-0.5">
-                      {eff.desc}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </InspectorSection>
-
-        {/* SECTION 4: ENVIRONMENT & BACKGROUND (Blender World) */}
-        <InspectorSection id="3d-environment" title="Environment & Scene" icon={<Globe size={12} className="text-[#ff4e2e]" />}>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-              Atmospheric Preset
-            </span>
-            <div className={`grid ${isNarrow ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5`}>
-              {envOptions.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => onUpdateConfig({ envPreset: opt.id })}
-                  className={`py-1.5 px-1 rounded text-center border text-[9.5px] font-mono transition-colors truncate ${
-                    config.envPreset === opt.id
-                      ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
-                      : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2 pt-1`}>
-            <SliderField
-              label="Floor Roughness"
-              value={config.floorRoughness || 0.65}
-              min={0.05}
-              max={1.0}
-              step={0.05}
-              onChange={(val) => onUpdateConfig({ floorRoughness: val })}
-            />
-            <SliderField
-              label="Floor Metalness"
-              value={config.floorMetalness || 0.35}
-              min={0.0}
-              max={1.0}
-              step={0.05}
-              onChange={(val) => onUpdateConfig({ floorMetalness: val })}
-            />
-          </div>
-        </InspectorSection>
-
-        {/* SECTION 5: CAMERA OPTICS */}
-        <InspectorSection id="3d-camera" title="Camera Optics (Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />}>
-          <SliderField
-            label="Field of View (FOV)"
-            value={config.fov || 45}
-            min={20}
-            max={85}
-            step={1}
-            unit="°"
-            onChange={(val) => onUpdateConfig({ fov: val })}
-          />
-          <SliderField
-            label="Camera Distance"
-            value={config.cameraDistance || 420}
-            min={180}
-            max={850}
-            step={10}
-            unit="px"
-            onChange={(val) => onUpdateConfig({ cameraDistance: val })}
-          />
-        </InspectorSection>
-
-        {/* SECTION 6: EXTRUSION & BEVEL */}
-        <InspectorSection id="3d-geometry" title="Extrusion & Bevel" icon={<Box size={12} className="text-[#ff4e2e]" />}>
-          <SliderField
-            label="Extrude Depth"
-            value={config.depth}
-            min={2}
-            max={80}
-            step={1}
-            unit="px"
-            onChange={(val) => onUpdateConfig({ depth: val })}
-          />
-          <SliderField
-            label="Bevel Thickness"
-            value={config.bevelThickness}
-            min={0}
-            max={12}
-            step={0.2}
-            unit="px"
-            onChange={(val) => onUpdateConfig({ bevelThickness: val })}
-          />
-          <SliderField
-            label="Bevel Radius / Size"
-            value={config.bevelSize}
-            min={0}
-            max={10}
-            step={0.2}
-            unit="px"
-            onChange={(val) => onUpdateConfig({ bevelSize: val })}
-          />
-          <SliderField
-            label="Bevel Segments"
-            value={config.bevelSegments}
-            min={1}
-            max={8}
-            step={1}
-            onChange={(val) => onUpdateConfig({ bevelSegments: val })}
-          />
-          <SliderField
-            label="Master Scale"
-            value={config.meshScale}
-            min={0.5}
-            max={2.0}
-            step={0.05}
-            onChange={(val) => onUpdateConfig({ meshScale: val })}
-          />
-        </InspectorSection>
-
-        {/* SECTION 7: PBR SURFACE & PROCEDURAL TEXTURES */}
-        <InspectorSection id="3d-pbr" title="PBR Surface & Textures" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
-          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
-            <ColorSwatchField
-              label="Face Color"
-              value={config.faceColor}
-              onChange={(color) => onUpdateConfig({ faceColor: color })}
-            />
-            <ColorSwatchField
-              label="Side / Bevel Color"
-              value={config.sideColor}
-              onChange={(color) => onUpdateConfig({ sideColor: color })}
-            />
-          </div>
-
-          <SliderField
-            label="Metallic Factor"
-            value={config.metalness}
-            min={0}
-            max={1}
-            step={0.02}
-            onChange={(val) => onUpdateConfig({ metalness: val })}
-          />
-          <SliderField
-            label="Roughness"
-            value={config.roughness}
-            min={0.02}
-            max={1}
-            step={0.02}
-            onChange={(val) => onUpdateConfig({ roughness: val })}
-          />
-          <SliderField
-            label="Clearcoat Glaze"
-            value={config.clearcoat}
-            min={0}
-            max={1}
-            step={0.05}
-            onChange={(val) => onUpdateConfig({ clearcoat: val })}
-          />
-          <SliderField
-            label="Glass Transmission"
-            value={config.transmission}
-            min={0}
-            max={1}
-            step={0.05}
-            onChange={(val) => onUpdateConfig({ transmission: val })}
-          />
-
-          {/* Procedural Surface Texture Generator */}
-          <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
-            <DropdownField<ProceduralTextureType>
-              label="Procedural Bump Texture"
-              value={config.proceduralTexture || (config.flutingEnabled ? 'fluted' : 'none')}
-              options={proceduralOptions}
+        {matchesSection('3d-framing') && (
+          <InspectorSection id="3d-framing" title={isNarrow ? "Social Framing" : "Social Video Framing & Guides"} icon={<Ratio size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <DropdownField<SocialFramingAspect>
+              label="Aspect Ratio"
+              value={config.framingAspect || 'free'}
+              options={framingOptions}
               onChange={(val) => onUpdateConfig({ 
-                proceduralTexture: val,
-                flutingEnabled: val === 'fluted'
+                framingAspect: val, 
+                showFramingMask: val !== 'free' 
               })}
             />
-
-            {(config.proceduralTexture && config.proceduralTexture !== 'none' || config.flutingEnabled) && (
-              <SliderField
-                label="Texture Relief / Bump"
-                value={config.fluteScale || 0.45}
-                min={0.05}
-                max={1.5}
-                step={0.05}
-                onChange={(val) => onUpdateConfig({ fluteScale: val })}
-              />
-            )}
-          </div>
-        </InspectorSection>
-
-        {/* SECTION 8: STUDIO LIGHTING */}
-        <InspectorSection id="3d-lighting" title="Studio Lighting Rig" icon={<Sun size={12} className="text-[#ff4e2e]" />}>
-          <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
-            <ColorSwatchField
-              label="Key Light"
-              value={config.keyColor}
-              onChange={(color) => onUpdateConfig({ keyColor: color })}
+            <ToggleField
+              label="Show Framing Overlay Mask"
+              checked={config.showFramingMask || false}
+              onChange={(checked) => onUpdateConfig({ showFramingMask: checked })}
             />
-            <ColorSwatchField
-              label="Rim Light"
-              value={config.rimColor}
-              onChange={(color) => onUpdateConfig({ rimColor: color })}
-            />
-          </div>
+          </InspectorSection>
+        )}
 
-          <SliderField
-            label="Key Light Power"
-            value={config.keyIntensity}
-            min={0}
-            max={6}
-            step={0.1}
-            onChange={(val) => onUpdateConfig({ keyIntensity: val })}
-          />
-
-          <SliderField
-            label="Rim Light Power"
-            value={config.rimIntensity}
-            min={0}
-            max={8}
-            step={0.1}
-            onChange={(val) => onUpdateConfig({ rimIntensity: val })}
-          />
-
-          <SliderField
-            label="Fill Light Power"
-            value={config.fillIntensity}
-            min={0}
-            max={4}
-            step={0.1}
-            onChange={(val) => onUpdateConfig({ fillIntensity: val })}
-          />
-          <SliderField
-            label="Ambient Light"
-            value={config.ambientIntensity}
-            min={0}
-            max={1.5}
-            step={0.05}
-            onChange={(val) => onUpdateConfig({ ambientIntensity: val })}
-          />
-
-          <ToggleField
-            label="Studio Floor & Grid"
-            checked={config.showFloor}
-            onChange={(checked) => onUpdateConfig({ showFloor: checked })}
-          />
-        </InspectorSection>
-
-        {/* SECTION 9: UNREAL BLOOM OPTICS */}
-        <InspectorSection id="3d-bloom" title="Unreal Bloom Post-Processing" icon={<Sparkles size={12} className="text-[#ff4e2e]" />}>
-          <ToggleField
-            label="Glow Bloom Engine"
-            checked={config.bloomEnabled}
-            onChange={(checked) => onUpdateConfig({ bloomEnabled: checked })}
-          />
-
-          {config.bloomEnabled && (
-            <>
-              <SliderField
-                label="Bloom Strength"
-                value={config.bloomStrength}
-                min={0.1}
-                max={3.0}
-                step={0.05}
-                onChange={(val) => onUpdateConfig({ bloomStrength: val })}
-              />
-              <SliderField
-                label="Bloom Diffusion Radius"
-                value={config.bloomRadius}
-                min={0.1}
-                max={1.5}
-                step={0.05}
-                onChange={(val) => onUpdateConfig({ bloomRadius: val })}
-              />
-              <SliderField
-                label="Luminosity Threshold"
-                value={config.bloomThreshold}
-                min={0.1}
-                max={1.0}
-                step={0.05}
-                onChange={(val) => onUpdateConfig({ bloomThreshold: val })}
-              />
-            </>
-          )}
-        </InspectorSection>
-
-        {/* SECTION 10: MULTI-PART / LETTERS BREAKDOWN */}
-        <InspectorSection id="3d-parts" title={`Parts Breakdown (${parts.length} Glyphs)`} icon={<Layers size={12} className="text-[#ff4e2e]" />}>
-          <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
-            {parts.map((part, pIdx) => {
-              const isExpanded = expandedPartIdx === pIdx;
-              return (
-                <div 
-                  key={part.id} 
-                  className={`flex flex-col rounded-lg border transition-all ${
-                    isExpanded 
-                      ? 'bg-[#141824] border-[#2b3346]' 
-                      : 'bg-[#10131d] border-[#1e2434] hover:border-slate-500'
-                  }`}
-                >
-                  {/* Card Header Row */}
-                  <div className="flex items-center justify-between p-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <button
-                        onClick={() => onUpdatePart(pIdx, { visible: !part.visible })}
-                        title={part.visible ? 'Hide Part' : 'Show Part'}
-                        className={`p-1 rounded transition-colors ${
-                          part.visible ? 'text-slate-300 hover:text-white' : 'text-slate-600'
-                        }`}
-                      >
-                        {part.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-                      </button>
-
-                      {/* Part Color Swatch */}
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full border border-white/20 flex-shrink-0"
-                        style={{ backgroundColor: part.faceColor }}
-                      />
-
-                      <span className={`text-[10.5px] font-mono font-medium truncate ${part.visible ? 'text-slate-200' : 'text-slate-500'}`}>
-                        {part.name}
+        {/* SECTION 3: EFFECT STACKING & 2D MOTION SYNCHRONIZER */}
+        {matchesSection('3d-effect-stack') && (
+          <InspectorSection id="3d-effect-stack" title={isNarrow ? "Effect Stack" : "Effect Stacking & 2D Sync"} icon={<Zap size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <div className="flex flex-col gap-1.5">
+              {[
+                { key: 'sync2dMotion' as const, label: 'Sync 2D Motion', desc: `Follows 2D timing (${config.active2dMotionId || 'Typewriter'})` },
+                { key: 'turntableSpin' as const, label: 'Turntable 360° Spin', desc: 'Smooth continuous luxury turntable rotation' },
+                { key: 'harmonicWave' as const, label: 'Harmonic Z-Wave', desc: 'Phase-offset undulating wave across glyphs' },
+                { key: 'hoverFloat' as const, label: 'Organic Hover Float', desc: 'Natural vertical breathing buoyancy' },
+                { key: 'lightSweep' as const, label: 'Orbiting Light Sweep', desc: 'Dynamic rotating key & rim specular glints' },
+                { key: 'gyroTilt' as const, label: 'Cursor Gyro Tracking', desc: 'Perspective tilts towards mouse cursor' }
+              ].map(eff => {
+                const active = config.stackedEffects ? config.stackedEffects[eff.key] : false;
+                return (
+                  <button
+                    key={eff.key}
+                    type="button"
+                    onClick={() => handleToggleStackEffect(eff.key)}
+                    className={`flex flex-col p-2 rounded-lg border text-left transition-all ${
+                      active
+                        ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] shadow-sm'
+                        : 'bg-[#121520] border-[#22283a] hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`text-[10.5px] font-bold ${active ? 'text-white' : 'text-slate-300'}`}>
+                        {eff.label}
+                      </span>
+                      <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${active ? 'bg-[#ff4e2e] text-white' : 'bg-white/5 text-slate-500'}`}>
+                        {active ? 'ON' : 'OFF'}
                       </span>
                     </div>
+                    {!isNarrow && (
+                      <span className="text-[8.5px] text-slate-400 mt-0.5">
+                        {eff.desc}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </InspectorSection>
+        )}
 
-                    <button
-                      onClick={() => setExpandedPartIdx(isExpanded ? null : pIdx)}
-                      className="p-1 text-slate-400 hover:text-white rounded"
-                    >
-                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                    </button>
-                  </div>
+        {/* SECTION 4: ENVIRONMENT & BACKGROUND (Blender World) */}
+        {matchesSection('3d-environment') && (
+          <InspectorSection id="3d-environment" title="Environment & Scene" icon={<Globe size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                Atmospheric Preset
+              </span>
+              <div className={`grid ${isNarrow ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5`}>
+                {envOptions.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => onUpdateConfig({ envPreset: opt.id })}
+                    className={`py-1.5 px-1 rounded text-center border text-[9.5px] font-mono transition-colors truncate ${
+                      config.envPreset === opt.id
+                        ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-white font-bold'
+                        : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  {/* Expanded Sub-Controls for this Part */}
-                  {isExpanded && (
-                    <div className="p-2 pt-0 border-t border-white/5 flex flex-col gap-2 mt-1">
-                      <SliderField
-                        label="Depth Offset"
-                        value={part.depthOffset}
-                        min={-20}
-                        max={40}
-                        step={1}
-                        unit="px"
-                        onChange={(val) => onUpdatePart(pIdx, { depthOffset: val })}
-                      />
-                      <SliderField
-                        label="Phase Stagger Delay"
-                        value={part.phaseDelay}
-                        min={0}
-                        max={1.5}
-                        step={0.02}
-                        unit="s"
-                        onChange={(val) => onUpdatePart(pIdx, { phaseDelay: val })}
-                      />
-                      <ColorSwatchField
-                        label="Custom Part Color"
-                        value={part.faceColor}
-                        onChange={(color) => onUpdatePart(pIdx, { faceColor: color })}
-                      />
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2 pt-1`}>
+              <SliderField
+                label="Floor Roughness"
+                value={config.floorRoughness || 0.65}
+                min={0.05}
+                max={1.0}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ floorRoughness: val })}
+              />
+              <SliderField
+                label="Floor Metalness"
+                value={config.floorMetalness || 0.35}
+                min={0.0}
+                max={1.0}
+                step={0.05}
+                onChange={(val) => onUpdateConfig({ floorMetalness: val })}
+              />
+            </div>
+          </InspectorSection>
+        )}
+
+        {/* SECTION 5: CAMERA OPTICS */}
+        {matchesSection('3d-camera') && (
+          <InspectorSection id="3d-camera" title="Camera Optics (Lens)" icon={<Camera size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <SliderField
+              label="Field of View (FOV)"
+              value={config.fov || 45}
+              min={20}
+              max={85}
+              step={1}
+              unit="°"
+              onChange={(val) => onUpdateConfig({ fov: val })}
+            />
+            <SliderField
+              label="Camera Distance"
+              value={config.cameraDistance || 420}
+              min={180}
+              max={850}
+              step={10}
+              unit="px"
+              onChange={(val) => onUpdateConfig({ cameraDistance: val })}
+            />
+          </InspectorSection>
+        )}
+
+        {/* SECTION 6: EXTRUSION & BEVEL */}
+        {matchesSection('3d-geometry') && (
+          <InspectorSection id="3d-geometry" title="Extrusion & Bevel" icon={<Box size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <SliderField
+              label="Extrude Depth"
+              value={config.depth}
+              min={2}
+              max={80}
+              step={1}
+              unit="px"
+              onChange={(val) => onUpdateConfig({ depth: val })}
+            />
+            <SliderField
+              label="Bevel Thickness"
+              value={config.bevelThickness}
+              min={0}
+              max={12}
+              step={0.2}
+              unit="px"
+              onChange={(val) => onUpdateConfig({ bevelThickness: val })}
+            />
+            <SliderField
+              label="Bevel Radius / Size"
+              value={config.bevelSize}
+              min={0}
+              max={10}
+              step={0.2}
+              unit="px"
+              onChange={(val) => onUpdateConfig({ bevelSize: val })}
+            />
+            <SliderField
+              label="Bevel Segments"
+              value={config.bevelSegments}
+              min={1}
+              max={8}
+              step={1}
+              onChange={(val) => onUpdateConfig({ bevelSegments: val })}
+            />
+            <SliderField
+              label="Master Scale"
+              value={config.meshScale}
+              min={0.5}
+              max={2.0}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ meshScale: val })}
+            />
+          </InspectorSection>
+        )}
+
+        {/* SECTION 7: PBR SURFACE & PROCEDURAL TEXTURES */}
+        {matchesSection('3d-pbr') && (
+          <InspectorSection id="3d-pbr" title="PBR Surface & Textures" icon={<Sparkles size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+              <ColorSwatchField
+                label="Face Color"
+                value={config.faceColor}
+                onChange={(color) => onUpdateConfig({ faceColor: color })}
+              />
+              <ColorSwatchField
+                label="Side / Bevel Color"
+                value={config.sideColor}
+                onChange={(color) => onUpdateConfig({ sideColor: color })}
+              />
+            </div>
+
+            <SliderField
+              label="Metallic Factor"
+              value={config.metalness}
+              min={0}
+              max={1}
+              step={0.02}
+              onChange={(val) => onUpdateConfig({ metalness: val })}
+            />
+            <SliderField
+              label="Roughness"
+              value={config.roughness}
+              min={0.02}
+              max={1}
+              step={0.02}
+              onChange={(val) => onUpdateConfig({ roughness: val })}
+            />
+            <SliderField
+              label="Clearcoat Glaze"
+              value={config.clearcoat}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ clearcoat: val })}
+            />
+            <SliderField
+              label="Glass Transmission"
+              value={config.transmission}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ transmission: val })}
+            />
+
+            {/* Procedural Surface Texture Generator */}
+            <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+              <DropdownField<ProceduralTextureType>
+                label="Procedural Bump Texture"
+                value={config.proceduralTexture || (config.flutingEnabled ? 'fluted' : 'none')}
+                options={proceduralOptions}
+                onChange={(val) => onUpdateConfig({ 
+                  proceduralTexture: val,
+                  flutingEnabled: val === 'fluted'
+                })}
+              />
+
+              {(config.proceduralTexture && config.proceduralTexture !== 'none' || config.flutingEnabled) && (
+                <SliderField
+                  label="Texture Relief / Bump"
+                  value={config.fluteScale || 0.45}
+                  min={0.05}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(val) => onUpdateConfig({ fluteScale: val })}
+                />
+              )}
+            </div>
+          </InspectorSection>
+        )}
+
+        {/* SECTION 8: STUDIO LIGHTING */}
+        {matchesSection('3d-lighting') && (
+          <InspectorSection id="3d-lighting" title="Studio Lighting Rig" icon={<Sun size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <div className={`grid ${isNarrow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+              <ColorSwatchField
+                label="Key Light"
+                value={config.keyColor}
+                onChange={(color) => onUpdateConfig({ keyColor: color })}
+              />
+              <ColorSwatchField
+                label="Rim Light"
+                value={config.rimColor}
+                onChange={(color) => onUpdateConfig({ rimColor: color })}
+              />
+            </div>
+
+            <SliderField
+              label="Key Light Power"
+              value={config.keyIntensity}
+              min={0}
+              max={6}
+              step={0.1}
+              onChange={(val) => onUpdateConfig({ keyIntensity: val })}
+            />
+
+            <SliderField
+              label="Rim Light Power"
+              value={config.rimIntensity}
+              min={0}
+              max={8}
+              step={0.1}
+              onChange={(val) => onUpdateConfig({ rimIntensity: val })}
+            />
+
+            <SliderField
+              label="Fill Light Power"
+              value={config.fillIntensity}
+              min={0}
+              max={4}
+              step={0.1}
+              onChange={(val) => onUpdateConfig({ fillIntensity: val })}
+            />
+            <SliderField
+              label="Ambient Light"
+              value={config.ambientIntensity}
+              min={0}
+              max={1.5}
+              step={0.05}
+              onChange={(val) => onUpdateConfig({ ambientIntensity: val })}
+            />
+
+            <ToggleField
+              label="Studio Floor & Grid"
+              checked={config.showFloor}
+              onChange={(checked) => onUpdateConfig({ showFloor: checked })}
+            />
+          </InspectorSection>
+        )}
+
+        {/* SECTION 9: UNREAL BLOOM OPTICS */}
+        {matchesSection('3d-bloom') && (
+          <InspectorSection id="3d-bloom" title="Unreal Bloom Post-Processing" icon={<Sparkles size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <ToggleField
+              label="Glow Bloom Engine"
+              checked={config.bloomEnabled}
+              onChange={(checked) => onUpdateConfig({ bloomEnabled: checked })}
+            />
+
+            {config.bloomEnabled && (
+              <>
+                <SliderField
+                  label="Bloom Strength"
+                  value={config.bloomStrength}
+                  min={0.1}
+                  max={3.0}
+                  step={0.05}
+                  onChange={(val) => onUpdateConfig({ bloomStrength: val })}
+                />
+                <SliderField
+                  label="Bloom Diffusion Radius"
+                  value={config.bloomRadius}
+                  min={0.1}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(val) => onUpdateConfig({ bloomRadius: val })}
+                />
+                <SliderField
+                  label="Luminosity Threshold"
+                  value={config.bloomThreshold}
+                  min={0.1}
+                  max={1.0}
+                  step={0.05}
+                  onChange={(val) => onUpdateConfig({ bloomThreshold: val })}
+                />
+              </>
+            )}
+          </InspectorSection>
+        )}
+
+        {/* SECTION 10: MULTI-PART / LETTERS BREAKDOWN */}
+        {matchesSection('3d-parts') && (
+          <InspectorSection id="3d-parts" title={`Parts Breakdown (${parts.length} Glyphs)`} icon={<Layers size={12} className="text-[#ff4e2e]" />} isOpen={isSearching ? true : undefined}>
+            <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+              {parts.map((part, pIdx) => {
+                const isExpanded = expandedPartIdx === pIdx;
+                return (
+                  <div 
+                    key={part.id} 
+                    className={`flex flex-col rounded-lg border transition-all ${
+                      isExpanded 
+                        ? 'bg-[#141824] border-[#2b3346]' 
+                        : 'bg-[#10131d] border-[#1e2434] hover:border-slate-500'
+                    }`}
+                  >
+                    {/* Card Header Row */}
+                    <div className="flex items-center justify-between p-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          onClick={() => onUpdatePart(pIdx, { visible: !part.visible })}
+                          title={part.visible ? 'Hide Part' : 'Show Part'}
+                          className={`p-1 rounded transition-colors ${
+                            part.visible ? 'text-slate-300 hover:text-white' : 'text-slate-600'
+                          }`}
+                        >
+                          {part.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                        </button>
+
+                        {/* Part Color Swatch */}
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full border border-white/20 flex-shrink-0"
+                          style={{ backgroundColor: part.faceColor }}
+                        />
+
+                        <span className={`text-[10.5px] font-mono font-medium truncate ${part.visible ? 'text-slate-200' : 'text-slate-500'}`}>
+                          {part.name}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => setExpandedPartIdx(isExpanded ? null : pIdx)}
+                        className="p-1 text-slate-400 hover:text-white rounded"
+                      >
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* Expanded Sub-Controls for this Part */}
+                    {isExpanded && (
+                      <div className="p-2 pt-0 border-t border-white/5 flex flex-col gap-2 mt-1">
+                        <SliderField
+                          label="Depth Offset"
+                          value={part.depthOffset}
+                          min={-20}
+                          max={40}
+                          step={1}
+                          unit="px"
+                          onChange={(val) => onUpdatePart(pIdx, { depthOffset: val })}
+                        />
+                        <SliderField
+                          label="Phase Stagger Delay"
+                          value={part.phaseDelay}
+                          min={0}
+                          max={1.5}
+                          step={0.02}
+                          unit="s"
+                          onChange={(val) => onUpdatePart(pIdx, { phaseDelay: val })}
+                        />
+                        <ColorSwatchField
+                          label="Custom Part Color"
+                          value={part.faceColor}
+                          onChange={(color) => onUpdatePart(pIdx, { faceColor: color })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </InspectorSection>
+        )}
+
+        {/* Empty Search State */}
+        {isSearching && matchingSectionCount === 0 && (
+          <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-500">
+              <Search size={16} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-mono font-medium text-slate-300">No properties found</p>
+              <p className="text-[10px] font-mono text-slate-500">
+                No 3D settings matching &ldquo;{searchQuery}&rdquo;
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="mt-1 px-3 py-1 text-[10px] font-mono text-[#ff4e2e] bg-[#ff4e2e]/10 hover:bg-[#ff4e2e]/20 border border-[#ff4e2e]/30 rounded-md transition-colors"
+            >
+              Clear Search
+            </button>
           </div>
-        </InspectorSection>
+        )}
 
       </div>
     </aside>

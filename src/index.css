@@ -273,3 +273,149 @@ input[type="range"]::-webkit-slider-thumb:hover {
   70% { transform: scale(1.12); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* 13. Hypnotic Vortex Spiral */
+.anim-vortex-spin [data-glyph],
+.anim-vortex-spin .custom-part-glyph {
+  animation: vortexSpinIn 1.25s forwards var(--motion-ease);
+  transform-origin: center center;
+}
+.anim-vortex-spin #glyph-word-w { animation-delay: 0.03s; }
+.anim-vortex-spin #glyph-word-o { animation-delay: 0.07s; }
+.anim-vortex-spin #glyph-word-r { animation-delay: 0.11s; }
+.anim-vortex-spin #glyph-lord-l { animation-delay: 0.15s; }
+.anim-vortex-spin #glyph-lord-o { animation-delay: 0.19s; }
+.anim-vortex-spin #glyph-lord-r { animation-delay: 0.23s; }
+.anim-vortex-spin #glyph-ligature-d { animation-delay: 0.28s; }
+.anim-vortex-spin #glyph-media-m { animation-delay: 0.33s; }
+.anim-vortex-spin #glyph-media-e { animation-delay: 0.37s; }
+.anim-vortex-spin #glyph-media-d { animation-delay: 0.41s; }
+.anim-vortex-spin #glyph-media-i { animation-delay: 0.45s; }
+.anim-vortex-spin #glyph-media-a { animation-delay: 0.49s; }
+@keyframes vortexSpinIn {
+  0% { transform: rotate(720deg) scale(0.05); opacity: 0; filter: blur(8px); }
+  60% { transform: rotate(-15deg) scale(1.08); opacity: 1; filter: blur(0px); }
+  85% { transform: rotate(5deg) scale(0.98); }
+  100% { transform: rotate(0deg) scale(1); opacity: 1; filter: none; }
+}
+
+/* 14. Cyberpunk Neon Shimmer */
+.anim-neon-breathe #main-stage-svg {
+  animation: neonShimmer 1.8s infinite ease-in-out;
+}
+@keyframes neonShimmer {
+  0%, 100% { filter: drop-shadow(0 0 8px #ff4e2e) drop-shadow(0 0 18px rgba(255, 78, 46, 0.4)); }
+  25% { filter: drop-shadow(-3px 0 14px #00ffff) drop-shadow(3px 0 28px rgba(0, 255, 255, 0.6)); }
+  50% { filter: drop-shadow(0 0 24px #ff263e) drop-shadow(0 0 45px rgba(255, 78, 46, 0.9)); transform: scale(1.015); }
+  75% { filter: drop-shadow(3px -1px 16px #ff0055) drop-shadow(-3px 1px 32px rgba(255, 0, 85, 0.5)); }
+}
+
+/* 15. Magnetic Zero-G Snap */
+.anim-magnetic-snap [data-glyph],
+.anim-magnetic-snap .custom-part-glyph {
+  animation: magneticSnapIn 0.95s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: center center;
+}
+.anim-magnetic-snap #glyph-word-w { animation-delay: 0.02s; --mag-x: -30px; --mag-y: -25px; --mag-rot: -45deg; }
+.anim-magnetic-snap #glyph-word-o { animation-delay: 0.05s; --mag-x: -15px; --mag-y: -35px; --mag-rot: -20deg; }
+.anim-magnetic-snap #glyph-word-r { animation-delay: 0.08s; --mag-x: 10px; --mag-y: -30px; --mag-rot: 30deg; }
+.anim-magnetic-snap #glyph-lord-l { animation-delay: 0.11s; --mag-x: -35px; --mag-y: 20px; --mag-rot: -35deg; }
+.anim-magnetic-snap #glyph-lord-o { animation-delay: 0.14s; --mag-x: -10px; --mag-y: 35px; --mag-rot: 15deg; }
+.anim-magnetic-snap #glyph-lord-r { animation-delay: 0.17s; --mag-x: 25px; --mag-y: 30px; --mag-rot: 40deg; }
+.anim-magnetic-snap #glyph-ligature-d { animation-delay: 0.22s; --mag-x: 40px; --mag-y: 0px; --mag-rot: 90deg; }
+.anim-magnetic-snap #glyph-media-m { animation-delay: 0.26s; --mag-x: -25px; --mag-y: 40px; --mag-rot: -15deg; }
+.anim-magnetic-snap #glyph-media-e { animation-delay: 0.29s; --mag-x: -10px; --mag-y: 45px; --mag-rot: -10deg; }
+.anim-magnetic-snap #glyph-media-d { animation-delay: 0.32s; --mag-x: 0px; --mag-y: 50px; --mag-rot: 0deg; }
+.anim-magnetic-snap #glyph-media-i { animation-delay: 0.35s; --mag-x: 15px; --mag-y: 45px; --mag-rot: 10deg; }
+.anim-magnetic-snap #glyph-media-a { animation-delay: 0.38s; --mag-x: 30px; --mag-y: 40px; --mag-rot: 20deg; }
+@keyframes magneticSnapIn {
+  0% { transform: translate(var(--mag-x, -20px), var(--mag-y, -20px)) rotate(var(--mag-rot, 45deg)) scale(0.4); opacity: 0; }
+  75% { transform: translate(0, 0) rotate(0deg) scale(1.08); opacity: 1; }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+}
+
+/* 16. Shutter Blind Venetian */
+.anim-slice-blind [data-glyph],
+.anim-slice-blind .custom-part-glyph {
+  animation: louverFlip 1.15s forwards var(--motion-ease);
+  transform-origin: center center;
+}
+.anim-slice-blind #glyph-word-w,
+.anim-slice-blind #glyph-word-r,
+.anim-slice-blind #glyph-lord-o,
+.anim-slice-blind #glyph-media-m,
+.anim-slice-blind #glyph-media-d,
+.anim-slice-blind #glyph-media-a {
+  --blind-flip: -90deg;
+}
+.anim-slice-blind #glyph-word-o,
+.anim-slice-blind #glyph-lord-l,
+.anim-slice-blind #glyph-lord-r,
+.anim-slice-blind #glyph-ligature-d,
+.anim-slice-blind #glyph-media-e,
+.anim-slice-blind #glyph-media-i {
+  --blind-flip: 90deg;
+}
+.anim-slice-blind #glyph-word-w { animation-delay: 0.04s; }
+.anim-slice-blind #glyph-word-o { animation-delay: 0.08s; }
+.anim-slice-blind #glyph-word-r { animation-delay: 0.12s; }
+.anim-slice-blind #glyph-lord-l { animation-delay: 0.16s; }
+.anim-slice-blind #glyph-lord-o { animation-delay: 0.20s; }
+.anim-slice-blind #glyph-lord-r { animation-delay: 0.24s; }
+.anim-slice-blind #glyph-ligature-d { animation-delay: 0.28s; }
+.anim-slice-blind #glyph-media-m { animation-delay: 0.32s; }
+.anim-slice-blind #glyph-media-e { animation-delay: 0.36s; }
+.anim-slice-blind #glyph-media-d { animation-delay: 0.40s; }
+.anim-slice-blind #glyph-media-i { animation-delay: 0.44s; }
+.anim-slice-blind #glyph-media-a { animation-delay: 0.48s; }
+@keyframes louverFlip {
+  0% { transform: perspective(300px) rotateY(var(--blind-flip, 90deg)); opacity: 0; }
+  100% { transform: perspective(300px) rotateY(0deg); opacity: 1; }
+}
+
+/* 17. Fluid Kinetic Sine Wave */
+.anim-wave-flow [data-glyph],
+.anim-wave-flow .custom-part-glyph {
+  animation: sineWaveBounce 1.5s infinite ease-in-out;
+  transform-origin: center bottom;
+}
+.anim-wave-flow #glyph-word-w { animation-delay: 0.0s; }
+.anim-wave-flow #glyph-word-o { animation-delay: 0.1s; }
+.anim-wave-flow #glyph-word-r { animation-delay: 0.2s; }
+.anim-wave-flow #glyph-lord-l { animation-delay: 0.3s; }
+.anim-wave-flow #glyph-lord-o { animation-delay: 0.4s; }
+.anim-wave-flow #glyph-lord-r { animation-delay: 0.5s; }
+.anim-wave-flow #glyph-ligature-d { animation-delay: 0.6s; }
+.anim-wave-flow #glyph-media-m { animation-delay: 0.7s; }
+.anim-wave-flow #glyph-media-e { animation-delay: 0.8s; }
+.anim-wave-flow #glyph-media-d { animation-delay: 0.9s; }
+.anim-wave-flow #glyph-media-i { animation-delay: 1.0s; }
+.anim-wave-flow #glyph-media-a { animation-delay: 1.1s; }
+@keyframes sineWaveBounce {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-7px) scaleY(1.08); filter: drop-shadow(0 4px 8px rgba(255, 78, 46, 0.4)); }
+}
+
+/* 18. Supersonic Velocity Streaks */
+.anim-velocity-drift [data-glyph],
+.anim-velocity-drift .custom-part-glyph {
+  animation: velocityDriftIn 0.85s forwards cubic-bezier(0.05, 0.95, 0.2, 1);
+  transform-origin: left center;
+}
+.anim-velocity-drift #glyph-word-w { animation-delay: 0.02s; }
+.anim-velocity-drift #glyph-word-o { animation-delay: 0.05s; }
+.anim-velocity-drift #glyph-word-r { animation-delay: 0.08s; }
+.anim-velocity-drift #glyph-lord-l { animation-delay: 0.11s; }
+.anim-velocity-drift #glyph-lord-o { animation-delay: 0.14s; }
+.anim-velocity-drift #glyph-lord-r { animation-delay: 0.17s; }
+.anim-velocity-drift #glyph-ligature-d { animation-delay: 0.21s; }
+.anim-velocity-drift #glyph-media-m { animation-delay: 0.25s; }
+.anim-velocity-drift #glyph-media-e { animation-delay: 0.28s; }
+.anim-velocity-drift #glyph-media-d { animation-delay: 0.31s; }
+.anim-velocity-drift #glyph-media-i { animation-delay: 0.34s; }
+.anim-velocity-drift #glyph-media-a { animation-delay: 0.37s; }
+@keyframes velocityDriftIn {
+  0% { transform: translateX(-160px) scaleX(2.8) skewX(-25deg); opacity: 0; filter: blur(4px); }
+  65% { transform: translateX(8px) scaleX(0.95) skewX(4deg); opacity: 1; filter: none; }
+  100% { transform: translateX(0) scaleX(1) skewX(0); opacity: 1; }
+}

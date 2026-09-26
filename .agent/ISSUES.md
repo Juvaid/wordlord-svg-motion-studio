@@ -20,6 +20,9 @@
 | **ISS-007** | Persistence | Medium | Project State Deserialization Missing Schema Validation & Sanitization | **RESOLVED** | Working Tree |
 | **ISS-008** | Concurrency | High | Viewport RAF Loop Race Condition with MediaRecorder Stream Capture | **RESOLVED** | `5f656f9` |
 | **ISS-009** | UX / Navigation | Low | Gyro Cursor Tracking Active by Default Causing Accidental Follow | **RESOLVED** | `46269ba` |
+| **ISS-010** | UX / Ergonomics | Medium | High Cognitive Load in Inspector Due to Lack of Express Presets | **RESOLVED** | Working Tree |
+| **ISS-011** | Asset Ecosystem | Medium | Lack of Universal Vector Asset Ingestion & Single-Logo Limitation | **RESOLVED** | Working Tree |
+| **ISS-012** | Inspector & Motion | Medium | Properties Search Bar & Kinetic Motion Library Expansion | **RESOLVED** | Working Tree |
 
 ---
 
@@ -157,6 +160,30 @@
 
 ---
 
+### ISS-012: Properties Inspector Category Tabs Redundancy & Kinetic Motion Expansion
+* **Location**: `src/components/RightInspector.tsx`, `src/components/ThreeRightInspector.tsx`, `src/data/motions.ts`, `src/index.css`, `src/utils/threeEngine.ts`
+* **Symptom**:
+  1. Horizontal category tabs (`[All] [Timing] [Optics] [3D] [Palette] [Code]`) consumed unnecessary vertical height, hid relevant controls in other sections, and forced users to click tabs repeatedly to find specific sliders (glow, duration, tilt, colors).
+  2. The motion graphics library was limited to 12 presets, leaving advanced animations (vortices, neon breathing, magnetic snapping, Venetian louvers, sine waves, velocity streaks) unavailable.
+* **Root Cause**:
+  1. Tabs enforced mutually exclusive visibility instead of enabling quick keyword search and auto-expansion across sections.
+  2. Lack of procedural 2D CSS keyframes and matching 3D kinematics for high-energy motion design.
+* **Resolution**:
+  - Replaced the category tabs in `RightInspector.tsx` with a responsive real-time property search bar (`Search`, `X` clear button, `Esc` keyboard shortcut, and match count badge).
+  - Implemented semantic keyword matching (`SECTION_METADATA` and `THREE_SECTION_KEYWORDS`) so queries like "glow", "bloom", "tilt", "depth", "roughness", "delay", or "stagger" filter and auto-expand matching accordion sections.
+  - Added identical property search and 1-click JSON clipboard rig transfer (`handleCopy3DConfig` / `handlePaste3DConfig`) to `ThreeRightInspector.tsx`.
+  - Added 6 new production-grade kinetic motion presets (expanding the library from 12 to 18 presets):
+    1. `vortex-spin`: Hypnotic Vortex Spiral ($720^\circ$ angular velocity spiral collapse).
+    2. `neon-breathe`: Cyberpunk Neon Shimmer (bioluminescent dual-hue phosphor resonance).
+    3. `magnetic-snap`: Magnetic Zero-G Snap (anti-gravity dispersion with high-tension electromagnetic snap).
+    4. `slice-blind`: Shutter Blind Venetian (mechanical $90^\circ$ alternating raster louver blinds).
+    5. `wave-flow`: Fluid Kinetic Sine Wave (sinusoidal undulating crest-and-trough wave ripple).
+    6. `velocity-drift`: Supersonic Velocity Streaks (extreme lateral speed blur lines settling with skew decay).
+  - Implemented 60 FPS CSS keyframes with `.custom-part-glyph` fallback for custom SVG uploads.
+  - Implemented WebGL evaluation branches in `evaluate3DMotion` for all 6 new presets.
+
+---
+
 ## 3. Automated Testing Suite
 
 The project includes a native test harness (`scripts/test-suite.js`) powered by Vite's SSR runtime. It runs directly against source TypeScript files without compiling to intermediate JS or requiring heavy external runners:
@@ -167,13 +194,13 @@ npm test
 ```
 
 ### Test Coverage Summary:
-- **Suite 1**: 2D Kinetic Motion Presets integrity (12 presets, durations $> 0$, animation classes)
+- **Suite 1**: 2D Kinetic Motion Presets integrity (18 presets, durations $> 0$, animation classes)
 - **Suite 2**: Optical Style Presets (8 styles, valid hex codes, positive glow radii)
 - **Suite 3**: 3D PBR Materials (6 presets, roughness & metalness bounded in $[0, 1]$)
 - **Suite 4**: Studio Lighting Rigs (4 rigs, positive key/rim/fill intensities, valid hex colors)
 - **Suite 5**: Universal Vector Asset Library (27+ curated presets across Brands, UI, and Monograms with valid SVG XML and viewBoxes)
 - **Suite 6**: Project State Serialization (empty object handling, invalid input rejection, `uiComplexity` and `activeAssetId` preservation)
-- **Suite 7**: 3D Motion Kinematics (all 17 presets evaluated across 5 keyframe intervals, verifying finite transform matrices)
+- **Suite 7**: 3D Motion Kinematics (all 25 presets evaluated across 5 keyframe intervals, verifying finite transform matrices)
 
 ---
 

@@ -19,7 +19,9 @@ import {
   Upload,
   Layers,
   Film,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Search,
+  X
 } from 'lucide-react';
 import { BezierGraph } from './BezierGraph';
 import { BezierPoints, PlaybackMode, GeometryMode } from '../types';
@@ -79,7 +81,38 @@ interface RightInspectorProps {
   onPlaySound?: () => void;
 }
 
-type CategoryFilter = 'all' | 'dynamics' | 'optics' | 'spatial' | 'palette' | 'code';
+const SECTION_METADATA: Record<string, { id: string; title: string; keywords: string[] }> = {
+  dynamics: {
+    id: 'dynamics',
+    title: 'Motion Timing',
+    keywords: ['timing', 'duration', 'stagger', 'cascade', 'loop', 'playback', 'iteration', '1-shot', 'once', 'ping-pong', 'alternate', 'speed', 'dynamics', 'delay', 'ms', 'seconds', 'cycle', 'play']
+  },
+  bezier: {
+    id: 'bezier',
+    title: 'Bézier Dynamics',
+    keywords: ['bezier', 'dynamics', 'easing', 'curve', 'cubic', 'velocity', 'acceleration', 'physics', 'formula', 'handles', 'interpolation', 'graph', 'cubic-bezier', 'ease']
+  },
+  optics: {
+    id: 'optics',
+    title: 'Volumetric Optics',
+    keywords: ['optics', 'glow', 'blur', 'radius', 'aura', 'bloom', 'intensity', 'geometry', 'mode', 'fill', 'stroke', 'outline', 'hybrid', 'width', 'line', 'contours', 'volumetric', 'shadow', 'drop-shadow', 'translucent']
+  },
+  spatial: {
+    id: 'spatial',
+    title: '3D Spatial Perspective',
+    keywords: ['spatial', '3d', 'perspective', 'tilt', 'pitch', 'yaw', 'x', 'y', 'rotation', 'angle', 'degrees', 'depth', 'matrix', 'view']
+  },
+  palette: {
+    id: 'palette',
+    title: 'Brand Palette',
+    keywords: ['palette', 'color', 'colours', 'brand', 'swatch', 'word', 'lord', 'tall d', 'ligature', 'media', 'hex', 'picker', 'fill', 'tint', 'hue', 'theme', 'monolith']
+  },
+  code: {
+    id: 'code',
+    title: 'CSS Manifest Export',
+    keywords: ['code', 'css', 'manifest', 'export', 'tokens', 'hardware', 'variables', 'root', 'embed', 'snippet', 'copy', 'json']
+  }
+};
 
 export const RightInspector: React.FC<RightInspectorProps> = ({
   motionId = 'typewriter',
@@ -122,7 +155,21 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
 }) => {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [copiedBezier, setCopiedBezier] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const isSearching = searchQuery.trim().length > 0;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const matchesSection = (sectionId: string) => {
+    if (!isSearching) return true;
+    const meta = SECTION_METADATA[sectionId];
+    if (!meta) return true;
+    if (meta.title.toLowerCase().includes(normalizedQuery)) return true;
+    if (meta.id.toLowerCase().includes(normalizedQuery)) return true;
+    return meta.keywords.some(kw => kw.includes(normalizedQuery) || normalizedQuery.includes(kw));
+  };
+
+  const matchingSectionCount = Object.keys(SECTION_METADATA).filter(matchesSection).length;
 
   // Accordion state management (by default, primary sections open)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -175,11 +222,6 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     navigator.clipboard.writeText(easeFormula);
     setCopiedBezier(true);
     setTimeout(() => setCopiedBezier(false), 1500);
-  };
-
-  const shouldShow = (cat: CategoryFilter) => {
-    if (categoryFilter === 'all') return true;
-    return categoryFilter === cat;
   };
 
   const currentAsset = ALL_ASSETS.find(a => a.id === activeAssetId) || ALL_ASSETS[0];
@@ -496,46 +538,57 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         </span>
       </div>
 
-      {/* 3. Category Filter Tabs */}
-      <div className="px-2 py-1.5 border-b border-[#1f2430] bg-[#0a0c10] flex items-center gap-1 overflow-x-auto flex-shrink-0 no-scrollbar">
-        {[
-          { id: 'all' as const, label: 'All', icon: <Compass size={11} className="text-slate-400" /> },
-          { id: 'dynamics' as const, label: 'Timing', icon: <Sliders size={11} className="text-[#ff4e2e]" /> },
-          { id: 'optics' as const, label: 'Optics', icon: <Sparkles size={11} className="text-[#00ffff]" /> },
-          { id: 'spatial' as const, label: '3D', icon: <Box size={11} className="text-[#38bdf8]" /> },
-          { id: 'palette' as const, label: 'Palette', icon: <Palette size={11} className="text-pink-400" /> },
-          { id: 'code' as const, label: 'Code', icon: <Code2 size={11} className="text-[#a5b4fc]" /> }
-        ].map((tab) => {
-          const isActive = categoryFilter === tab.id;
-          return (
-            <Tooltip key={tab.id} content={`Show ${tab.label} section`} side="bottom">
-              <button
-                type="button"
-                onClick={() => setCategoryFilter(tab.id)}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-[9.5px] font-mono whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-white/10 text-white font-semibold shadow-sm border border-white/15'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-                }`}
-              >
-                {tab.icon}
-                {width >= 275 && <span>{tab.label}</span>}
-              </button>
-            </Tooltip>
-          );
-        })}
+      {/* 3. Properties Search Bar */}
+      <div className="px-2.5 py-1.5 border-b border-[#1f2430] bg-[#0a0c10] flex items-center gap-1.5 flex-shrink-0">
+        <div className="relative flex-1 flex items-center">
+          <Search 
+            size={12} 
+            className={`absolute left-2.5 pointer-events-none transition-colors duration-150 ${
+              isSearching ? 'text-[#ff4e2e]' : 'text-slate-500'
+            }`} 
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearchQuery('');
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder={width < 290 ? "Search properties..." : "Search properties (e.g. glow, tilt)..."}
+            className="w-full h-7 pl-7 pr-7 bg-[#12151e] border border-[#232736] focus:border-[#ff4e2e]/60 focus:bg-[#151926] rounded-md text-[11px] font-mono text-slate-200 placeholder-slate-500 outline-none transition-colors duration-150"
+          />
+          {isSearching && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              title="Clear search (Esc)"
+              className="absolute right-1.5 p-0.5 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+
+        {isSearching && (
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 whitespace-nowrap">
+            {matchingSectionCount} {matchingSectionCount === 1 ? 'match' : 'matches'}
+          </span>
+        )}
       </div>
 
       {/* 4. Scrollable Sections Body */}
       <div className="flex-1 overflow-y-auto divide-y divide-[#1f2430]">
         
         {/* Section 1: Motion Timing & Dynamics */}
-        {shouldShow('dynamics') && (
+        {matchesSection('dynamics') && (
           <InspectorSection
             id="dynamics"
             title="Motion Timing"
             icon={<Sliders size={12} className="text-[#ff4e2e]" />}
-            isOpen={openSections.dynamics}
+            isOpen={isSearching ? true : openSections.dynamics}
             onToggle={(open) => toggleSection('dynamics', open)}
           >
             <SliderField
@@ -576,12 +629,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         )}
 
         {/* Section 2: Bézier Easing Dynamics */}
-        {shouldShow('dynamics') && (
+        {matchesSection('bezier') && (
           <InspectorSection
             id="bezier"
             title="Bézier Dynamics"
             icon={<Activity size={12} className="text-[#00ffff]" />}
-            isOpen={openSections.bezier}
+            isOpen={isSearching ? true : openSections.bezier}
             onToggle={(open) => toggleSection('bezier', open)}
             action={
               <Tooltip content="Copy cubic-bezier formula to clipboard" side="left">
@@ -606,12 +659,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         )}
 
         {/* Section 3: Volumetric Optics & Aura */}
-        {shouldShow('optics') && (
+        {matchesSection('optics') && (
           <InspectorSection
             id="optics"
             title="Volumetric Optics"
             icon={<Sparkles size={12} className="text-[#ff4e2e]" />}
-            isOpen={openSections.optics}
+            isOpen={isSearching ? true : openSections.optics}
             onToggle={(open) => toggleSection('optics', open)}
           >
             <SliderField
@@ -666,12 +719,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         )}
 
         {/* Section 4: 3D Spatial Perspective */}
-        {shouldShow('spatial') && (
+        {matchesSection('spatial') && (
           <InspectorSection
             id="spatial"
             title="3D Spatial Perspective"
             icon={<Compass size={12} className="text-[#38bdf8]" />}
-            isOpen={openSections.spatial}
+            isOpen={isSearching ? true : openSections.spatial}
             onToggle={(open) => toggleSection('spatial', open)}
             action={
               <Tooltip content="Reset 3D Pitch and Yaw to 0°" side="left">
@@ -713,12 +766,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         )}
 
         {/* Section 5: Brand Palette Tuning */}
-        {shouldShow('palette') && (
+        {matchesSection('palette') && (
           <InspectorSection
             id="palette"
             title="Brand Palette"
             icon={<Palette size={12} className="text-[#ff4e2e]" />}
-            isOpen={openSections.palette}
+            isOpen={isSearching ? true : openSections.palette}
             onToggle={(open) => toggleSection('palette', open)}
           >
             <div className="grid grid-cols-2 gap-2">
@@ -755,12 +808,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         )}
 
         {/* Section 6: CSS Manifest Export */}
-        {shouldShow('code') && (
+        {matchesSection('code') && (
           <InspectorSection
             id="code"
             title="CSS Manifest Export"
             icon={<Code2 size={12} className="text-[#a5b4fc]" />}
-            isOpen={openSections.code}
+            isOpen={isSearching ? true : openSections.code}
             onToggle={(open) => toggleSection('code', open)}
             action={
               <Tooltip content="Copy CSS tokens to clipboard" side="left">
@@ -782,6 +835,28 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               </pre>
             </div>
           </InspectorSection>
+        )}
+
+        {/* Empty Search State */}
+        {isSearching && matchingSectionCount === 0 && (
+          <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-500">
+              <Search size={16} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-mono font-medium text-slate-300">No properties found</p>
+              <p className="text-[10px] font-mono text-slate-500">
+                No settings matching &ldquo;{searchQuery}&rdquo;
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="mt-1 px-3 py-1 text-[10px] font-mono text-[#ff4e2e] bg-[#ff4e2e]/10 hover:bg-[#ff4e2e]/20 border border-[#ff4e2e]/30 rounded-md transition-colors"
+            >
+              Clear Search
+            </button>
+          </div>
         )}
 
       </div>
