@@ -28,6 +28,8 @@
 | **ISS-015** | Undo / Redo History | High | Parameter Dragging & Color Picking Bypassing History Undo Stack | **RESOLVED** | Working Tree |
 | **ISS-016** | 3D Environment | High | 3D Lighting Rig Orientation & Blender Camera Navigation Controls | **RESOLVED** | Working Tree |
 | **ISS-017** | 3D Camera & Export | Critical | Camera Distance Synchronization, Spherical Framing Controls & Autonomous Trajectories | **RESOLVED** | Working Tree |
+| **ISS-018** | Architecture & Assets | High | Persistent User Vector Asset Bank & Universal 2D/3D Multi-Part Dynamic Animation Engine | **RESOLVED** | Working Tree |
+| **ISS-019** | 3D Viewport & Framing | Critical | Viewport Camera Distance Clamping, Stale Closure Elimination & Advanced Export Framing Controls | **RESOLVED** | Working Tree |
 
 ---
 
@@ -282,6 +284,44 @@
     - **Autonomous Camera Flight Trajectory** 8-option grid with Lucide icons: `Static`, `Orbit`, `Dolly`, `Crane`, `Spiral`, `Pan`, `Rise`, `Shake`.
   - Added live **Camera & Framing Controls** cards to `ThreeExportModal.tsx` in both the 60 FPS Video Export and 4K PNG Snapshot tabs, with direct `onUpdateConfig` synchronization and framing reset.
   - Locked static camera framing inside `evaluate3DMotion` so that frame-by-frame video rendering accurately captures the exact user-configured distance, tilt, and height.
+
+---
+
+### ISS-018: Persistent User Vector Asset Bank & Universal 2D/3D Multi-Part Dynamic Animation Engine
+* **Location**: `src/utils/userAssetStore.ts`, `src/hooks/useUserAssetBank.ts`, `src/hooks/useStudioHistory.ts`, `src/components/CustomSvgModal.tsx`, `src/components/ThreeLeftLibrary.tsx`, `src/index.css`, `src/App.tsx`
+* **Symptom**: 
+  1. Imported custom SVGs were stored only in a single ephemeral `useState` variable in `App.tsx`. Reloading the page or switching presets erased custom marks.
+  2. In 2D mode, custom SVGs only rendered static glyphs because 2D CSS keyframe selectors exclusively targeted `#group-word` and `#group-lord`.
+  3. `App.tsx` had grown into an oversized file with 200+ lines of inline undo/redo history logic.
+* **Root Cause**:
+  - Lack of persistent, typed vector asset storage in `localStorage`.
+  - CSS keyframes for 2D presets lacked universal multi-part selectors (`.custom-part-glyph`) with nth-child stagger.
+* **Resolution**:
+  - Implemented typed persistent store `src/utils/userAssetStore.ts` under key `WORDLORD_USER_ASSET_BANK_V1` with methods `getUserAssets`, `saveUserAsset`, `deleteUserAsset`, `getCombinedAssets`, `exportUserAssetsJson`, and `importUserAssetsJson`.
+  - Upgraded `CustomSvgModal.tsx` into a 2-tab modal: "Import / Paste SVG" and "My Asset Bank ({count})" with real-time vector previews, categorization (`Custom`, `Branded`, `Tech Brands`, `UI Icons`, `Monograms`), instant workspace loading, deletion, and one-click JSON bank backup and restore.
+  - Connected `ThreeLeftLibrary.tsx` drawer with `getCombinedAssets`, adding a dedicated `'My Bank'` category pill and hover delete actions.
+  - Upgraded `src/index.css` with universal `.custom-part-glyph` multi-part selectors for all kinetic presets (`origami`, `ligature-clamp`, `split-converge`, `minimal-fade`, `magnetic-snap`, `smoke-dissolve`, `audio-reactive`), allowing arbitrary custom vector marks to animate with rich staggered multi-part motion in 2D mode.
+  - Extracted `useStudioHistory.ts` domain hook from `App.tsx`, consolidating 60-step visual time-travel undo/redo, continuous tweak debouncing, step jumping, and stack clearing.
+  - Built Decoupled Motion Plugin Registry (`src/plugins/motions/`) for modular extension.
+
+---
+
+### ISS-019: Viewport Camera Distance Clamping, Stale Closure Elimination & Advanced Export Framing Controls
+* **Location**: `src/components/ThreeStageViewport.tsx`, `src/utils/threeEngine.ts`, `src/components/ThreeExportModal.tsx`
+* **Symptom**:
+  1. Adjusting camera distance in the inspector or export modal appeared to have no effect or was clamped unnaturally close.
+  2. Certain 3D animations (`depth-slam`) moved forward so aggressively that they clipped directly into the camera lens.
+  3. Export modal was missing crucial framing controls (lateral pan, Dutch roll tilt, and orbit rotation in snapshots).
+* **Root Cause**:
+  - In `ThreeStageViewport.tsx`, `renderLoop` was defined in a `useEffect` that captured the initial `config` closure rather than reading `configRef.current`. As a result, the 60 FPS loop repeatedly passed stale `config` to `evaluate3DMotion`, overriding user adjustments.
+  - In `threeEngine.ts`, camera distance across all camera motion modes and stacked camera motion was hardcoded with `Math.max(340, ...)` instead of allowing the full slider range (180px–1200px).
+  - In `depth-slam`, `zOffset` was set to `(1 - slam) * 240 * amp` and `scaleVal` was `1 + (1 - slam) * 1.4 * amp`, causing the mesh to surge 240px forward and 2.4x larger towards the camera.
+* **Resolution**:
+  - In `ThreeStageViewport.tsx`, updated `renderLoop` and `handlePointerMove` to strictly read `configRef.current` and `partsRef.current` on every frame, eliminating stale closure overrides.
+  - In `threeEngine.ts`, changed all camera distance calculations to `Math.max(120, config.cameraDistance ?? ...)` across `camera-orbit`, `camera-dolly`, `camera-crane`, `camera-corkscrew`, `camera-pan`, `camera-rise`, `camera-shake`, stacked camera motion, and static camera positioning.
+  - Moderated `depth-slam` to `zOffset = (1 - slam) * 110 * amp` and `scaleVal = 1 + (1 - slam) * 0.45 * amp` for immense cinematic impact without clipping.
+  - Implemented 3D physics evaluations for `audio-reactive`, `minimal-fade`, `smoke-dissolve`, `solar-flare`, `quantum-pulse`, and `isometric-cube`.
+  - Upgraded `ThreeExportModal.tsx` across both Video and Snapshot tabs with comprehensive framing controls: Camera Distance, Pitch Tilt (Elevation), Orbit Angle (Azimuth), Height (Up/Down: `cameraPosY`), Lateral Pan (Left/Right: `cameraPosX`), Dutch Roll (`cameraRoll`), and 1-click View Angle presets (`Front`, `Hero 3/4`, `Top-Down`, `Low-Angle`).
 
 ---
 

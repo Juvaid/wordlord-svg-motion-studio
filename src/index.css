@@ -463,3 +463,49 @@ input[type="range"]::-webkit-slider-thumb:hover {
   70% { transform: scale(1.06) rotate(6deg); opacity: 1; filter: blur(0px); }
   100% { transform: scale(1) rotate(0deg); opacity: 1; filter: none; }
 }
+
+/* ==========================================================================
+   UNIVERSAL CUSTOM SVG MULTI-PART ANIMATIONS ENGINE
+   Applies staggered keyframe transforms to any user-uploaded SVG layers
+   ========================================================================== */
+.anim-origami #group-custom-asset .custom-part-glyph:nth-child(odd) {
+  animation: foldWord 0.8s forwards var(--motion-ease);
+  transform-origin: bottom center;
+}
+.anim-origami #group-custom-asset .custom-part-glyph:nth-child(even) {
+  animation: foldLord 0.8s 0.15s forwards var(--motion-ease);
+  transform-origin: top center;
+}
+
+.anim-ligature-clamp #group-custom-asset .custom-part-glyph:nth-child(odd) {
+  animation: slideInWord 0.7s forwards var(--motion-ease);
+}
+.anim-ligature-clamp #group-custom-asset .custom-part-glyph:nth-child(even) {
+  animation: slideInLord 0.7s forwards var(--motion-ease);
+}
+
+.anim-split-converge #group-custom-asset .custom-part-glyph:nth-child(odd) {
+  animation: splitWordIn 0.8s forwards var(--motion-ease);
+}
+.anim-split-converge #group-custom-asset .custom-part-glyph:nth-child(even) {
+  animation: splitLordIn 0.8s 0.1s forwards var(--motion-ease);
+}
+
+.anim-minimal-fade #group-custom-asset .custom-part-glyph {
+  opacity: 0;
+  animation: minFade 0.7s forwards var(--motion-ease);
+}
+
+.anim-magnetic-snap #group-custom-asset .custom-part-glyph {
+  opacity: 0;
+  animation: snapGlyph 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.anim-smoke-dissolve #group-custom-asset .custom-part-glyph {
+  animation: smokeFade 1.4s forwards ease-out;
+}
+
+.anim-audio-reactive #group-custom-asset .custom-part-glyph {
+  animation: audioBounce 0.4s infinite alternate ease-in-out;
+}
+

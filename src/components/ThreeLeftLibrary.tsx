@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Box, 
   Sparkles, 
@@ -13,13 +13,16 @@ import {
   Zap,
   Flame,
   Radio,
-  Search
+  Search,
+  Trash2,
+  Folder
 } from 'lucide-react';
 import { 
   THREE_ASSET_PRESETS, 
   PBR_PRESETS, 
   LIGHTING_RIGS 
 } from '../data/threePresets';
+import { getCombinedAssets, deleteUserAsset } from '../utils/userAssetStore';
 import { MOTIONS } from '../data/motions';
 import { 
   ThreeStudioConfig, 
@@ -53,10 +56,20 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
   const [activeTab, setActiveTab] = useState<'assets' | 'materials' | 'lighting' | 'motions'>('assets');
   const [assetCategoryFilter, setAssetCategoryFilter] = useState<string>('All');
   const [assetSearchQuery, setAssetSearchQuery] = useState<string>('');
+  const [bankNonce, setBankNonce] = useState<number>(0);
   const isNarrow = width < 255;
 
-  const filteredAssets = THREE_ASSET_PRESETS.filter(a => {
-    const matchCat = assetCategoryFilter === 'All' || a.category.toLowerCase() === assetCategoryFilter.toLowerCase();
+  const combinedAssets = useMemo(() => {
+    return getCombinedAssets(THREE_ASSET_PRESETS);
+  }, [bankNonce, activeTab]);
+
+  const filteredAssets = combinedAssets.filter(a => {
+    const isUser = (a as any).isUserCreated;
+    const matchCat = assetCategoryFilter === 'All'
+      ? true
+      : assetCategoryFilter === 'My Bank'
+      ? isUser
+      : a.category.toLowerCase() === assetCategoryFilter.toLowerCase();
     const matchSearch = !assetSearchQuery || a.name.toLowerCase().includes(assetSearchQuery.toLowerCase()) || a.description.toLowerCase().includes(assetSearchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
@@ -139,7 +152,7 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
 
               {/* Category Pills */}
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
-                {['All', 'Tech Brands', 'UI Icons', 'Monograms', 'Branded'].map(cat => (
+                {['All', 'My Bank', 'Tech Brands', 'UI Icons', 'Monograms', 'Branded'].map(cat => (
                   <button
                     key={cat}
                     type="button"
@@ -158,12 +171,12 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
 
             {filteredAssets.map(asset => {
               const isSel = config.activeAssetId === asset.id;
+              const isUser = (asset as any).isUserCreated;
               return (
-                <button
+                <div
                   key={asset.id}
-                  type="button"
                   onClick={() => onSelectAsset(asset.id)}
-                  className={`flex flex-col p-2.5 rounded-lg border text-left transition-all relative ${
+                  className={`flex flex-col p-2.5 rounded-lg border text-left transition-all relative cursor-pointer group ${
                     isSel
                       ? 'bg-[#ff4e2e]/10 border-[#ff4e2e] shadow-sm'
                       : 'bg-[#121520] border-[#222736] hover:border-slate-500'
@@ -173,9 +186,29 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
                     <span className={`text-xs font-bold font-display uppercase tracking-wide truncate ${isSel ? 'text-white' : 'text-slate-200'}`}>
                       {asset.name}
                     </span>
-                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded bg-black/40 text-slate-400 border border-white/5 flex-shrink-0">
-                      {asset.category}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`text-[8.5px] font-mono px-1.5 py-0.2 rounded border ${
+                        isUser 
+                          ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] border-[#ff4e2e]/40 font-bold'
+                          : 'bg-black/40 text-slate-400 border-white/5'
+                      }`}>
+                        {isUser ? 'Custom' : asset.category}
+                      </span>
+                      {isUser && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteUserAsset(asset.id);
+                            setBankNonce(n => n + 1);
+                          }}
+                          title="Delete from My Asset Bank"
+                          className="p-1 text-slate-500 hover:text-red-400 opacity-60 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <span className="text-[9px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                     {asset.description}
@@ -185,7 +218,7 @@ export const ThreeLeftLibrary: React.FC<ThreeLeftLibraryProps> = ({
                       <Check size={7} strokeWidth={3} className="text-white" />
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

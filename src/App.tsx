@@ -36,6 +36,8 @@ import {
   LIGHTING_RIGS 
 } from './data/threePresets';
 import { parseSvgIntoParts, getSvgViewBox } from './utils/threeEngine';
+import { getCombinedAssets } from './utils/userAssetStore';
+import { useStudioHistory } from './hooks/useStudioHistory';
 
 import { MOTIONS } from './data/motions';
 import { STYLES } from './data/styles';
@@ -258,11 +260,13 @@ export const App: React.FC = () => {
     if (activeAssetId === 'wordlord') {
       return '0 0 1200 400';
     }
+    const all = getCombinedAssets(THREE_ASSET_PRESETS);
+    const asset = all.find(a => a.id === activeAssetId);
+    if (asset) return asset.viewBox || '0 0 1000 1000';
     if (activeAssetId === 'custom' && customSvgString) {
       return getSvgViewBox(customSvgString, '0 0 1000 1000');
     }
-    const asset = THREE_ASSET_PRESETS.find(a => a.id === activeAssetId);
-    return asset?.viewBox || '0 0 1000 1000';
+    return '0 0 1000 1000';
   }, [activeAssetId, customSvgString]);
 
   // Notification Toast Helper
@@ -273,13 +277,6 @@ export const App: React.FC = () => {
 
   // History & Non-Destructive State Engine (60-step Visual Time Travel)
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const undoStackRef = useRef<ProjectStateSnapshot[]>([]);
-  const redoStackRef = useRef<ProjectStateSnapshot[]>([]);
-  const [undoStackList, setUndoStackList] = useState<ProjectStateSnapshot[]>([]);
-  const [redoStackList, setRedoStackList] = useState<ProjectStateSnapshot[]>([]);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-  const isRestoringRef = useRef(false);
 
   const createStateSnapshot = useCallback((actionName?: string): ProjectStateSnapshot => {
     return {
@@ -327,7 +324,6 @@ export const App: React.FC = () => {
   ]);
 
   const applySnapshot = useCallback((snap: ProjectStateSnapshot) => {
-    isRestoringRef.current = true;
     if (snap.studioMode) setStudioMode(snap.studioMode);
     if (snap.uiComplexity) setUiComplexity(snap.uiComplexity);
     if (snap.activeAssetId) setActiveAssetId(snap.activeAssetId);
@@ -348,129 +344,26 @@ export const App: React.FC = () => {
     if (snap.threeParts && Array.isArray(snap.threeParts)) {
       setThreeParts(snap.threeParts.map(p => ({ ...p })));
     }
-    setTimeout(() => {
-      isRestoringRef.current = false;
-    }, 50);
   }, []);
 
-  const pushUndoSnapshot = useCallback((actionName = 'Edit Parameter') => {
-    if (isRestoringRef.current) return;
-    const snap = createStateSnapshot(actionName);
-    undoStackRef.current.push(snap);
-    if (undoStackRef.current.length > 60) {
-      undoStackRef.current.shift();
-    }
-    redoStackRef.current = [];
-    setUndoStackList([...undoStackRef.current]);
-    setRedoStackList([]);
-    setCanUndo(true);
-    setCanRedo(false);
-  }, [createStateSnapshot]);
-
-  const isTweakSessionRef = useRef(false);
-  const tweakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /**
-   * Intelligently records a single pre-edit snapshot before a continuous tweak session (slider scrub, color pick)
-   * Prevents flooding the undo stack while guaranteeing 1-click Cmd+Z undo for any color or property change.
-   */
-  const recordContinuousTweak = useCallback((actionName = 'Edit Parameter') => {
-    if (isRestoringRef.current) return;
-    if (!isTweakSessionRef.current) {
-      const snap = createStateSnapshot(actionName);
-      undoStackRef.current.push(snap);
-      if (undoStackRef.current.length > 60) {
-        undoStackRef.current.shift();
-      }
-      redoStackRef.current = [];
-      setUndoStackList([...undoStackRef.current]);
-      setRedoStackList([]);
-      setCanUndo(true);
-      setCanRedo(false);
-      isTweakSessionRef.current = true;
-    }
-    if (tweakTimerRef.current) clearTimeout(tweakTimerRef.current);
-    tweakTimerRef.current = setTimeout(() => {
-      isTweakSessionRef.current = false;
-    }, 600);
-  }, [createStateSnapshot]);
-
-  const handleUndo = useCallback(() => {
-    if (undoStackRef.current.length === 0) return;
-    const currentSnap = createStateSnapshot('Pre-Undo State');
-    redoStackRef.current.push(currentSnap);
-
-    const prevSnap = undoStackRef.current.pop()!;
-    applySnapshot(prevSnap);
-
-    setUndoStackList([...undoStackRef.current]);
-    setRedoStackList([...redoStackRef.current]);
-    setCanUndo(undoStackRef.current.length > 0);
-    setCanRedo(true);
-    showToast(`Undo: ${prevSnap.actionName || 'Change'}`);
-  }, [applySnapshot, createStateSnapshot, showToast]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStackRef.current.length === 0) return;
-    const currentSnap = createStateSnapshot('Pre-Redo State');
-    undoStackRef.current.push(currentSnap);
-
-    const nextSnap = redoStackRef.current.pop()!;
-    applySnapshot(nextSnap);
-
-    setUndoStackList([...undoStackRef.current]);
-    setRedoStackList([...redoStackRef.current]);
-    setCanUndo(true);
-    setCanRedo(redoStackRef.current.length > 0);
-    showToast(`Redo: ${nextSnap.actionName || 'Change'}`);
-  }, [applySnapshot, createStateSnapshot, showToast]);
-
-  const handleJumpToUndoStep = useCallback((index: number) => {
-    if (index < 0 || index >= undoStackRef.current.length) return;
-    const currentSnap = createStateSnapshot('Pre-Jump State');
-
-    // Move steps beyond index into redoStack in reverse order
-    const discarded = undoStackRef.current.splice(index + 1);
-    redoStackRef.current = [currentSnap, ...discarded.reverse(), ...redoStackRef.current];
-
-    const targetSnap = undoStackRef.current[index];
-    undoStackRef.current.splice(index, 1);
-
-    applySnapshot(targetSnap);
-
-    setUndoStackList([...undoStackRef.current]);
-    setRedoStackList([...redoStackRef.current]);
-    setCanUndo(undoStackRef.current.length > 0);
-    setCanRedo(redoStackRef.current.length > 0);
-    showToast(`Restored: ${targetSnap.actionName || `Step #${index + 1}`}`);
-  }, [applySnapshot, createStateSnapshot, showToast]);
-
-  const handleJumpToRedoStep = useCallback((index: number) => {
-    if (index < 0 || index >= redoStackRef.current.length) return;
-    const currentSnap = createStateSnapshot('Pre-Jump State');
-
-    const toRestore = redoStackRef.current.splice(0, index + 1);
-    const targetSnap = toRestore.pop()!;
-
-    undoStackRef.current.push(currentSnap, ...toRestore);
-    applySnapshot(targetSnap);
-
-    setUndoStackList([...undoStackRef.current]);
-    setRedoStackList([...redoStackRef.current]);
-    setCanUndo(undoStackRef.current.length > 0);
-    setCanRedo(redoStackRef.current.length > 0);
-    showToast(`Redone: ${targetSnap.actionName || 'Step'}`);
-  }, [applySnapshot, createStateSnapshot, showToast]);
-
-  const handleClearHistory = useCallback(() => {
-    undoStackRef.current = [];
-    redoStackRef.current = [];
-    setUndoStackList([]);
-    setRedoStackList([]);
-    setCanUndo(false);
-    setCanRedo(false);
-    showToast('History stack cleared');
-  }, [showToast]);
+  const {
+    canUndo,
+    canRedo,
+    undoStackList,
+    redoStackList,
+    pushUndoSnapshot,
+    recordContinuousTweak,
+    handleUndo,
+    handleRedo,
+    handleJumpToUndoStep,
+    handleJumpToRedoStep,
+    handleClearHistory,
+    isRestoringRef
+  } = useStudioHistory({
+    createStateSnapshot,
+    applySnapshot,
+    onToast: showToast
+  });
 
   // Initial load from local storage
   useEffect(() => {
@@ -529,7 +422,8 @@ export const App: React.FC = () => {
   }, [recordContinuousTweak]);
 
   const handleSelectAsset = useCallback((assetId: string) => {
-    const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
+    const all = getCombinedAssets(THREE_ASSET_PRESETS);
+    const preset = all.find(a => a.id === assetId);
     if (!preset) return;
     pushUndoSnapshot(`Asset: ${preset.name}`);
     const newParts = parseSvgIntoParts(preset.svgString, threeConfig.faceColor, threeConfig.sideColor);
@@ -627,7 +521,8 @@ export const App: React.FC = () => {
 
   const handleResetParts = useCallback(() => {
     pushUndoSnapshot('Reset Parts Offsets');
-    const asset = THREE_ASSET_PRESETS.find(a => a.id === threeConfig.activeAssetId) || THREE_ASSET_PRESETS[0];
+    const all = getCombinedAssets(THREE_ASSET_PRESETS);
+    const asset = all.find(a => a.id === threeConfig.activeAssetId) || all[0];
     const newParts = parseSvgIntoParts(asset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
     showToast('Reset parts geometry & offsets');

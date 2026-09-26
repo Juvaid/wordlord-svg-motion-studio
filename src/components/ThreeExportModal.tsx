@@ -507,7 +507,7 @@ scene.add(rimLight);
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center justify-between text-[8.5px] font-mono">
-                          <span className="text-slate-400">Tilt:</span>
+                          <span className="text-slate-400">Pitch Tilt:</span>
                           <span className="text-white font-bold">{config.cameraElevation ?? 12}°</span>
                         </div>
                         <input
@@ -526,7 +526,7 @@ scene.add(rimLight);
 
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center justify-between text-[8.5px] font-mono">
-                          <span className="text-slate-400">Orbit:</span>
+                          <span className="text-slate-400">Orbit Angle:</span>
                           <span className="text-white font-bold">{config.cameraAzimuth ?? 0}°</span>
                         </div>
                         <input
@@ -544,24 +544,92 @@ scene.add(rimLight);
                       </div>
                     </div>
 
-                    {/* Camera Height Up/Down */}
+                    {/* Camera Height & Lateral Pan */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between text-[8.5px] font-mono">
+                          <span className="text-slate-400">Height (Up/Down):</span>
+                          <span className="text-white font-bold">{config.cameraPosY || 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-250}
+                          max={250}
+                          step={5}
+                          value={config.cameraPosY || 0}
+                          onChange={(e) => onUpdateConfig?.({
+                            cameraPosY: Number(e.target.value),
+                            cameraViewMode: 'camera'
+                          })}
+                          className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between text-[8.5px] font-mono">
+                          <span className="text-slate-400">Pan (Left/Right):</span>
+                          <span className="text-white font-bold">{config.cameraPosX || 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-250}
+                          max={250}
+                          step={5}
+                          value={config.cameraPosX || 0}
+                          onChange={(e) => onUpdateConfig?.({
+                            cameraPosX: Number(e.target.value),
+                            cameraViewMode: 'camera'
+                          })}
+                          className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dutch Roll */}
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center justify-between text-[8.5px] font-mono">
-                        <span className="text-slate-400">Height:</span>
-                        <span className="text-white font-bold">{config.cameraPosY || 0}px</span>
+                        <span className="text-slate-400">Dutch Roll:</span>
+                        <span className="text-white font-bold">{config.cameraRoll || 0}°</span>
                       </div>
                       <input
                         type="range"
-                        min={-200}
-                        max={200}
-                        step={5}
-                        value={config.cameraPosY || 0}
+                        min={-30}
+                        max={30}
+                        step={1}
+                        value={config.cameraRoll || 0}
                         onChange={(e) => onUpdateConfig?.({
-                          cameraPosY: Number(e.target.value),
+                          cameraRoll: Number(e.target.value),
                           cameraViewMode: 'camera'
                         })}
                         className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
                       />
+                    </div>
+
+                    {/* Quick View Angle Presets */}
+                    <div className="grid grid-cols-4 gap-1">
+                      {[
+                        { label: 'Front', elev: 0, az: 0 },
+                        { label: 'Hero 3/4', elev: 15, az: 25 },
+                        { label: 'Top-Down', elev: 75, az: 0 },
+                        { label: 'Low-Angle', elev: -15, az: 0 }
+                      ].map(v => (
+                        <button
+                          key={v.label}
+                          type="button"
+                          onClick={() => onUpdateConfig?.({
+                            cameraElevation: v.elev,
+                            cameraAzimuth: v.az,
+                            cameraViewMode: 'camera'
+                          })}
+                          className={`py-0.5 px-0.5 rounded text-[8px] font-mono border text-center transition-all ${
+                            (config.cameraElevation ?? 12) === v.elev && (config.cameraAzimuth ?? 0) === v.az
+                              ? 'bg-[#ff4e2e]/20 border-[#ff4e2e] text-[#ff4e2e] font-bold'
+                              : 'bg-[#141722] border-[#222736] text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
                     </div>
 
                     {/* Camera Trajectory Select */}
@@ -905,12 +973,92 @@ scene.add(rimLight);
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[8.5px] font-mono">
+                      <span className="text-slate-400">Orbit Angle:</span>
+                      <span className="text-white font-bold">{config.cameraAzimuth ?? 0}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-180}
+                      max={180}
+                      step={1}
+                      value={config.cameraAzimuth ?? 0}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraAzimuth: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[8.5px] font-mono">
+                      <span className="text-slate-400">Height (Up/Down):</span>
+                      <span className="text-white font-bold">{config.cameraPosY || 0}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-250}
+                      max={250}
+                      step={5}
+                      value={config.cameraPosY || 0}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraPosY: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[8.5px] font-mono">
+                      <span className="text-slate-400">Pan (Left/Right):</span>
+                      <span className="text-white font-bold">{config.cameraPosX || 0}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-250}
+                      max={250}
+                      step={5}
+                      value={config.cameraPosX || 0}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraPosX: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-[8.5px] font-mono">
+                      <span className="text-slate-400">Dutch Roll:</span>
+                      <span className="text-white font-bold">{config.cameraRoll || 0}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-30}
+                      max={30}
+                      step={1}
+                      value={config.cameraRoll || 0}
+                      onChange={(e) => onUpdateConfig?.({
+                        cameraRoll: Number(e.target.value),
+                        cameraViewMode: 'camera'
+                      })}
+                      className="w-full accent-[#ff4e2e] h-1.5 bg-[#1a1f2c] rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 gap-1.5 pt-1">
                   {[
-                    { label: 'Tight 380px', dist: 380, elev: 0 },
-                    { label: 'Hero 560px', dist: 560, elev: 12 },
-                    { label: 'Wide 740px', dist: 740, elev: 20 },
-                    { label: 'Top View', dist: 600, elev: 75 }
+                    { label: 'Front', dist: 560, elev: 0, az: 0 },
+                    { label: 'Hero 3/4', dist: 560, elev: 15, az: 25 },
+                    { label: 'Top View', dist: 600, elev: 75, az: 0 },
+                    { label: 'Low Angle', dist: 560, elev: -15, az: 0 }
                   ].map(p => (
                     <button
                       key={p.label}
@@ -919,6 +1067,7 @@ scene.add(rimLight);
                         cameraDistance: p.dist,
                         cameraPosZ: p.dist,
                         cameraElevation: p.elev,
+                        cameraAzimuth: p.az,
                         cameraViewMode: 'camera'
                       })}
                       className="py-1 px-1 rounded text-[8.5px] font-mono border bg-[#141722] border-[#222736] text-slate-300 hover:text-white hover:border-[#ff4e2e]/50 text-center transition-all"

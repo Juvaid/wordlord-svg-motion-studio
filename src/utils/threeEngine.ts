@@ -515,7 +515,7 @@ export function evaluate3DMotion(
     case 'camera-orbit': {
       if (camera) {
         const angle = t * Math.PI * 2;
-        const dist = Math.max(340, config.cameraDistance || 560);
+        const dist = Math.max(120, config.cameraDistance ?? 560);
         const elev = config.cameraElevation ?? 25;
         const basePosY = config.cameraPosY || 0;
         camera.position.x = Math.sin(angle) * dist;
@@ -535,7 +535,7 @@ export function evaluate3DMotion(
       if (camera) {
         const p = Math.max(0, Math.min(1, t / 0.85));
         const ease = 1 - Math.pow(1 - p, 4);
-        const targetDist = Math.max(340, config.cameraDistance || 540);
+        const targetDist = Math.max(120, config.cameraDistance ?? 540);
         const startDist = targetDist * 1.75;
         const curDist = startDist - (startDist - targetDist) * ease;
         const basePosY = config.cameraPosY || 0;
@@ -560,7 +560,7 @@ export function evaluate3DMotion(
       if (camera) {
         const p = Math.max(0, Math.min(1, t / 0.9));
         const ease = 1 - Math.pow(1 - p, 3);
-        const targetZ = Math.max(340, config.cameraDistance || 560);
+        const targetZ = Math.max(120, config.cameraDistance ?? 560);
         const startZ = targetZ * 0.85;
         const targetY = (config.cameraPosY || 0) + (config.cameraElevation ?? 30);
         const startY = targetY - 180;
@@ -577,7 +577,7 @@ export function evaluate3DMotion(
     case 'camera-corkscrew': {
       if (camera) {
         const spiralAngle = (1 - t) * Math.PI * 1.6;
-        const baseDist = Math.max(340, config.cameraDistance || 560);
+        const baseDist = Math.max(120, config.cameraDistance ?? 560);
         const radius = baseDist * (0.95 + 0.35 * (1 - t));
         camera.position.x = Math.sin(spiralAngle) * radius;
         camera.position.z = Math.cos(spiralAngle) * radius;
@@ -591,7 +591,7 @@ export function evaluate3DMotion(
 
     case 'camera-pan': {
       if (camera) {
-        const dist = Math.max(340, config.cameraDistance || 540);
+        const dist = Math.max(120, config.cameraDistance ?? 540);
         const span = dist * 0.55;
         const panX = (t - 0.5) * span * 2 * amp;
         camera.position.set(panX, (config.cameraPosY || 0) + (config.cameraElevation ?? 20), dist);
@@ -605,7 +605,7 @@ export function evaluate3DMotion(
       if (camera) {
         const p = Math.max(0, Math.min(1, t / 0.85));
         const ease = 1 - Math.pow(1 - p, 3);
-        const targetDist = Math.max(340, config.cameraDistance || 560);
+        const targetDist = Math.max(120, config.cameraDistance ?? 560);
         const startY = -120;
         const targetY = (config.cameraPosY || 0) + 140;
         camera.position.set(0, startY + (targetY - startY) * ease, targetDist * (0.85 + 0.25 * ease));
@@ -617,7 +617,7 @@ export function evaluate3DMotion(
 
     case 'camera-shake': {
       if (camera) {
-        const dist = Math.max(340, config.cameraDistance || 540);
+        const dist = Math.max(120, config.cameraDistance ?? 540);
         const decay = Math.exp(-4 * t);
         const shakeFreq = t * Math.PI * 24;
         const shakeX = Math.sin(shakeFreq) * 18 * decay * amp;
@@ -653,11 +653,11 @@ export function evaluate3DMotion(
     case 'depth-slam': {
       const p = Math.max(0, Math.min(1, t / 0.7));
       const slam = p === 1 ? 1 : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10 - 0.75) * ((2 * Math.PI) / 3));
-      const zOffset = (1 - slam) * 240 * amp;
-      const scaleVal = 1 + (1 - slam) * 1.4 * amp;
+      const zOffset = (1 - slam) * 110 * amp;
+      const scaleVal = 1 + (1 - slam) * 0.45 * amp;
       meshes.forEach(m => {
         m.position.z = (m.userData.baseZ || 0) + zOffset;
-        m.scale.set(scaleVal, scaleVal, 1 + (1 - slam) * 0.5);
+        m.scale.set(scaleVal, scaleVal, 1 + (1 - slam) * 0.25);
       });
       logoGroup.rotation.x = baseRotX + (1 - slam) * 0.25 * amp + gyroY;
       break;
@@ -906,6 +906,95 @@ export function evaluate3DMotion(
       break;
     }
 
+    case 'audio-reactive': {
+      // Multi-band frequency response simulation with harmonic spikes across parts
+      meshes.forEach((mesh, idx) => {
+        const bandPhase = idx * 1.4;
+        const bassBeat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 4)), 3);
+        const midFreq = Math.sin(t * Math.PI * 8 + bandPhase) * 0.5 + 0.5;
+        const trebleSpike = Math.sin(t * Math.PI * 16 + bandPhase * 2) > 0.7 ? 0.35 : 0;
+        const totalEnergy = (bassBeat * 0.6 + midFreq * 0.3 + trebleSpike) * amp;
+
+        mesh.scale.set(
+          1 + totalEnergy * 0.15,
+          1 + totalEnergy * 0.55,
+          1 + totalEnergy * 1.1
+        );
+        mesh.position.z = (mesh.userData.baseZ || 0) + totalEnergy * 28;
+      });
+      lights.keyLight.intensity = config.keyIntensity * (1 + Math.sin(t * Math.PI * 8) * 0.35 * amp);
+      lights.rimLight.intensity = config.rimIntensity * (1 + Math.cos(t * Math.PI * 4) * 0.5 * amp);
+      break;
+    }
+
+    case 'minimal-fade': {
+      // Buttery smooth Apple/Linear style minimal depth fade with subtle Z glide
+      meshes.forEach((mesh, idx) => {
+        const stagger = idx * (0.2 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - stagger) / 0.5));
+        const ease = 1 - Math.pow(1 - partT, 4);
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -40 * amp;
+        mesh.position.y = (mesh.userData.baseY || 0) + (1 - ease) * -16 * amp;
+        mesh.scale.setScalar(Math.max(0.001, 0.96 + 0.04 * ease));
+      });
+      break;
+    }
+
+    case 'smoke-dissolve': {
+      // Dispersed vapor drift settling into crisp alignment
+      meshes.forEach((mesh, idx) => {
+        const delay = idx * (0.25 / Math.max(1, meshes.length));
+        const partT = Math.max(0, Math.min(1, (t - delay) / 0.55));
+        const ease = 1 - Math.pow(1 - partT, 3);
+        const driftX = Math.sin(idx * 2.5) * (1 - ease) * 60 * amp;
+        const driftY = (1 - ease) * 75 * amp;
+        const driftZ = (1 - ease) * 85 * amp;
+        mesh.position.x = (mesh.userData.baseX || 0) + driftX;
+        mesh.position.y = (mesh.userData.baseY || 0) + driftY;
+        mesh.position.z = (mesh.userData.baseZ || 0) + driftZ;
+        mesh.scale.setScalar(Math.max(0.001, 0.5 + 0.5 * ease));
+      });
+      break;
+    }
+
+    case 'solar-flare': {
+      // Blinding coronal rim light and thermal expansion
+      const flareCycle = Math.sin(t * Math.PI * 2);
+      const flarePulse = Math.pow(Math.max(0, flareCycle), 3);
+      lights.rimLight.intensity = config.rimIntensity * (1 + flarePulse * 2.8 * amp);
+      lights.keyLight.intensity = config.keyIntensity * (0.85 + flarePulse * 1.2 * amp);
+      logoGroup.rotation.y = baseRotY + Math.sin(t * Math.PI * 2) * 0.12 * amp + gyroX;
+      meshes.forEach((mesh) => {
+        mesh.position.z = (mesh.userData.baseZ || 0) + flarePulse * 20 * amp;
+        mesh.scale.set(1 + flarePulse * 0.08 * amp, 1 + flarePulse * 0.08 * amp, 1 + flarePulse * 0.28 * amp);
+      });
+      break;
+    }
+
+    case 'quantum-pulse': {
+      // Electromagnetic wave oscillation propagating radially outward
+      meshes.forEach((mesh, idx) => {
+        const ring = Math.sin(t * Math.PI * 4 - idx * 0.7);
+        const pulse = Math.exp(-Math.pow(ring, 2) * 4);
+        mesh.position.z = (mesh.userData.baseZ || 0) + ring * 22 * amp;
+        mesh.scale.setScalar(1 + pulse * 0.14 * amp);
+      });
+      break;
+    }
+
+    case 'isometric-cube': {
+      // Orthogonal isometric pivot projection
+      logoGroup.rotation.x = baseRotX + (Math.PI / 6) * amp + gyroY;
+      logoGroup.rotation.y = baseRotY - (Math.PI / 4) * amp + gyroX;
+      meshes.forEach((mesh, idx) => {
+        const delay = idx * 0.04;
+        const partT = Math.max(0, Math.min(1, (t - delay) / 0.45));
+        const ease = 1 - Math.pow(1 - partT, 3);
+        mesh.position.z = (mesh.userData.baseZ || 0) + (1 - ease) * -90 * amp;
+      });
+      break;
+    }
+
     case 'sync2d':
     default: {
       // Direct 2D Motion Keyframe Synchronizer into 3D Space
@@ -950,7 +1039,7 @@ export function evaluate3DMotion(
 
   // 3. Layer on Stacked Camera Motion (if enabled in config and not already in a camera mode)
   if (camera && config.cameraMotion && config.cameraMotion !== 'none' && !mode.startsWith('camera')) {
-    const baseDist = Math.max(340, config.cameraDistance || 560);
+    const baseDist = Math.max(120, config.cameraDistance ?? 560);
     const basePosY = config.cameraPosY || 0;
     const elev = config.cameraElevation ?? 25;
 
@@ -1006,7 +1095,7 @@ export function evaluate3DMotion(
 
   // 4. In Static Camera Mode (no camera motion & not in a camera preset), ensure camera strictly respects spherical coordinates
   if (camera && config.cameraViewMode === 'camera' && !mode.startsWith('camera') && (!config.cameraMotion || config.cameraMotion === 'none')) {
-    const dist = Math.max(160, config.cameraDistance ?? 560);
+    const dist = Math.max(120, config.cameraDistance ?? 560);
     const elRad = ((config.cameraElevation ?? 12) * Math.PI) / 180;
     const azRad = ((config.cameraAzimuth ?? 0) * Math.PI) / 180;
     const tx = config.cameraTargetX ?? 0;

@@ -598,8 +598,11 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
         lastTime = now;
       }
 
+      const curConfig = configRef.current;
+      const curParts = partsRef.current;
+
       // Smooth gyro cursor (only if gyro is explicitly enabled)
-      const hasGyro = config.gyroEnabled || (config.stackedEffects && config.stackedEffects.gyroTilt);
+      const hasGyro = curConfig.gyroEnabled || (curConfig.stackedEffects && curConfig.stackedEffects.gyroTilt);
       if (!hasGyro) {
         mouseGyroRef.current.x = 0;
         mouseGyroRef.current.y = 0;
@@ -641,15 +644,15 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
           amplitudeRef.current,
           mouseGyroRef.current,
           { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
-          config,
-          parts,
+          curConfig,
+          curParts,
           cameraRef.current,
           controlsRef.current
         );
       }
 
       // Render
-      if (composerRef.current && config.shadingMode === 'bloom' && config.bloomEnabled) {
+      if (composerRef.current && curConfig.shadingMode === 'bloom' && curConfig.bloomEnabled) {
         composerRef.current.render();
       } else if (rendererRef.current && sceneRef.current && cameraRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -661,16 +664,12 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [
-    config.shadingMode, 
-    config.bloomEnabled, 
-    config.stackedEffects,
-    parts
-  ]);
+  }, []);
 
   // Pointer move for Gyro Cursor Reaction
   const handlePointerMove = (e: React.PointerEvent) => {
-    const hasGyro = config.gyroEnabled || (config.stackedEffects && config.stackedEffects.gyroTilt);
+    const curConfig = configRef.current;
+    const hasGyro = curConfig.gyroEnabled || (curConfig.stackedEffects && curConfig.stackedEffects.gyroTilt);
     if (!hasGyro) {
       mouseGyroRef.current.targetX = 0;
       mouseGyroRef.current.targetY = 0;
