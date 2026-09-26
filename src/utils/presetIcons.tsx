@@ -20,7 +20,11 @@ import {
   Flame,
   Scan,
   Sunset,
-  Cpu
+  Cpu,
+  Orbit,
+  Video,
+  Compass,
+  ZoomIn
 } from 'lucide-react';
 
 /**
@@ -52,6 +56,14 @@ export const getMotionIcon = (id: string, size = 12): React.ReactNode => {
       return <Binary size={size} className="text-[#10b981]" />;
     case 'elastic-pop':
       return <Activity size={size} className="text-[#f97316]" />;
+    case 'camera-orbit':
+      return <Orbit size={size} className="text-[#00ffff]" />;
+    case 'camera-dolly':
+      return <ZoomIn size={size} className="text-[#ff4e2e]" />;
+    case 'camera-crane':
+      return <Compass size={size} className="text-[#a855f7]" />;
+    case 'camera-corkscrew':
+      return <Video size={size} className="text-[#10b981]" />;
     default:
       return <Clapperboard size={size} className="text-[#ff4e2e]" />;
   }

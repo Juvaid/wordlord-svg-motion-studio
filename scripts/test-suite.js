@@ -34,8 +34,8 @@ console.log('======================================================\n');
 
 // 1. Motion Presets Integrity
 console.log('--- Suite 1: 2D Kinetic Motion Presets ---');
-test('All 18 motion presets exist and have valid IDs', () => {
-  assert.ok(MOTIONS.length >= 18, `Expected >= 18 motions, got ${MOTIONS.length}`);
+test('All 22 motion presets exist and have valid IDs', () => {
+  assert.ok(MOTIONS.length >= 22, `Expected >= 22 motions, got ${MOTIONS.length}`);
   const ids = new Set();
   for (const m of MOTIONS) {
     assert.ok(m.id && typeof m.id === 'string', 'Motion id must be string');
@@ -213,12 +213,15 @@ await test('evaluate3DMotion computes valid finite transforms for all 17 presets
     { id: 'p3', name: 'M', visible: true, phaseDelay: 0.25 }
   ];
 
+  const camera = new THREE.PerspectiveCamera(45, 16 / 9, 1, 3000);
+
   const allModes = [
     'typewriter', 'reveal', 'depth-slam', 'ligature-clamp', 'origami', 
     'wiredraw', 'liquid-wipe', 'laser-sweep', 'sweep', 'cyber-glitch', 
     'pulse-glow', 'split-converge', 'matrix-rain', 'elastic-pop', 
     'turntable', 'wave', 'explode', 'camera', 'sync2d',
-    'vortex-spin', 'neon-breathe', 'magnetic-snap', 'slice-blind', 'wave-flow', 'velocity-drift'
+    'vortex-spin', 'neon-breathe', 'magnetic-snap', 'slice-blind', 'wave-flow', 'velocity-drift',
+    'camera-orbit', 'camera-dolly', 'camera-crane', 'camera-corkscrew'
   ];
 
   const testTimestamps = [0.0, 0.25, 0.5, 0.75, 1.0];
@@ -234,9 +237,13 @@ await test('evaluate3DMotion computes valid finite transforms for all 17 presets
         { x: 0, y: 0 },
         lights,
         dummyConfig,
-        parts
+        parts,
+        camera
       );
 
+      assert.ok(Number.isFinite(camera.position.x), `${mode}@${t}: camera.position.x is not finite`);
+      assert.ok(Number.isFinite(camera.position.y), `${mode}@${t}: camera.position.y is not finite`);
+      assert.ok(Number.isFinite(camera.position.z), `${mode}@${t}: camera.position.z is not finite`);
       assert.ok(Number.isFinite(logoGroup.position.x), `${mode}@${t}: logoGroup.position.x is not finite`);
       assert.ok(Number.isFinite(logoGroup.position.y), `${mode}@${t}: logoGroup.position.y is not finite`);
       assert.ok(Number.isFinite(logoGroup.position.z), `${mode}@${t}: logoGroup.position.z is not finite`);

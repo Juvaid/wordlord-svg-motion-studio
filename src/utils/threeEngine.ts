@@ -469,7 +469,9 @@ export function evaluate3DMotion(
   mouseGyro: { x: number; y: number },
   lights: { keyLight: THREE.DirectionalLight; rimLight: THREE.DirectionalLight },
   config: ThreeStudioConfig,
-  parts: ThreePart[]
+  parts: ThreePart[],
+  camera?: THREE.PerspectiveCamera | null,
+  controls?: any
 ): void {
   if (!logoGroup) return;
 
@@ -509,6 +511,79 @@ export function evaluate3DMotion(
   resetMeshesToOrigin(meshes);
 
   switch (mode) {
+    case 'camera':
+    case 'camera-orbit': {
+      if (camera) {
+        const angle = t * Math.PI * 2;
+        const dist = config.cameraDistance || 420;
+        camera.position.x = Math.sin(angle) * dist;
+        camera.position.z = Math.cos(angle) * dist;
+        camera.position.y = (config.cameraPosY || 0) + 25 + Math.sin(t * Math.PI * 4) * 45 * amp;
+        camera.lookAt(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+        if (controls) {
+          controls.target.set(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+        }
+      }
+      const breathe = Math.sin(t * Math.PI * 2) * 0.04 * amp;
+      logoGroup.scale.setScalar((1 + breathe) * (config.meshScale || 1.0));
+      break;
+    }
+
+    case 'camera-dolly': {
+      if (camera) {
+        const p = Math.max(0, Math.min(1, t / 0.85));
+        const ease = 1 - Math.pow(1 - p, 4);
+        const startDist = 720;
+        const targetDist = config.cameraDistance || 380;
+        const curDist = startDist - (startDist - targetDist) * ease;
+        camera.position.set(0, (config.cameraPosY || 0) + (1 - ease) * 35, curDist);
+        if (camera.isPerspectiveCamera) {
+          camera.fov = (config.fov || 45) + (1 - ease) * 16;
+          camera.updateProjectionMatrix();
+        }
+        camera.lookAt(0, 0, 0);
+        if (controls) controls.target.set(0, 0, 0);
+      }
+      const slamT = Math.max(0, Math.min(1, (t - 0.4) / 0.4));
+      const slam = 1 - Math.pow(1 - slamT, 3);
+      meshes.forEach(m => {
+        m.position.z = (m.userData.baseZ || 0) + (1 - slam) * 20 * amp;
+      });
+      break;
+    }
+
+    case 'camera-crane': {
+      if (camera) {
+        const p = Math.max(0, Math.min(1, t / 0.9));
+        const ease = 1 - Math.pow(1 - p, 3);
+        const startY = -120;
+        const targetY = (config.cameraPosY || 0) + 30;
+        const startZ = 340;
+        const targetZ = config.cameraDistance || 420;
+        const curY = startY + (targetY - startY) * ease;
+        const curZ = startZ + (targetZ - startZ) * ease;
+        const curX = Math.sin((1 - ease) * 0.6) * 60;
+        camera.position.set(curX, curY, curZ);
+        camera.lookAt(0, (1 - ease) * 25, 0);
+        if (controls) controls.target.set(0, (1 - ease) * 25, 0);
+      }
+      break;
+    }
+
+    case 'camera-corkscrew': {
+      if (camera) {
+        const spiralAngle = (1 - t) * Math.PI * 1.6;
+        const radius = (config.cameraDistance || 420) * (0.85 + 0.35 * (1 - t));
+        camera.position.x = Math.sin(spiralAngle) * radius;
+        camera.position.z = Math.cos(spiralAngle) * radius;
+        camera.position.y = (config.cameraPosY || 0) + 80 - t * 65;
+        camera.lookAt(0, 0, 0);
+        camera.rotation.z = Math.sin(t * Math.PI) * 0.15 * amp;
+        if (controls) controls.target.set(0, 0, 0);
+      }
+      break;
+    }
+
     case 'typewriter':
     case 'reveal': {
       meshes.forEach((mesh, idx) => {
@@ -706,12 +781,6 @@ export function evaluate3DMotion(
       break;
     }
 
-    case 'camera': {
-      logoGroup.rotation.y = baseRotY + Math.sin(t * Math.PI * 2) * 0.3 + gyroX;
-      logoGroup.rotation.x = baseRotX + Math.cos(t * Math.PI * 2) * 0.15 + gyroY;
-      break;
-    }
-
     case 'vortex-spin': {
       meshes.forEach((mesh, idx) => {
         const stagger = idx * (0.35 / Math.max(1, meshes.length));
@@ -832,6 +901,41 @@ export function evaluate3DMotion(
     const angle = t * Math.PI * 2;
     lights.rimLight.position.x = Math.cos(angle) * 360;
     lights.rimLight.position.z = Math.sin(angle) * 360;
+  }
+
+  // 3. Layer on Stacked Camera Motion (if enabled in config and not already in a camera mode)
+  if (camera && config.cameraMotion && config.cameraMotion !== 'none' && !mode.startsWith('camera')) {
+    if (config.cameraMotion === 'orbit') {
+      const angle = t * Math.PI * 2;
+      const dist = config.cameraDistance || 420;
+      camera.position.x = Math.sin(angle) * dist;
+      camera.position.z = Math.cos(angle) * dist;
+      camera.position.y = (config.cameraPosY || 0) + 25 + Math.sin(t * Math.PI * 4) * 40 * amp;
+      camera.lookAt(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+      if (controls) controls.target.set(config.cameraTargetX || 0, config.cameraTargetY || 0, config.cameraTargetZ || 0);
+    } else if (config.cameraMotion === 'dolly') {
+      const p = Math.max(0, Math.min(1, t / 0.85));
+      const ease = 1 - Math.pow(1 - p, 4);
+      const startDist = 720;
+      const targetDist = config.cameraDistance || 380;
+      camera.position.set(0, (config.cameraPosY || 0) + (1 - ease) * 30, startDist - (startDist - targetDist) * ease);
+      camera.lookAt(0, 0, 0);
+      if (controls) controls.target.set(0, 0, 0);
+    } else if (config.cameraMotion === 'crane') {
+      const p = Math.max(0, Math.min(1, t / 0.9));
+      const ease = 1 - Math.pow(1 - p, 3);
+      camera.position.set(0, -100 + (130 * ease), 360 + (60 * ease));
+      camera.lookAt(0, (1 - ease) * 20, 0);
+      if (controls) controls.target.set(0, (1 - ease) * 20, 0);
+    } else if (config.cameraMotion === 'corkscrew') {
+      const spiralAngle = (1 - t) * Math.PI * 1.5;
+      const radius = (config.cameraDistance || 420) * (0.9 + 0.3 * (1 - t));
+      camera.position.x = Math.sin(spiralAngle) * radius;
+      camera.position.z = Math.cos(spiralAngle) * radius;
+      camera.position.y = (config.cameraPosY || 0) + 60 - t * 50;
+      camera.lookAt(0, 0, 0);
+      if (controls) controls.target.set(0, 0, 0);
+    }
   }
 }
 

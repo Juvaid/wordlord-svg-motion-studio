@@ -288,5 +288,69 @@ export const MOTIONS: MotionPreset[] = [
       complexity: 'High-velocity lateral drift + skew decay',
       staggerScale: 'Supersonic tight stagger'
     }
+  },
+  {
+    id: 'camera-orbit',
+    name: 'Cinematic Orbital Drone',
+    badge: '3D',
+    animClass: 'anim-camera-orbit',
+    defaultDuration: 2.4,
+    defaultEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    defaultStagger: 0,
+    desc: 'Continuous 360-degree orbital drone tracking the extruded monolith with elevation wave and specular sweep.',
+    fps: 60,
+    specs: {
+      interpolator: 'Parametric spherical orbit',
+      complexity: '360° dynamic camera arc',
+      staggerScale: 'Synchronous lockup'
+    }
+  },
+  {
+    id: 'camera-dolly',
+    name: 'Vertigo Dolly Zoom',
+    badge: '3D',
+    animClass: 'anim-camera-dolly',
+    defaultDuration: 1.6,
+    defaultEase: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    defaultStagger: 0,
+    desc: 'High-speed camera plunge from deep space into tight telephoto framing with dynamic perspective compression.',
+    fps: 60,
+    specs: {
+      interpolator: 'Cubic plunge + FOV counter-zoom',
+      complexity: 'Z-depth dolly with telephoto compression',
+      staggerScale: 'Instantaneous alignment'
+    }
+  },
+  {
+    id: 'camera-crane',
+    name: 'Hero Low-Angle Crane',
+    badge: '3D',
+    animClass: 'anim-camera-crane',
+    defaultDuration: 1.8,
+    defaultEase: 'cubic-bezier(0.2, 0.9, 0.3, 1)',
+    defaultStagger: 0,
+    desc: 'Low-angle ground-level swoop ascending majestically into eye-level hero perspective over specular floor reflections.',
+    fps: 60,
+    specs: {
+      interpolator: 'Bézier vertical crane trajectory',
+      complexity: 'Y-elevation swooping with pitch tilt',
+      staggerScale: 'Smooth ascension'
+    }
+  },
+  {
+    id: 'camera-corkscrew',
+    name: 'Spiral Corkscrew Flyby',
+    badge: '3D',
+    animClass: 'anim-camera-corkscrew',
+    defaultDuration: 2.0,
+    defaultEase: 'cubic-bezier(0.25, 1, 0.5, 1)',
+    defaultStagger: 0,
+    desc: 'Dynamic spiral flyby banking around the extruded vector monolith with banking camera roll and rim glints.',
+    fps: 60,
+    specs: {
+      interpolator: 'Helical spiral with roll banking',
+      complexity: 'Combined XYZ orbital spiral with Z-rotation',
+      staggerScale: 'Helical tracking'
+    }
   }
 ];

@@ -419,3 +419,47 @@ input[type="range"]::-webkit-slider-thumb:hover {
   65% { transform: translateX(8px) scaleX(0.95) skewX(4deg); opacity: 1; filter: none; }
   100% { transform: translateX(0) scaleX(1) skewX(0); opacity: 1; }
 }
+
+/* 19. Cinematic Orbital Drone (2D Perspective Emulation) */
+.anim-camera-orbit #main-stage-svg {
+  animation: cameraOrbit2D 2.4s infinite ease-in-out;
+  transform-origin: center center;
+}
+@keyframes cameraOrbit2D {
+  0% { transform: perspective(800px) rotateY(-18deg) scale(0.96); filter: drop-shadow(-4px 0 10px rgba(0, 255, 255, 0.4)); }
+  50% { transform: perspective(800px) rotateY(18deg) scale(1.04); filter: drop-shadow(4px 0 16px rgba(255, 78, 46, 0.6)); }
+  100% { transform: perspective(800px) rotateY(-18deg) scale(0.96); filter: drop-shadow(-4px 0 10px rgba(0, 255, 255, 0.4)); }
+}
+
+/* 20. Vertigo Dolly Zoom (2D Depth Plunge) */
+.anim-camera-dolly #main-stage-svg {
+  animation: cameraDolly2D 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+}
+@keyframes cameraDolly2D {
+  0% { transform: scale(0.35); opacity: 0; filter: blur(10px); }
+  65% { transform: scale(1.08); opacity: 1; filter: blur(0px); }
+  100% { transform: scale(1); opacity: 1; filter: none; }
+}
+
+/* 21. Hero Low-Angle Crane (2D Ascension) */
+.anim-camera-crane #main-stage-svg {
+  animation: cameraCrane2D 1.8s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  transform-origin: center bottom;
+}
+@keyframes cameraCrane2D {
+  0% { transform: perspective(600px) rotateX(45deg) translateY(60px) scale(0.75); opacity: 0; }
+  75% { transform: perspective(600px) rotateX(-5deg) translateY(-4px) scale(1.02); opacity: 1; }
+  100% { transform: perspective(600px) rotateX(0deg) translateY(0) scale(1); opacity: 1; }
+}
+
+/* 22. Spiral Corkscrew Flyby (2D Roll Spiral) */
+.anim-camera-corkscrew #main-stage-svg {
+  animation: cameraCorkscrew2D 2.0s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+@keyframes cameraCorkscrew2D {
+  0% { transform: scale(0.2) rotate(-90deg); opacity: 0; filter: blur(8px); }
+  70% { transform: scale(1.06) rotate(6deg); opacity: 1; filter: blur(0px); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; filter: none; }
+}

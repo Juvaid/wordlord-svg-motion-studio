@@ -40,7 +40,8 @@ import {
   SliderField, 
   ColorSwatchField,
   ToggleField,
-  DropdownField
+  DropdownField,
+  SegmentedField
 } from './inspector';
 import { 
   ThreeStudioConfig, 
@@ -1080,6 +1081,26 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
                   onChange={(val) => onUpdateConfig({ cameraPosZ: val, cameraDistance: val })}
                 />
               </div>
+            </div>
+
+            {/* Dynamic Camera Trajectory Motion */}
+            <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5">
+              <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                Dynamic Camera Trajectory Motion
+              </span>
+              <SegmentedField
+                label="Trajectory Flight"
+                tooltip="Autonomous camera flight path stacked across 3D playback"
+                value={config.cameraMotion || 'none'}
+                onChange={(val: string) => onUpdateConfig({ cameraMotion: val as any })}
+                options={[
+                  { value: 'none', label: 'Static', tooltip: 'Camera stays at fixed coordinates' },
+                  { value: 'orbit', label: 'Orbit', tooltip: 'Autonomous 360-degree orbital drone' },
+                  { value: 'dolly', label: 'Dolly', tooltip: 'Vertigo plunge from depth with FOV zoom' },
+                  { value: 'crane', label: 'Crane', tooltip: 'Low-angle swoop ascending to hero eye-level' },
+                  { value: 'corkscrew', label: 'Spiral', tooltip: 'Spiral helical flyby with banking roll' }
+                ]}
+              />
             </div>
           </InspectorSection>
         )}

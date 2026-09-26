@@ -315,7 +315,9 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
           { x: 0, y: 0 },
           { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
           curConfig,
-          curParts
+          curParts,
+          cameraRef.current,
+          controlsRef.current
         );
       }
       if (composerRef.current && curConfig.shadingMode === 'bloom' && curConfig.bloomEnabled) {
@@ -612,7 +614,9 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
           mouseGyroRef.current,
           { keyLight: lightsRef.current.keyLight, rimLight: lightsRef.current.rimLight },
           config,
-          parts
+          parts,
+          cameraRef.current,
+          controlsRef.current
         );
       }
 

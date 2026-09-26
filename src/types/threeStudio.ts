@@ -31,6 +31,10 @@ export type ThreeMotionMode =
   | 'sweep' 
   | 'explode' 
   | 'camera'
+  | 'camera-orbit'
+  | 'camera-dolly'
+  | 'camera-crane'
+  | 'camera-corkscrew'
   | 'sync2d'
   | 'typewriter'
   | 'wiredraw'
@@ -151,6 +155,7 @@ export interface ThreeStudioConfig {
   cameraTargetX?: number;
   cameraTargetY?: number;
   cameraTargetZ?: number;
+  cameraMotion?: 'none' | 'orbit' | 'dolly' | 'crane' | 'corkscrew';
 
   // Environment & Scene Settings
   envPreset: EnvironmentScenePreset;
