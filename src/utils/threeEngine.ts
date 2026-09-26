@@ -242,6 +242,27 @@ export function parseSvgIntoParts(svgString: string, faceColor: string, sideColo
 }
 
 /**
+ * Extract viewBox string from any SVG markup with graceful fallback
+ */
+export function getSvgViewBox(svgString: string, fallback = '0 0 100 100'): string {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svgRoot = doc.querySelector('svg');
+    if (svgRoot && svgRoot.hasAttribute('viewBox')) {
+      const vb = svgRoot.getAttribute('viewBox')?.trim();
+      if (vb) return vb;
+    }
+    if (svgRoot && svgRoot.hasAttribute('width') && svgRoot.hasAttribute('height')) {
+      const w = parseFloat(svgRoot.getAttribute('width') || '100');
+      const h = parseFloat(svgRoot.getAttribute('height') || '100');
+      if (w > 0 && h > 0) return `0 0 ${w} ${h}`;
+    }
+  } catch {}
+  return fallback;
+}
+
+/**
  * Filter out full-bleed bounding background boxes from SVG string
  */
 export function cleanSvgArtboardBackground(svgString: string): string {

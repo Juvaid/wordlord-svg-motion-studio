@@ -27,7 +27,9 @@ import {
   SlidersHorizontal,
   Flame,
   Activity,
-  Layers2
+  Layers2,
+  Upload,
+  Film
 } from 'lucide-react';
 import { 
   InspectorSection, 
@@ -41,8 +43,11 @@ import {
   ThreePart, 
   EnvironmentScenePreset,
   ProceduralTextureType,
-  SocialFramingAspect 
+  SocialFramingAspect,
+  PbrPresetId,
+  LightingRigId
 } from '../types/threeStudio';
+import { PBR_PRESETS, LIGHTING_RIGS } from '../data/threePresets';
 
 interface ThreeRightInspectorProps {
   width: number;
@@ -52,6 +57,12 @@ interface ThreeRightInspectorProps {
   onUpdatePart: (index: number, partial: Partial<ThreePart>) => void;
   onResetParts: () => void;
   onResetTransforms: () => void;
+  onOpenExportModal?: () => void;
+  onOpenCustomSvg?: () => void;
+  onOpenAssetLibrary?: () => void;
+  onSetUiComplexity?: (complexity: 'presets' | 'advanced') => void;
+  onSelectPbrPreset?: (presetId: PbrPresetId) => void;
+  onSelectRigPreset?: (rigId: LightingRigId) => void;
 }
 
 export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
@@ -61,7 +72,13 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   onUpdateConfig,
   onUpdatePart,
   onResetParts,
-  onResetTransforms
+  onResetTransforms,
+  onOpenExportModal,
+  onOpenCustomSvg,
+  onOpenAssetLibrary,
+  onSetUiComplexity,
+  onSelectPbrPreset,
+  onSelectRigPreset
 }) => {
   const [expandedPartIdx, setExpandedPartIdx] = useState<number | null>(null);
   const [isEditingGroupName, setIsEditingGroupName] = useState<boolean>(false);
@@ -128,6 +145,282 @@ export const ThreeRightInspector: React.FC<ThreeRightInspectorProps> = ({
   };
 
   const uniformScaleValue = Number(((config.scaleX + config.scaleY + config.scaleZ) / 3).toFixed(2)) || 1.0;
+
+  // 3D Express / Presets Mode Inspector
+  if (config.uiComplexity === 'presets') {
+    return (
+      <aside 
+        className="h-full bg-[#0d1017] border-l border-[#1f2430] flex flex-col z-30 select-none overflow-hidden transition-all duration-75"
+        style={{ width }}
+      >
+        {/* Express Header */}
+        <div className="h-10 border-b border-[#1f2430] flex items-center justify-between px-3 bg-[#090b10] flex-shrink-0">
+          <div className="flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-wider text-slate-200">
+            <Zap size={13} className="text-[#ff4e2e]" />
+            <span>3D Express Presets</span>
+          </div>
+          <button
+            onClick={() => onSetUiComplexity?.('advanced')}
+            className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#181c28] hover:bg-[#222738] border border-[#2b3245] text-[10px] font-mono text-slate-300 hover:text-white transition-all focus:outline-none"
+          >
+            <SlidersHorizontal size={11} className="text-[#ff4e2e]" />
+            <span>Pro Studio</span>
+          </button>
+        </div>
+
+        {/* Express Scroll Area */}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3.5 custom-scrollbar">
+          {/* Active 3D Model Card */}
+          <div className="bg-[#121622] border border-[#22283a] rounded-xl p-3 flex flex-col gap-2.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Box size={12} className="text-[#ff4e2e]" />
+                Active 3D Asset
+              </span>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
+                {parts.length} Extruded Parts
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 bg-black/40 border border-white/5 rounded-lg p-2">
+              <div className="w-8 h-8 rounded bg-gradient-to-br from-[#ff4e2e]/20 to-transparent border border-[#ff4e2e]/30 flex items-center justify-center flex-shrink-0">
+                <Layers size={14} className="text-[#ff4e2e]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-display font-bold text-white truncate">
+                  {config.groupName || '3D Vector Mark'}
+                </div>
+                <div className="text-[9px] font-mono text-slate-500 truncate">
+                  PBR Hardware Extrusion • 60 FPS
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onOpenAssetLibrary}
+                className="flex items-center justify-center gap-1.5 py-1.5 px-2 bg-[#181c28] hover:bg-[#222738] border border-[#2b3245] hover:border-slate-500 text-[10px] font-mono text-slate-200 rounded-lg transition-all"
+              >
+                <Layers size={11} className="text-sky-400" />
+                <span>Browse 27+</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenCustomSvg}
+                className="flex items-center justify-center gap-1.5 py-1.5 px-2 bg-[#ff4e2e]/10 hover:bg-[#ff4e2e]/20 border border-[#ff4e2e]/30 hover:border-[#ff4e2e]/50 text-[10px] font-mono text-[#ff4e2e] rounded-lg transition-all font-semibold"
+              >
+                <Upload size={11} />
+                <span>Import SVG</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 1-Click PBR Materials */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Sparkles size={12} className="text-amber-400" />
+                PBR Material Presets
+              </span>
+              <span className="text-[9px] font-mono text-slate-500">Hardware PBR</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {PBR_PRESETS.map((pbr) => {
+                const isActive = config.activePbrId === pbr.id;
+                return (
+                  <button
+                    key={pbr.id}
+                    type="button"
+                    onClick={() => onSelectPbrPreset?.(pbr.id)}
+                    className={`flex items-center gap-2 p-2 rounded-lg text-left transition-all border ${
+                      isActive
+                        ? 'bg-[#ff4e2e]/15 border-[#ff4e2e] text-white'
+                        : 'bg-[#121622] border-[#22283a] text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                  >
+                    <span 
+                      className="w-3 h-3 rounded-full flex-shrink-0 border border-black/40 shadow-sm"
+                      style={{ backgroundColor: pbr.faceColor }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-mono font-medium truncate leading-tight">{pbr.name}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 1-Click Lighting Rigs */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Sun size={12} className="text-sky-400" />
+                Lighting Studio Rigs
+              </span>
+              <span className="text-[9px] font-mono text-slate-500">3-Point Rig</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {LIGHTING_RIGS.map((rig) => {
+                const isActive = config.activeRigId === rig.id;
+                return (
+                  <button
+                    key={rig.id}
+                    type="button"
+                    onClick={() => onSelectRigPreset?.(rig.id)}
+                    className={`flex items-center gap-1.5 p-2 rounded-lg text-left transition-all border ${
+                      isActive
+                        ? 'bg-sky-500/15 border-sky-400 text-white'
+                        : 'bg-[#121622] border-[#22283a] text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                  >
+                    <Lightbulb size={11} className={isActive ? 'text-sky-400' : 'text-slate-500'} />
+                    <span className="text-[10px] font-mono font-medium truncate">{rig.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick 3D Motion Stacks */}
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <Activity size={12} className="text-emerald-400" />
+              Kinetic 3D Motion Stacks
+            </span>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleToggleStackEffect('turntableSpin')}
+                className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-mono transition-all ${
+                  config.stackedEffects?.turntableSpin
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                    : 'bg-[#121622] border-[#22283a] text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>360° Turntable</span>
+                {config.stackedEffects?.turntableSpin && <Check size={11} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleStackEffect('hoverFloat')}
+                className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-mono transition-all ${
+                  config.stackedEffects?.hoverFloat
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                    : 'bg-[#121622] border-[#22283a] text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Idle Hover Float</span>
+                {config.stackedEffects?.hoverFloat && <Check size={11} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleStackEffect('harmonicWave')}
+                className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-mono transition-all ${
+                  config.stackedEffects?.harmonicWave
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                    : 'bg-[#121622] border-[#22283a] text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Harmonic Wave</span>
+                {config.stackedEffects?.harmonicWave && <Check size={11} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleStackEffect('lightSweep')}
+                className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-mono transition-all ${
+                  config.stackedEffects?.lightSweep
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                    : 'bg-[#121622] border-[#22283a] text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Specular Sweep</span>
+                {config.stackedEffects?.lightSweep && <Check size={11} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Geometry Sliders */}
+          <div className="flex flex-col gap-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <Scale size={12} className="text-indigo-400" />
+              Extrusion Geometry
+            </span>
+
+            <SliderField
+              label="Extrude Depth"
+              value={config.depth}
+              min={4}
+              max={96}
+              step={1}
+              unit="px"
+              tooltip="Z-axis physical extrusion thickness"
+              onChange={(v) => onUpdateConfig({ depth: v })}
+            />
+
+            <SliderField
+              label="Bevel Radius"
+              value={config.bevelThickness}
+              min={0}
+              max={8}
+              step={0.2}
+              unit="px"
+              decimals={1}
+              tooltip="Curvature bevel fillet along outer vector perimeter"
+              onChange={(v) => onUpdateConfig({ bevelThickness: v })}
+            />
+
+            <SliderField
+              label="Mesh Scale"
+              value={config.meshScale}
+              min={0.4}
+              max={2.5}
+              step={0.05}
+              unit="x"
+              decimals={2}
+              tooltip="Uniform 3D scale multiplier"
+              onChange={(v) => onUpdateConfig({ meshScale: v })}
+            />
+          </div>
+
+          {/* Direct 3D Export Hub */}
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <Film size={12} className="text-purple-400" />
+              Direct 3D Studio Export
+            </span>
+
+            <button
+              type="button"
+              onClick={onOpenExportModal}
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-[#ff4e2e] to-[#ff263e] hover:brightness-110 text-white font-display text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-[#ff4e2e]/20 flex items-center justify-center gap-2 transition-all"
+            >
+              <Film size={14} />
+              <span>Export 3D Video / GLTF Asset</span>
+            </button>
+          </div>
+
+          {/* Switch to Advanced Studio Tip */}
+          <div className="pt-2 pb-2 text-center">
+            <button
+              type="button"
+              onClick={() => onSetUiComplexity?.('advanced')}
+              className="text-[10px] font-mono text-slate-400 hover:text-[#ff4e2e] transition-colors underline underline-offset-4"
+            >
+              Need fluted textures, camera focal length, or sub-part editing? Open Pro Studio →
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside 

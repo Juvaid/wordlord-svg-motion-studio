@@ -7,10 +7,12 @@ import {
   Move,
   Compass,
   MousePointer,
-  Hand
+  Hand,
+  Upload
 } from 'lucide-react';
 import { GLYPH_PATHS } from '../data/vectorPaths';
 import { BackgroundMode } from '../types';
+import { ThreePart } from '../types/threeStudio';
 
 interface StageViewportProps {
   animKey?: number;
@@ -42,8 +44,12 @@ interface StageViewportProps {
     media: boolean;
     glow: boolean;
   };
+  activeAssetId?: string;
+  activeAssetViewBox?: string;
+  parts?: ThreePart[];
   onPanChange: (pan: { x: number; y: number }) => void;
   onScaleChange: (scale: number) => void;
+  onDropSvgFile?: (file: File) => void;
 }
 
 export const StageViewport: React.FC<StageViewportProps> = ({
@@ -64,14 +70,41 @@ export const StageViewport: React.FC<StageViewportProps> = ({
   bgGradient,
   colors,
   layerVisibility,
+  activeAssetId = 'wordlord',
+  activeAssetViewBox,
+  parts = [],
   onPanChange,
-  onScaleChange
+  onScaleChange,
+  onDropSvgFile
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'hand'>('select');
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.toLowerCase().endsWith('.svg') || file.type.includes('svg'))) {
+      onDropSvgFile?.(file);
+    }
+  };
 
   // Track Spacebar for temporary pan mode & navigation shortcuts
   useEffect(() => {
@@ -185,6 +218,14 @@ export const StageViewport: React.FC<StageViewportProps> = ({
     ? 'cursor-grab' 
     : 'cursor-default';
 
+  const isWordLordMark = !activeAssetId || activeAssetId === 'wordlord';
+  const rawVb = (activeAssetViewBox || '0 0 100 100').split(/[\s,]+/).filter(Boolean).map(Number);
+  const vbW = rawVb.length === 4 && rawVb[2] > 0 ? rawVb[2] : 100;
+  const vbH = rawVb.length === 4 && rawVb[3] > 0 ? rawVb[3] : 100;
+  const stageWidth = isWordLordMark ? 320 : 340;
+  const stageHeight = isWordLordMark ? 332 : Math.min(420, Math.max(160, Math.round((vbH / vbW) * 340)));
+  const currentViewBox = isWordLordMark ? "0 0 25 26" : (activeAssetViewBox || `0 0 ${vbW} ${vbH}`);
+
   return (
     <main
       ref={containerRef}
@@ -192,9 +233,29 @@ export const StageViewport: React.FC<StageViewportProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onWheel={handleWheel}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       style={getBgStyle()}
       className={`flex-1 h-full relative overflow-hidden flex items-center justify-center select-none ${cursorClass}`}
     >
+      {/* Interactive Drag & Drop File Indicator */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 bg-[#07080c]/85 backdrop-blur-md border-2 border-dashed border-[#ff4e2e] m-4 rounded-xl flex flex-col items-center justify-center gap-3 animate-in fade-in duration-100 pointer-events-none">
+          <div className="w-14 h-14 rounded-full bg-[#ff4e2e]/20 border border-[#ff4e2e]/40 flex items-center justify-center text-[#ff4e2e] shadow-xl shadow-[#ff4e2e]/20">
+            <Upload size={28} />
+          </div>
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="text-base font-bold text-white font-display uppercase tracking-wider">
+              Drop SVG Vector File Here
+            </span>
+            <span className="text-xs font-mono text-slate-400">
+              Instantly load, decompose into vector paths & animate in 2D / 3D
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Top Floating Viewport Control Deck (Tool, Zoom, Pan, Reset) */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1 bg-[#10131d]/90 backdrop-blur-md border border-[#23293a] rounded-lg shadow-2xl z-20 pointer-events-auto">
         
@@ -278,9 +339,17 @@ export const StageViewport: React.FC<StageViewportProps> = ({
       <div className="absolute top-3 left-3 flex flex-col gap-1 pointer-events-none z-10">
         <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#0f121a]/85 backdrop-blur border border-[#1e2433] text-[9.5px] font-mono text-slate-300">
           <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e2e]" />
-          <span className="font-bold text-white">2D Vector Mark</span>
+          <span className="font-bold text-white">
+            {isWordLordMark ? 'WordLord Vector Mark' : 'Custom Vector Asset'}
+          </span>
           <span className="text-slate-500">•</span>
-          <span>25 × 26 px Sub-Pixel</span>
+          <span>{currentViewBox}</span>
+          {!isWordLordMark && (
+            <>
+              <span className="text-slate-500">•</span>
+              <span className="text-amber-400 font-semibold">{parts.length} Vector Layers</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -317,9 +386,9 @@ export const StageViewport: React.FC<StageViewportProps> = ({
         {/* Master Stage SVG (Unclipped Guaranteed) */}
         <svg
           id="main-stage-svg"
-          width="320"
-          height="332"
-          viewBox="0 0 25 26"
+          width={stageWidth}
+          height={stageHeight}
+          viewBox={currentViewBox}
           fill="none"
           className="block overflow-visible"
           style={{
@@ -370,133 +439,169 @@ export const StageViewport: React.FC<StageViewportProps> = ({
             </linearGradient>
           </defs>
 
-          {/* Group: WORD */}
-          <g id="group-word" style={{ visibility: layerVisibility.word ? 'visible' : 'hidden' }}>
-            <path
-              id="glyph-word-w"
-              data-glyph="W"
-              d={GLYPH_PATHS.wordW}
-              fill={colors.word}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-word-o"
-              data-glyph="O"
-              d={GLYPH_PATHS.wordO}
-              fill={colors.word}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-word-r"
-              data-glyph="R"
-              d={GLYPH_PATHS.wordR}
-              fill={colors.word}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-          </g>
+          {!isWordLordMark ? (
+            /* Custom Vector Asset Decomposed Layers */
+            <g id="group-custom-asset">
+              {parts && parts.length > 0 ? (
+                parts.map((part, pIdx) => {
+                  if (!part.visible) return null;
+                  const partDelay = ((part.phaseDelay ?? (pIdx * 0.08)) * (duration / 1.0)).toFixed(3);
+                  return (
+                    <path
+                      key={part.id || pIdx}
+                      id={`glyph-custom-${pIdx}`}
+                      data-glyph={part.name || `part-${pIdx}`}
+                      d={part.pathD}
+                      fill={part.faceColor || colors.word}
+                      stroke={strokeAttr.stroke}
+                      strokeWidth={strokeAttr.strokeWidth}
+                      fillOpacity={strokeAttr.fillOpacity}
+                      style={{
+                        transformOrigin: 'center center',
+                        animationDelay: `${partDelay}s`,
+                        transition: 'fill 0.2s ease, opacity 0.2s ease'
+                      }}
+                      className="custom-part-glyph"
+                    />
+                  );
+                })
+              ) : (
+                <text x="50" y="50" fill="#ffffff" fontSize="6" textAnchor="middle" opacity="0.6">
+                  Loading Vector Asset...
+                </text>
+              )}
+            </g>
+          ) : (
+            <>
+              {/* Group: WORD */}
+              <g id="group-word" style={{ visibility: layerVisibility.word ? 'visible' : 'hidden' }}>
+                <path
+                  id="glyph-word-w"
+                  data-glyph="W"
+                  d={GLYPH_PATHS.wordW}
+                  fill={colors.word}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-word-o"
+                  data-glyph="O"
+                  d={GLYPH_PATHS.wordO}
+                  fill={colors.word}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-word-r"
+                  data-glyph="R"
+                  d={GLYPH_PATHS.wordR}
+                  fill={colors.word}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+              </g>
 
-          {/* Group: LORD */}
-          <g id="group-lord" style={{ visibility: layerVisibility.lord ? 'visible' : 'hidden' }}>
-            <path
-              id="glyph-lord-l"
-              data-glyph="L"
-              d={GLYPH_PATHS.lordL}
-              fill={colors.lord}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-lord-o"
-              data-glyph="O"
-              d={GLYPH_PATHS.lordO}
-              fill={colors.lord}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-lord-r"
-              data-glyph="R"
-              d={GLYPH_PATHS.lordR}
-              fill={colors.lord}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-          </g>
+              {/* Group: LORD */}
+              <g id="group-lord" style={{ visibility: layerVisibility.lord ? 'visible' : 'hidden' }}>
+                <path
+                  id="glyph-lord-l"
+                  data-glyph="L"
+                  d={GLYPH_PATHS.lordL}
+                  fill={colors.lord}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-lord-o"
+                  data-glyph="O"
+                  d={GLYPH_PATHS.lordO}
+                  fill={colors.lord}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-lord-r"
+                  data-glyph="R"
+                  d={GLYPH_PATHS.lordR}
+                  fill={colors.lord}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+              </g>
 
-          {/* Group: Monolithic Ligature D */}
-          <g id="group-ligature" style={{ visibility: layerVisibility.ligature ? 'visible' : 'hidden' }}>
-            <path
-              id="glyph-ligature-d"
-              data-glyph="D"
-              d={GLYPH_PATHS.ligatureD}
-              fill={colors.ligature}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-          </g>
+              {/* Group: Monolithic Ligature D */}
+              <g id="group-ligature" style={{ visibility: layerVisibility.ligature ? 'visible' : 'hidden' }}>
+                <path
+                  id="glyph-ligature-d"
+                  data-glyph="D"
+                  d={GLYPH_PATHS.ligatureD}
+                  fill={colors.ligature}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+              </g>
 
-          {/* Group: MEDIA (with Volumetric Glow) */}
-          <g
-            id="group-media"
-            filter={layerVisibility.glow && glowIntensity > 0 && glowRadius > 0 ? "url(#unclipped-media-glow)" : undefined}
-            style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}
-          >
-            <path
-              id="glyph-media-m"
-              data-glyph="M"
-              d={GLYPH_PATHS.mediaM}
-              fill={colors.media}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-media-e"
-              data-glyph="E"
-              d={GLYPH_PATHS.mediaE}
-              fill={colors.media}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-media-d"
-              data-glyph="D"
-              d={GLYPH_PATHS.mediaD}
-              fill={colors.media}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-media-i"
-              data-glyph="I"
-              d={GLYPH_PATHS.mediaI}
-              fill={colors.media}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-            <path
-              id="glyph-media-a"
-              data-glyph="A"
-              d={GLYPH_PATHS.mediaA}
-              fill={colors.media}
-              stroke={strokeAttr.stroke}
-              strokeWidth={strokeAttr.strokeWidth}
-              fillOpacity={strokeAttr.fillOpacity}
-            />
-          </g>
+              {/* Group: MEDIA (with Volumetric Glow) */}
+              <g
+                id="group-media"
+                filter={layerVisibility.glow && glowIntensity > 0 && glowRadius > 0 ? "url(#unclipped-media-glow)" : undefined}
+                style={{ visibility: layerVisibility.media ? 'visible' : 'hidden' }}
+              >
+                <path
+                  id="glyph-media-m"
+                  data-glyph="M"
+                  d={GLYPH_PATHS.mediaM}
+                  fill={colors.media}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-media-e"
+                  data-glyph="E"
+                  d={GLYPH_PATHS.mediaE}
+                  fill={colors.media}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-media-d"
+                  data-glyph="D"
+                  d={GLYPH_PATHS.mediaD}
+                  fill={colors.media}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-media-i"
+                  data-glyph="I"
+                  d={GLYPH_PATHS.mediaI}
+                  fill={colors.media}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+                <path
+                  id="glyph-media-a"
+                  data-glyph="A"
+                  d={GLYPH_PATHS.mediaA}
+                  fill={colors.media}
+                  stroke={strokeAttr.stroke}
+                  strokeWidth={strokeAttr.strokeWidth}
+                  fillOpacity={strokeAttr.fillOpacity}
+                />
+              </g>
+            </>
+          )}
 
           {/* Laser Specular Sweep Overlay */}
           <rect

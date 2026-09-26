@@ -18,7 +18,8 @@ import {
   Move,
   Lightbulb,
   Check,
-  Eye
+  Eye,
+  Upload
 } from 'lucide-react';
 import { 
   ThreeStudioConfig, 
@@ -39,6 +40,7 @@ interface ThreeStageViewportProps {
   onUpdateConfig: (partial: Partial<ThreeStudioConfig>) => void;
   onSelectPart: (index: number) => void;
   onSetParts: React.Dispatch<React.SetStateAction<ThreePart[]>>;
+  onDropSvgFile?: (file: File) => void;
 }
 
 export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
@@ -46,7 +48,8 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   parts,
   onUpdateConfig,
   onSelectPart,
-  onSetParts
+  onSetParts,
+  onDropSvgFile
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -655,6 +658,29 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
   };
 
   const framingData = getFramingStyles();
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.toLowerCase().endsWith('.svg') || file.type.includes('svg'))) {
+      onDropSvgFile?.(file);
+    }
+  };
 
   return (
     <div 
@@ -662,8 +688,28 @@ export const ThreeStageViewport: React.FC<ThreeStageViewportProps> = ({
       onPointerMove={handlePointerMove}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className="relative flex-1 w-full h-full bg-[#080a0f] overflow-hidden select-none"
     >
+      {/* Interactive Drag & Drop File Indicator */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 bg-[#07080c]/85 backdrop-blur-md border-2 border-dashed border-[#ff4e2e] m-4 rounded-xl flex flex-col items-center justify-center gap-3 animate-in fade-in duration-100 pointer-events-none">
+          <div className="w-14 h-14 rounded-full bg-[#ff4e2e]/20 border border-[#ff4e2e]/40 flex items-center justify-center text-[#ff4e2e] shadow-xl shadow-[#ff4e2e]/20">
+            <Upload size={28} />
+          </div>
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="text-base font-bold text-white font-display uppercase tracking-wider">
+              Drop SVG Vector File Here
+            </span>
+            <span className="text-xs font-mono text-slate-400">
+              Instantly extrude into 3D PBR WebGL mesh & animate
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Three.js Canvas Element */}
       <canvas 
         ref={canvasRef} 

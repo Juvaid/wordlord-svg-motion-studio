@@ -206,4 +206,5 @@ export interface ThreeStudioConfig {
   activeRigId: LightingRigId;
   selectedPartIndex: number;
   hoveredPartIndex?: number;
+  uiComplexity?: 'presets' | 'advanced';
 }

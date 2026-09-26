@@ -19,7 +19,10 @@ import {
   Save,
   FileDown,
   FileUp,
-  HelpCircle
+  HelpCircle,
+  Zap,
+  SlidersHorizontal,
+  Upload
 } from 'lucide-react';
 import { BackgroundMode } from '../types';
 import { Tooltip } from './Tooltip';
@@ -30,6 +33,9 @@ import { ProjectStateSnapshot } from '../utils/projectState';
 interface TopNavbarProps {
   studioMode: '2d' | '3d' | 'motion-graphics';
   onSetStudioMode: (mode: '2d' | '3d' | 'motion-graphics') => void;
+  uiComplexity?: 'presets' | 'advanced';
+  onSetUiComplexity?: (complexity: 'presets' | 'advanced') => void;
+  onOpenCustomSvg?: () => void;
   scale: number;
   bgMode: BackgroundMode;
   activeMotionId: string;
@@ -62,6 +68,9 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({
   studioMode,
   onSetStudioMode,
+  uiComplexity = 'presets',
+  onSetUiComplexity,
+  onOpenCustomSvg,
   scale,
   bgMode,
   activeMotionId,
@@ -167,6 +176,36 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           </button>
         </div>
 
+        {/* Studio Workflow Complexity Tier: Quick Presets vs Advanced Studio */}
+        <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
+          <Tooltip content="Express Presets Mode: Curated 1-click animations, themes, and instant export" side="bottom">
+            <button
+              onClick={() => onSetUiComplexity?.('presets')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-all ${
+                uiComplexity === 'presets'
+                  ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Zap size={12} className={uiComplexity === 'presets' ? 'text-amber-400' : ''} />
+              <span>Presets</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Advanced Studio: Deep keyframe tracks, PBR materials, procedural shaders & lighting" side="bottom">
+            <button
+              onClick={() => onSetUiComplexity?.('advanced')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-all ${
+                uiComplexity === 'advanced'
+                  ? 'bg-[#ff4e2e]/20 text-[#ff4e2e] font-bold border border-[#ff4e2e]/30 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <SlidersHorizontal size={12} className={uiComplexity === 'advanced' ? 'text-[#ff4e2e]' : ''} />
+              <span>Advanced</span>
+            </button>
+          </Tooltip>
+        </div>
+
         {/* Undo / Redo History Buttons + History Stack Flyout */}
         <div className="relative flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
           <Tooltip content="Undo change" shortcut="Cmd+Z" side="bottom">
@@ -228,7 +267,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           />
         </div>
 
-        {/* Project State Actions: Save Snapshot, Export JSON, Import JSON */}
+        {/* Project State Actions: Save Snapshot, Export JSON, Import JSON, Upload SVG */}
         <div className="flex items-center bg-[#131722] border border-[#232838] rounded-lg p-0.5 shadow-sm">
           <Tooltip content="Save Project Snapshot" shortcut="Cmd+S" side="bottom">
             <button
@@ -262,6 +301,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 className="hidden"
               />
             </label>
+          </Tooltip>
+          <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
+          <Tooltip content="Import / Paste Custom SVG Vector Mark" side="bottom">
+            <button
+              onClick={onOpenCustomSvg}
+              aria-label="Import Custom SVG"
+              className="flex items-center gap-1 px-2 py-1 text-slate-300 hover:text-white hover:bg-white/5 rounded transition-all text-xs font-mono"
+            >
+              <Upload size={12} className="text-[#ff4e2e]" />
+              <span className="hidden xl:inline text-[10px]">Import SVG</span>
+            </button>
           </Tooltip>
         </div>
       </div>

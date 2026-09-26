@@ -133,13 +133,27 @@
 
 ---
 
-### ISS-009: Gyro Cursor Tracking Active by Default
-* **Location**: `src/components/ThreeStageViewport.tsx`, `src/App.tsx`
-* **Symptom**: Moving the cursor over the 3D canvas caused the extruded logo to pitch and yaw unexpectedly, confusing users who expected a stable canvas.
-* **Root Cause**: Gyro tracking was active without an explicit user opt-in toggle.
+### ISS-010: Complex Inspector Density Overwhelming New Users (Two-Tier UI Workflow)
+* **Location**: `src/components/TopNavbar.tsx`, `src/components/RightInspector.tsx`, `src/components/ThreeRightInspector.tsx`, `src/App.tsx`
+* **Symptom**: New users were intimidated by 20+ sliders for Bézier handles, micro-stagger milliseconds, and physical optics matrices when all they wanted was to pick a style, preview an asset, and export.
+* **Root Cause**: Flat, unstratified UI architecture exposing all granular engineering knobs at the same priority level.
 * **Resolution**:
-  - Defaulted `gyroEnabled: false` across all presets and state initializers.
-  - Mouse movement now only affects the logo if the user explicitly turns on "Cursor Gyro Reaction" in the 3D Right Inspector.
+  - Implemented a two-tier studio workflow toggle: **Quick Presets / Express** mode vs. **Advanced Studio / Pro Inspector** mode.
+  - Added Quick Presets segmented toggle in `TopNavbar`.
+  - Built dedicated Express inspectors for both 2D and 3D featuring 1-click aesthetic chips, speed multiplier pills (`0.5x`, `1.0x`, `1.5x`, `2.0x`), active asset switcher, and 1-click video and code exports.
+  - Preserved the full granular multi-section inspector in Pro Studio mode.
+
+---
+
+### ISS-011: Lack of Universal Vector Asset Ingestion & Single-Logo Limitation
+* **Location**: `src/data/assetLibrary.ts`, `src/components/StageViewport.tsx`, `src/components/ThreeStageViewport.tsx`, `src/components/LeftLibrary.tsx`, `src/components/ThreeLeftLibrary.tsx`
+* **Symptom**: Users could only animate the hardcoded WordLord logo unless they knew how to modify source code; drag-and-dropping an `.svg` file onto the stage was unsupported.
+* **Root Cause**: Hardcoded vector paths and fixed viewBox without a unified vector asset ingestion pipeline or asset catalog.
+* **Resolution**:
+  - Created `src/data/assetLibrary.ts` with 27 curated production vector assets across Tech Brands (Apple, Google, React, Vite, Linear, GitHub, Vercel, TypeScript), UI Micro-Interactions (Checkmark, Bell, Heart, Rocket, Shield, Flame, Lightning, Compass, Gem, Globe), and Geometric Monograms.
+  - Implemented drag-and-drop `.svg` ingestion on both 2D and 3D viewports with visual glowing dropzones.
+  - Implemented dynamic viewBox calculation and responsive sizing so custom SVGs render without clipping or distortion.
+  - Added 4th `Assets (27)` tab in Left Library with real-time search, category filters, and 1-click Hero Combos.
 
 ---
 
@@ -157,9 +171,9 @@ npm test
 - **Suite 2**: Optical Style Presets (8 styles, valid hex codes, positive glow radii)
 - **Suite 3**: 3D PBR Materials (6 presets, roughness & metalness bounded in $[0, 1]$)
 - **Suite 4**: Studio Lighting Rigs (4 rigs, positive key/rim/fill intensities, valid hex colors)
-- **Suite 5**: 3D Asset Presets (SVG XML structure, valid `viewBox` coordinates)
-- **Suite 6**: Project State Serialization (empty object handling, invalid input rejection, custom snapshot roundtrips)
-- **Suite 7**: 3D Motion Kinematics (all 17 presets evaluated across 5 keyframe timestamps: $t = 0.0, 0.25, 0.5, 0.75, 1.0$, verifying finite position, rotation, and scale matrices)
+- **Suite 5**: Universal Vector Asset Library (27+ curated presets across Brands, UI, and Monograms with valid SVG XML and viewBoxes)
+- **Suite 6**: Project State Serialization (empty object handling, invalid input rejection, `uiComplexity` and `activeAssetId` preservation)
+- **Suite 7**: 3D Motion Kinematics (all 17 presets evaluated across 5 keyframe intervals, verifying finite transform matrices)
 
 ---
 

@@ -101,9 +101,11 @@ export interface StudioState {
   scale: number;
   pan: { x: number; y: number };
   bgMode: BackgroundMode;
-  activeTab: 'motions' | 'styles' | 'glyphs';
+  activeTab: 'motions' | 'styles' | 'glyphs' | 'assets';
   searchQuery: string;
   categoryFilter: string;
+  uiComplexity?: 'presets' | 'advanced';
+  activeAssetId?: string;
   colorOverrides: {
     word: string;
     lord: string;

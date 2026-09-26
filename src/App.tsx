@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TopNavbar } from './components/TopNavbar';
 import { LeftLibrary } from './components/LeftLibrary';
 import { StageViewport } from './components/StageViewport';
@@ -35,7 +35,7 @@ import {
   PBR_PRESETS, 
   LIGHTING_RIGS 
 } from './data/threePresets';
-import { parseSvgIntoParts } from './utils/threeEngine';
+import { parseSvgIntoParts, getSvgViewBox } from './utils/threeEngine';
 
 import { MOTIONS } from './data/motions';
 import { STYLES } from './data/styles';
@@ -87,8 +87,11 @@ export const App: React.FC = () => {
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [bgMode, setBgMode] = useState<BackgroundMode>('dark');
 
-  // Library Navigation
-  const [activeTab, setActiveTab] = useState<'motions' | 'styles' | 'glyphs'>('motions');
+  // Library Navigation & Preset Hierarchy
+  const [activeTab, setActiveTab] = useState<'motions' | 'styles' | 'glyphs' | 'assets'>('motions');
+  const [uiComplexity, setUiComplexity] = useState<'presets' | 'advanced'>('presets');
+  const [activeAssetId, setActiveAssetId] = useState<string>('wordlord');
+  const [customSvgString, setCustomSvgString] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
 
@@ -234,6 +237,17 @@ export const App: React.FC = () => {
   const activeStyle = STYLES.find(s => s.id === activeStyleId) || STYLES[0];
   const easeFormula = `cubic-bezier(${bezier.p1.x.toFixed(2)}, ${bezier.p1.y.toFixed(2)}, ${bezier.p2.x.toFixed(2)}, ${bezier.p2.y.toFixed(2)})`;
 
+  const activeAssetViewBox = useMemo(() => {
+    if (activeAssetId === 'wordlord') {
+      return '0 0 1200 400';
+    }
+    if (activeAssetId === 'custom' && customSvgString) {
+      return getSvgViewBox(customSvgString, '0 0 1000 1000');
+    }
+    const asset = THREE_ASSET_PRESETS.find(a => a.id === activeAssetId);
+    return asset?.viewBox || '0 0 1000 1000';
+  }, [activeAssetId, customSvgString]);
+
   // Notification Toast Helper
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -256,6 +270,8 @@ export const App: React.FC = () => {
       timestamp: Date.now(),
       actionName: actionName || 'State Modification',
       studioMode,
+      uiComplexity,
+      activeAssetId,
       activeMotionId,
       activeStyleId,
       duration,
@@ -267,12 +283,14 @@ export const App: React.FC = () => {
       tiltX,
       tiltY,
       colors: { ...colors },
-      threeConfig: { ...threeConfig },
+      threeConfig: { ...threeConfig, uiComplexity, activeAssetId },
       threeParts: threeParts.map(p => ({ ...p })),
       bentoConfig: { ...bentoConfig }
     };
   }, [
     studioMode,
+    uiComplexity,
+    activeAssetId,
     activeMotionId,
     activeStyleId,
     duration,
@@ -292,6 +310,8 @@ export const App: React.FC = () => {
   const applySnapshot = useCallback((snap: ProjectStateSnapshot) => {
     isRestoringRef.current = true;
     if (snap.studioMode) setStudioMode(snap.studioMode);
+    if (snap.uiComplexity) setUiComplexity(snap.uiComplexity);
+    if (snap.activeAssetId) setActiveAssetId(snap.activeAssetId);
     if (snap.bentoConfig) setBentoConfig(snap.bentoConfig);
     if (snap.activeMotionId) setActiveMotionId(snap.activeMotionId);
     if (snap.activeStyleId) setActiveStyleId(snap.activeStyleId);
@@ -456,12 +476,13 @@ export const App: React.FC = () => {
     setThreeConfig(prev => ({ ...prev, ...partial }));
   }, []);
 
-  const handleSelect3DAsset = useCallback((assetId: string) => {
+  const handleSelectAsset = useCallback((assetId: string) => {
     const preset = THREE_ASSET_PRESETS.find(a => a.id === assetId);
     if (!preset) return;
     pushUndoSnapshot(`Asset: ${preset.name}`);
     const newParts = parseSvgIntoParts(preset.svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
+    setActiveAssetId(assetId);
     setThreeConfig(prev => ({ 
       ...prev, 
       activeAssetId: assetId,
@@ -471,8 +492,10 @@ export const App: React.FC = () => {
       isGroupVisible: true,
       time: 0 
     }));
-    showToast(`Loaded ${preset.name} as collective group`);
+    showToast(`Loaded ${preset.name}`);
   }, [threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
+
+  const handleSelect3DAsset = handleSelectAsset;
 
   const handleSelect3DPbrPreset = useCallback((presetId: PbrPresetId) => {
     const pbr = PBR_PRESETS.find(p => p.id === presetId);
@@ -580,6 +603,8 @@ export const App: React.FC = () => {
     pushUndoSnapshot(`Import SVG: ${assignedName}`);
     const newParts = parseSvgIntoParts(svgString, threeConfig.faceColor, threeConfig.sideColor);
     setThreeParts(newParts);
+    setActiveAssetId('custom');
+    setCustomSvgString(svgString);
     setThreeConfig(prev => ({ 
       ...prev, 
       activeAssetId: 'custom',
@@ -589,8 +614,20 @@ export const App: React.FC = () => {
       isGroupVisible: true,
       time: 0 
     }));
-    showToast(`Imported ${assignedName} as collective group`);
+    showToast(`Imported ${assignedName} into 2D & 3D workspaces`);
   }, [threeConfig.faceColor, threeConfig.sideColor, pushUndoSnapshot, showToast]);
+
+  const handleDropSvgFile = useCallback((file: File) => {
+    const baseName = file.name.replace(/\.svg$/i, '');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        handleImportCustomSvg(content, baseName);
+      }
+    };
+    reader.readAsText(file);
+  }, [handleImportCustomSvg]);
 
   // Multi-Track Timeline Lanes State
   const [userTracks, setUserTracks] = useState<TimelineTrack[]>([
@@ -1202,6 +1239,16 @@ export const App: React.FC = () => {
     showToast(`Style: ${s.name}`);
   };
 
+  const handleApplyCombo = (motionId: string, styleId: string) => {
+    const motion = MOTIONS.find(m => m.id === motionId);
+    const style = STYLES.find(s => s.id === styleId);
+    if (!motion || !style) return;
+    pushUndoSnapshot(`Combo: ${motion.name} + ${style.name}`);
+    handleSelectMotion(motion);
+    handleSelectStyle(style);
+    showToast(`Applied Combo: ${motion.name} + ${style.name}`);
+  };
+
   // Layer Visibility Toggle
   const handleToggleLayerVisibility = (trackId: string) => {
     setLayerVisibility(prev => {
@@ -1281,6 +1328,9 @@ export const App: React.FC = () => {
       <TopNavbar
         studioMode={studioMode}
         onSetStudioMode={handleSetStudioMode}
+        uiComplexity={uiComplexity}
+        onSetUiComplexity={setUiComplexity}
+        onOpenCustomSvg={() => setIsCustomSvgOpen(true)}
         scale={scale}
         bgMode={bgMode}
         activeMotionId={activeMotion.id}
@@ -1319,11 +1369,16 @@ export const App: React.FC = () => {
             activeTab={activeTab}
             activeMotionId={activeMotionId}
             activeStyleId={activeStyleId}
+            activeAssetId={activeAssetId}
+            uiComplexity={uiComplexity}
             searchQuery={searchQuery}
             categoryFilter={categoryFilter}
             onTabChange={setActiveTab}
             onSelectMotion={handleSelectMotion}
             onSelectStyle={handleSelectStyle}
+            onSelectAsset={handleSelectAsset}
+            onOpenCustomSvg={() => setIsCustomSvgOpen(true)}
+            onApplyCombo={handleApplyCombo}
             onSearchChange={setSearchQuery}
             onCategoryFilterChange={setCategoryFilter}
             onShowInfo={(title, desc) => showToast(`${title}: ${desc}`)}
@@ -1332,7 +1387,8 @@ export const App: React.FC = () => {
           <ThreeLeftLibrary
             width={leftWidth}
             config={threeConfig}
-            onSelectAsset={handleSelect3DAsset}
+            activeAssetId={activeAssetId}
+            onSelectAsset={handleSelectAsset}
             onSelectPbrPreset={handleSelect3DPbrPreset}
             onSelectLightingRig={handleSelect3DLightingRig}
             onSelectMotion={handleSelect3DMotion}
@@ -1367,8 +1423,12 @@ export const App: React.FC = () => {
             bgGradient={activeStyle.bgGradient}
             colors={colors}
             layerVisibility={layerVisibility}
+            activeAssetId={activeAssetId}
+            activeAssetViewBox={activeAssetViewBox}
+            parts={threeParts}
             onPanChange={setPan}
             onScaleChange={setScale}
+            onDropSvgFile={handleDropSvgFile}
           />
         ) : studioMode === '3d' ? (
           <ThreeStageViewport
@@ -1377,6 +1437,7 @@ export const App: React.FC = () => {
             onUpdateConfig={handleUpdateThreeConfig}
             onSelectPart={(idx) => setThreeConfig(prev => ({ ...prev, selectedPartIndex: idx }))}
             onSetParts={setThreeParts}
+            onDropSvgFile={handleDropSvgFile}
           />
         ) : (
           <MotionGraphicsViewport
@@ -1417,6 +1478,17 @@ export const App: React.FC = () => {
             tiltX={tiltX}
             tiltY={tiltY}
             colors={colors}
+            uiComplexity={uiComplexity}
+            activeAssetId={activeAssetId}
+            onSetUiComplexity={setUiComplexity}
+            onOpenCustomSvg={() => setIsCustomSvgOpen(true)}
+            onOpenAssetLibrary={() => setActiveTab('assets')}
+            onOpenVideoExport={() => setIsVideoExportOpen(true)}
+            onOpenCodeExport={() => setIsExportOpen(true)}
+            onSelectStyleById={(styleId) => {
+              const s = STYLES.find(st => st.id === styleId);
+              if (s) handleSelectStyle(s);
+            }}
             onDurationChange={(d) => { setDuration(d); seekToProgress(currentProgress); }}
             onStaggerChange={setStagger}
             onBezierChange={setBezier}
@@ -1434,12 +1506,18 @@ export const App: React.FC = () => {
         ) : studioMode === '3d' ? (
           <ThreeRightInspector
             width={rightWidth}
-            config={threeConfig}
+            config={{ ...threeConfig, uiComplexity }}
             parts={threeParts}
             onUpdateConfig={handleUpdateThreeConfig}
             onUpdatePart={handleUpdatePart}
             onResetParts={handleResetParts}
             onResetTransforms={handleResetTransforms}
+            onOpenExportModal={() => setIs3DExportOpen(true)}
+            onOpenCustomSvg={() => setIsCustomSvgOpen(true)}
+            onOpenAssetLibrary={() => setActiveTab('assets')}
+            onSetUiComplexity={setUiComplexity}
+            onSelectPbrPreset={handleSelect3DPbrPreset}
+            onSelectRigPreset={handleSelect3DLightingRig}
           />
         ) : (
           <MotionGraphicsInspector

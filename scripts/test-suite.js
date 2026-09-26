@@ -88,14 +88,20 @@ test('All Lighting Rigs have positive intensities and valid colors', () => {
 });
 
 // 5. 3D Asset Presets & SVG Strings
-console.log('\n--- Suite 5: 3D Asset Presets ---');
-test('All 3D asset presets have valid SVG XML strings with viewBox', () => {
-  assert.ok(THREE_ASSET_PRESETS.length >= 5, `Expected >= 5 asset presets, got ${THREE_ASSET_PRESETS.length}`);
+console.log('\n--- Suite 5: Universal Vector Asset Library ---');
+test('All 27+ asset presets have valid SVG XML strings, categories, and viewBoxes', () => {
+  assert.ok(THREE_ASSET_PRESETS.length >= 27, `Expected >= 27 asset presets, got ${THREE_ASSET_PRESETS.length}`);
+  const categories = new Set();
   for (const a of THREE_ASSET_PRESETS) {
-    assert.ok(a.id && a.name, 'Asset must have id and name');
+    assert.ok(a.id && a.name, `Asset missing id or name: ${JSON.stringify(a)}`);
+    assert.ok(a.category, `Asset ${a.id} missing category`);
     assert.ok(a.svgString.includes('<svg') && a.svgString.includes('</svg>'), `Asset ${a.id} missing svg tags`);
     assert.ok(a.viewBox && typeof a.viewBox === 'string', `Asset ${a.id} missing viewBox`);
+    categories.add(a.category);
   }
+  assert.ok(categories.has('Tech Brands'), 'Expected Tech Brands in asset library');
+  assert.ok(categories.has('UI Icons'), 'Expected UI Icons in asset library');
+  assert.ok(categories.has('Monograms'), 'Expected Monograms in asset library');
 });
 
 // 6. Project State Validation & Deserialization
@@ -104,6 +110,8 @@ test('validateProjectSnapshot supplies safe defaults for empty object', () => {
   const result = validateProjectSnapshot({});
   assert.strictEqual(result.version, '5.0.0');
   assert.strictEqual(result.studioMode, '2d');
+  assert.strictEqual(result.uiComplexity, 'presets');
+  assert.strictEqual(result.activeAssetId, 'wordlord');
   assert.strictEqual(result.activeMotionId, 'typewriter');
   assert.strictEqual(result.activeStyleId, 'signature');
   assert.strictEqual(result.duration, 1.0);
@@ -124,6 +132,8 @@ test('validateProjectSnapshot preserves valid custom snapshot', () => {
     timestamp: 1700000000000,
     actionName: 'Custom Export Test',
     studioMode: '3d',
+    uiComplexity: 'advanced',
+    activeAssetId: 'tech-react',
     activeMotionId: 'depth-slam',
     activeStyleId: 'electric-amber',
     duration: 3.5,
@@ -146,6 +156,8 @@ test('validateProjectSnapshot preserves valid custom snapshot', () => {
   const result = validateProjectSnapshot(custom);
   assert.strictEqual(result.version, '5.1.0');
   assert.strictEqual(result.studioMode, '3d');
+  assert.strictEqual(result.uiComplexity, 'advanced');
+  assert.strictEqual(result.activeAssetId, 'tech-react');
   assert.strictEqual(result.activeMotionId, 'depth-slam');
   assert.strictEqual(result.duration, 3.5);
   assert.strictEqual(result.geometryMode, 'stroke');

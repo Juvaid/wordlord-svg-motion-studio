@@ -15,25 +15,101 @@ import {
   Sparkles,
   Type,
   Component,
-  Columns3
+  Columns3,
+  Layers,
+  Upload,
+  Zap
 } from 'lucide-react';
 import { MOTIONS } from '../data/motions';
 import { STYLES } from '../data/styles';
 import { GLYPHS } from '../data/glyphs';
 import { MotionPreset, StylePreset } from '../types';
+import { ALL_ASSETS, SvgAssetPreset } from '../data/assetLibrary';
 import { Tooltip } from './Tooltip';
 import { getMotionIcon, getStyleIcon } from '../utils/presetIcons';
 
+export interface HeroCombo {
+  id: string;
+  name: string;
+  badge: string;
+  desc: string;
+  motionId: string;
+  styleId: string;
+  colorPreview: string[];
+}
+
+export const HERO_COMBOS: HeroCombo[] = [
+  {
+    id: 'crimson-monolith',
+    name: 'Crimson Monolith',
+    badge: 'Signature',
+    desc: 'Typewriter cascade with obsidian crimson optical glow',
+    motionId: 'typewriter',
+    styleId: 'signature',
+    colorPreview: ['#ffffff', '#ff4e2e', '#ff263e']
+  },
+  {
+    id: 'cyber-matrix',
+    name: 'Cyberpunk Matrix',
+    badge: 'Chroma',
+    desc: 'Glitch chromatic aberration with electric cyan specular',
+    motionId: 'cyber-glitch',
+    styleId: 'cyberpunk',
+    colorPreview: ['#00ffff', '#ff0055', '#38bdf8']
+  },
+  {
+    id: 'liquid-plasma',
+    name: 'Liquid Plasma Wipe',
+    badge: 'Optics',
+    desc: 'Viscous downward boundary reveal with radiant flare',
+    motionId: 'liquid-wipe',
+    styleId: 'radiant',
+    colorPreview: ['#ffd026', '#f97316', '#ff4e2e']
+  },
+  {
+    id: 'neon-wireframe',
+    name: 'Neon Wireframe Draw',
+    badge: 'Kinetic',
+    desc: 'Laser line plotting along tangents with emerald aura',
+    motionId: 'wiredraw',
+    styleId: 'matrix',
+    colorPreview: ['#22c55e', '#10b981', '#06b6d4']
+  },
+  {
+    id: 'gold-luxury',
+    name: 'Vanguard Gold Slam',
+    badge: 'Depth',
+    desc: 'Cinematic depth slam with warm golden sunset gradients',
+    motionId: 'depth-slam',
+    styleId: 'sunset',
+    colorPreview: ['#fbbf24', '#f59e0b', '#d97706']
+  },
+  {
+    id: 'minimal-monochrome',
+    name: 'Minimal Clean Slate',
+    badge: 'Editorial',
+    desc: 'Ligature monolith lock with pure stark contrast',
+    motionId: 'ligature-clamp',
+    styleId: 'monochrome',
+    colorPreview: ['#ffffff', '#94a3b8', '#475569']
+  }
+];
+
 interface LeftLibraryProps {
-  activeTab: 'motions' | 'styles' | 'glyphs';
+  activeTab: 'motions' | 'styles' | 'glyphs' | 'assets';
   activeMotionId: string;
   activeStyleId: string;
+  activeAssetId?: string;
+  uiComplexity?: 'presets' | 'advanced';
   searchQuery: string;
   categoryFilter: string;
   width: number;
-  onTabChange: (tab: 'motions' | 'styles' | 'glyphs') => void;
+  onTabChange: (tab: 'motions' | 'styles' | 'glyphs' | 'assets') => void;
   onSelectMotion: (motion: MotionPreset) => void;
   onSelectStyle: (style: StylePreset) => void;
+  onSelectAsset?: (assetId: string) => void;
+  onOpenCustomSvg?: () => void;
+  onApplyCombo?: (motionId: string, styleId: string) => void;
   onSearchChange: (q: string) => void;
   onCategoryFilterChange: (cat: string) => void;
   onShowInfo: (title: string, desc: string, specs?: Record<string, string>) => void;
@@ -43,12 +119,17 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
   activeTab,
   activeMotionId,
   activeStyleId,
+  activeAssetId = 'wordlord',
+  uiComplexity = 'presets',
   searchQuery,
   categoryFilter,
   width,
   onTabChange,
   onSelectMotion,
   onSelectStyle,
+  onSelectAsset,
+  onOpenCustomSvg,
+  onApplyCombo,
   onSearchChange,
   onCategoryFilterChange,
   onShowInfo
@@ -87,6 +168,14 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
       return !searchQuery || g.char.toLowerCase().includes(searchQuery.toLowerCase()) || g.group.toLowerCase().includes(searchQuery.toLowerCase());
     });
   }, [searchQuery]);
+
+  const filteredAssets = useMemo(() => {
+    return ALL_ASSETS.filter(a => {
+      const matchCat = categoryFilter === 'All' || a.category.toLowerCase() === categoryFilter.toLowerCase();
+      const matchSearch = !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [categoryFilter, searchQuery]);
 
   const renderThumbnailMark = (fillPrimary = '#ffffff', fillMedia = '#ff4e2e', stroke = 'none', strokeW = '0px') => (
     <svg width="24" height="24" viewBox="0 0 25 26" fill="none" className="block overflow-visible drop-shadow">
@@ -176,6 +265,25 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
             )}
           </button>
         </Tooltip>
+
+        <Tooltip content="Vector Assets & Logos (27)" side="bottom" delay={350}>
+          <button
+            type="button"
+            onClick={() => onTabChange('assets')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              activeTab === 'assets'
+                ? 'bg-[#181c28] text-white border border-[#2b3245] shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers size={14} className={activeTab === 'assets' ? 'text-amber-400' : 'text-slate-400'} />
+            {!isIconOnlyTabs && (
+              <span className="truncate">
+                {isCompactTabs ? 'Assets' : 'Assets (27)'}
+              </span>
+            )}
+          </button>
+        </Tooltip>
       </div>
 
       {/* 2. Search Bar & Category Filter Pills */}
@@ -221,7 +329,42 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
       <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
         {/* Motions Tab */}
         {activeTab === 'motions' && (
-          <div className={`grid gap-2 ${isSingleColGrid ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div className="flex flex-col gap-2">
+            {/* 1-Click Hero Combos in Presets Mode */}
+            {uiComplexity === 'presets' && (
+              <div className="flex flex-col gap-1.5 pb-2.5 mb-1 border-b border-[#1f2430]">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
+                    <Zap size={10} className="text-amber-400" />
+                    <span>1-Click Hero Combos</span>
+                  </span>
+                  <span className="text-[9px] font-mono text-slate-500">Motion + Style</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {HERO_COMBOS.map(combo => (
+                    <button
+                      key={combo.id}
+                      onClick={() => onApplyCombo ? onApplyCombo(combo.motionId, combo.styleId) : null}
+                      className="flex flex-col p-2 rounded-lg bg-[#141824] hover:bg-[#1a2030] border border-[#262c3e] hover:border-amber-500/40 text-left transition-all group"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[10.5px] font-bold text-slate-200 group-hover:text-amber-300 truncate">
+                          {combo.name}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          {combo.colorPreview.map((c, i) => (
+                            <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c }} />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-[8.5px] text-slate-400 mt-1 line-clamp-1">{combo.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={`grid gap-2 ${isSingleColGrid ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {filteredMotions.map(motion => {
               const isSelected = activeMotionId === motion.id;
               const motionIcon = getMotionIcon(motion.id, 11);
@@ -340,6 +483,7 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
@@ -492,6 +636,62 @@ export const LeftLibrary: React.FC<LeftLibraryProps> = ({
                 </Tooltip>
               );
             })}
+          </div>
+        )}
+
+        {/* Assets & Logos Tab */}
+        {activeTab === 'assets' && (
+          <div className="flex flex-col gap-2">
+            {/* Asset Action Header */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                Vector Library ({filteredAssets.length})
+              </span>
+              <button
+                type="button"
+                onClick={onOpenCustomSvg}
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#ff4e2e]/10 hover:bg-[#ff4e2e]/20 text-[#ff4e2e] text-[9.5px] font-mono border border-[#ff4e2e]/30 transition-all font-semibold"
+              >
+                <Upload size={10} />
+                <span>Import SVG</span>
+              </button>
+            </div>
+
+            {/* Asset Cards Grid */}
+            <div className={`grid gap-2 ${isSingleColGrid ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {filteredAssets.map(asset => {
+                const isSel = activeAssetId === asset.id;
+                return (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    onClick={() => onSelectAsset?.(asset.id)}
+                    className={`group relative bg-[#131620] border rounded-lg p-2.5 cursor-pointer flex flex-col text-left transition-all ${
+                      isSel
+                        ? 'border-[#ff4e2e] bg-[#ff4e2e]/[0.08] shadow-md shadow-[#ff4e2e]/15'
+                        : 'border-[#202534] hover:border-slate-500 hover:bg-[#181c28]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`text-xs font-bold font-display uppercase tracking-wide truncate ${isSel ? 'text-white' : 'text-slate-200'}`}>
+                        {asset.name}
+                      </span>
+                      <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-black/40 text-slate-400 border border-white/5 flex-shrink-0">
+                        {asset.category}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      {asset.description}
+                    </span>
+                    {isSel && (
+                      <div className="absolute top-1.5 right-1.5 w-3 h-3 bg-[#ff4e2e] rounded-full flex items-center justify-center shadow">
+                        <Check size={8} strokeWidth={3} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

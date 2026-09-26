@@ -6,6 +6,8 @@ export interface ProjectStateSnapshot {
   timestamp: number;
   actionName?: string;
   studioMode: '2d' | '3d' | 'motion-graphics';
+  uiComplexity?: 'presets' | 'advanced';
+  activeAssetId?: string;
   bentoConfig?: BentoConfig;
   // 2D State
   activeMotionId: string;
@@ -55,6 +57,8 @@ export function validateProjectSnapshot(data: any): ProjectStateSnapshot {
     timestamp: typeof data.timestamp === 'number' ? data.timestamp : Date.now(),
     actionName: data.actionName || 'Imported Project',
     studioMode: ['2d', '3d', 'motion-graphics'].includes(data.studioMode) ? data.studioMode : '2d',
+    uiComplexity: data.uiComplexity === 'presets' || data.uiComplexity === 'advanced' ? data.uiComplexity : 'presets',
+    activeAssetId: typeof data.activeAssetId === 'string' ? data.activeAssetId : 'wordlord',
     bentoConfig: data.bentoConfig && typeof data.bentoConfig === 'object' ? data.bentoConfig : undefined,
     activeMotionId: typeof data.activeMotionId === 'string' ? data.activeMotionId : 'typewriter',
     activeStyleId: typeof data.activeStyleId === 'string' ? data.activeStyleId : 'signature',
